@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { OnboardingLayout } from '@/components/ui/OnboardingLayout';
@@ -6,10 +6,14 @@ import { Button } from '@/components/ui/Button';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { SelectionChip } from '@/components/ui/SelectionChip';
 
+const friendsIcon = require('@/assets/images/friends-icon.jpeg');
+const coupleIcon = require('@/assets/images/couple-icon.jpeg');
+const bothIcon = require('@/assets/images/both-icon.jpeg');
+
 const lookingForOptions = [
-  { id: 'friends', label: 'friends', emoji: '👋', description: 'travel buddies and connections' },
-  { id: 'dating', label: 'dating', emoji: '❤️', description: 'romantic connections' },
-  { id: 'both', label: 'both', emoji: '✨', description: 'open to anything' },
+  { id: 'friends', label: 'friends', icon: friendsIcon, description: 'travel buddies and connections' },
+  { id: 'dating', label: 'dating', icon: coupleIcon, description: 'romantic connections' },
+  { id: 'both', label: 'both', icon: bothIcon, description: 'open to anything' },
 ];
 
 const preferenceOptions = [
@@ -53,15 +57,23 @@ export default function LookingForScreen() {
           <TouchableOpacity
             key={option.id}
             onPress={() => setLookingFor(option.id as any)}
-            className={`p-5 rounded-2xl mb-3 border-2 ${
+            className={`px-5 py-3 rounded-2xl mb-3 border-2 bg-white ${
               lookingFor === option.id
-                ? 'border-orange-primary bg-orange-50'
-                : 'border-gray-100 bg-white'
+                ? 'border-orange-primary'
+                : 'border-gray-100'
             }`}
             activeOpacity={0.7}
           >
             <View className="flex-row items-center">
-              <Text className="text-2xl mr-3">{option.emoji}</Text>
+              {option.icon ? (
+                <Image
+                  source={option.icon}
+                  style={{ width: 72, height: 72, borderRadius: 36, marginRight: 16 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text className="text-2xl mr-3">{option.emoji}</Text>
+              )}
               <View className="flex-1">
                 <Text
                   className="text-lg text-black"

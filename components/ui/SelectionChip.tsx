@@ -12,7 +12,7 @@ export function SelectionChip({ label, selected, onPress, emoji }: SelectionChip
     <TouchableOpacity
       onPress={onPress}
       className={`py-3 px-5 rounded-full border-2 mr-2 mb-2 ${
-        selected ? 'bg-orange-50 border-orange-primary' : 'bg-white border-gray-200'
+        selected ? 'bg-orange-50 border-orange-primary' : 'bg-white border-transparent'
       }`}
       activeOpacity={0.7}
     >

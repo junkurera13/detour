@@ -170,7 +170,7 @@ export default function PaywallScreen() {
         <TouchableOpacity
           onPress={handleStartTrial}
           style={{
-            backgroundColor: '#000',
+            backgroundColor: '#fd6b03',
             paddingVertical: 16,
             borderRadius: 16,
             alignItems: 'center',
