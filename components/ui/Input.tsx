@@ -46,8 +46,7 @@ export function Input({
           borderRadius: 16,
           paddingHorizontal: 20,
           paddingVertical: 16,
-          borderWidth: 2,
-          borderColor: isFocused ? '#000' : 'transparent',
+          borderWidth: 0,
         }}
       >
         {prefix && (

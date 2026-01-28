@@ -10,7 +10,6 @@ const genderOptions = [
   { id: 'woman', label: 'woman', icon: 'female' },
   { id: 'man', label: 'man', icon: 'male' },
   { id: 'nonbinary', label: 'non-binary', icon: 'male-female' },
-  { id: 'other', label: 'prefer to self-describe', icon: 'person' },
 ];
 
 export default function GenderScreen() {

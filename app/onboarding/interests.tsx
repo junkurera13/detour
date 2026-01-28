@@ -76,7 +76,7 @@ export default function InterestsScreen() {
         </View>
       </View>
 
-      <View className="absolute bottom-0 left-0 right-0 px-6 pb-8 bg-white pt-4">
+      <View className="absolute bottom-0 left-0 right-0 px-6 pb-8 pt-4">
         <Button
           title="continue"
           onPress={handleContinue}

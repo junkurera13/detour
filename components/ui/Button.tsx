@@ -1,5 +1,4 @@
 import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 interface ButtonProps {
   title: string;
@@ -40,37 +39,32 @@ export function Button({
         onPress={onPress}
         disabled={disabled || loading}
         activeOpacity={0.8}
-        style={{ width: fullWidth ? '100%' : undefined, opacity: disabled ? 0.5 : 1 }}
+        style={{
+          width: fullWidth ? '100%' : undefined,
+          backgroundColor: '#fff',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 16,
+          ...sizeStyles[size],
+        }}
       >
-        <LinearGradient
-          colors={['#fd6b03', '#fd9003']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 16,
-            ...sizeStyles[size],
-          }}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {icon}
-              <Text
-                style={{
-                  fontFamily: 'InstrumentSans_600SemiBold',
-                  fontSize: textSizeStyles[size],
-                  color: '#fff',
-                }}
-              >
-                {title}
-              </Text>
-            </View>
-          )}
-        </LinearGradient>
+        {loading ? (
+          <ActivityIndicator color="#9CA3AF" />
+        ) : (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {icon}
+            <Text
+              style={{
+                fontFamily: 'InstrumentSans_600SemiBold',
+                fontSize: textSizeStyles[size],
+                color: disabled ? '#9CA3AF' : '#000',
+              }}
+            >
+              {title}
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   }

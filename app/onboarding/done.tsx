@@ -5,38 +5,28 @@ import { useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { useOnboarding } from '@/context/OnboardingContext';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withDelay,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
 
-const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
-
 export default function DoneScreen() {
   const router = useRouter();
   const { data } = useOnboarding();
 
-  const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
   const confettiOpacity = useSharedValue(0);
 
   useEffect(() => {
-    scale.value = withSpring(1, { damping: 12 });
     opacity.value = withDelay(300, withTiming(1, { duration: 400 }));
     confettiOpacity.value = withDelay(200, withSequence(
       withTiming(1, { duration: 300 }),
       withDelay(1500, withTiming(0, { duration: 500 }))
     ));
   }, []);
-
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
 
   const textStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -55,15 +45,6 @@ export default function DoneScreen() {
       <View className="flex-1 px-6 items-center justify-center">
         <Animated.View style={confettiStyle} className="absolute top-20">
           <Text className="text-4xl">🎉</Text>
-        </Animated.View>
-
-        <Animated.View style={iconStyle}>
-          <LinearGradient
-            colors={['#fd6b03', '#fd9003']}
-            className="w-24 h-24 rounded-full items-center justify-center mb-8"
-          >
-            <Ionicons name="checkmark" size={48} color="#fff" />
-          </LinearGradient>
         </Animated.View>
 
         <Animated.View style={textStyle}>

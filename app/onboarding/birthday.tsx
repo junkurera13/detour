@@ -1,7 +1,8 @@
-import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 import { OnboardingLayout } from '@/components/ui/OnboardingLayout';
 import { Button } from '@/components/ui/Button';
 import { useOnboarding } from '@/context/OnboardingContext';
@@ -11,6 +12,7 @@ export default function BirthdayScreen() {
   const { data, updateData } = useOnboarding();
   const [date, setDate] = useState<Date>(data.birthday || new Date(2000, 0, 1));
   const [showPicker, setShowPicker] = useState(Platform.OS === 'ios');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const minDate = new Date();
   minDate.setFullYear(minDate.getFullYear() - 100);
@@ -20,8 +22,23 @@ export default function BirthdayScreen() {
 
   const isValidAge = date <= maxDate;
 
+  const calculateAge = (birthday: Date) => {
+    const today = new Date();
+    let age = today.getFullYear() - birthday.getFullYear();
+    const monthDiff = today.getMonth() - birthday.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthday.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   const handleContinue = () => {
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirm = () => {
     updateData({ birthday: date });
+    setShowConfirmModal(false);
     router.push('/onboarding/gender');
   };
 
@@ -94,6 +111,78 @@ export default function BirthdayScreen() {
           disabled={!isValidAge}
         />
       </View>
+
+      <Modal
+        visible={showConfirmModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConfirmModal(false)}
+      >
+        <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View className="bg-white mx-6 rounded-3xl p-6 w-full max-w-sm">
+            <TouchableOpacity
+              onPress={() => setShowConfirmModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 items-center justify-center"
+            >
+              <Ionicons name="close" size={24} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            <Text
+              className="text-2xl mb-2"
+              style={{ fontFamily: 'InstrumentSans_600SemiBold', color: '#fd6b03' }}
+            >
+              you're {calculateAge(date)}
+            </Text>
+            <Text
+              className="text-base text-gray-500 mb-1"
+              style={{ fontFamily: 'InstrumentSans_400Regular' }}
+            >
+              your birthday is {formatDate(date)}
+            </Text>
+            <Text
+              className="text-sm text-gray-500 mb-6"
+              style={{ fontFamily: 'InstrumentSans_400Regular' }}
+            >
+              make sure this is the right date. you won't be able to change it later.
+            </Text>
+            <View className="flex-row items-center gap-3">
+              <TouchableOpacity
+                onPress={() => setShowConfirmModal(false)}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  borderRadius: 12,
+                }}
+              >
+                <Text
+                  className="text-gray-500"
+                  style={{ fontFamily: 'InstrumentSans_500Medium', fontSize: 16 }}
+                >
+                  edit
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleConfirm}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  alignItems: 'center',
+                }}
+              >
+                <Text
+                  className="text-black"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 }}
+                >
+                  confirm
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </OnboardingLayout>
   );
 }
