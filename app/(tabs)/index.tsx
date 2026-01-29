@@ -42,17 +42,20 @@ export default function NearbyScreen() {
       <View className="px-6 pt-4 pb-2 flex-row items-center justify-between">
         <View>
           <Text
-            className="text-2xl text-black"
-            style={{ fontFamily: 'InstrumentSans_700Bold' }}
+            className="text-5xl text-black"
+            style={{ fontFamily: 'InstrumentSerif_400Regular' }}
           >
             nearby
           </Text>
-          <Text
-            className="text-gray-500"
-            style={{ fontFamily: 'InstrumentSans_400Regular' }}
-          >
-            {data.currentLocation || 'lisbon, portugal'}
-          </Text>
+          <TouchableOpacity className="flex-row items-center">
+            <Ionicons name="location-outline" size={16} color="#9CA3AF" />
+            <Text
+              className="text-gray-500 ml-1"
+              style={{ fontFamily: 'InstrumentSans_400Regular' }}
+            >
+              {data.currentLocation || 'lisbon, portugal'}
+            </Text>
+          </TouchableOpacity>
         </View>
         <TouchableOpacity className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center">
           <Ionicons name="options-outline" size={20} color="#000" />

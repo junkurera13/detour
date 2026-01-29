@@ -51,7 +51,7 @@ export default function LocationScreen() {
     <OnboardingLayout
       title="where are you now?"
       subtitle="help nearby nomads find you"
-      currentStep={10}
+      currentStep={11}
     >
       <View className="flex-1 pt-8">
         <TouchableOpacity

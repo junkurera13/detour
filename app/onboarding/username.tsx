@@ -6,30 +6,35 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useOnboarding } from '@/context/OnboardingContext';
 
-export default function NameScreen() {
+export default function UsernameScreen() {
   const router = useRouter();
   const { data, updateData } = useOnboarding();
-  const [name, setName] = useState(data.name);
+  const [username, setUsername] = useState(data.username);
 
   const handleContinue = () => {
-    updateData({ name });
-    router.push('/onboarding/username');
+    updateData({ username: username.toLowerCase().replace(/\s/g, '') });
+    router.push('/onboarding/birthday');
+  };
+
+  const formatUsername = (text: string) => {
+    return text.toLowerCase().replace(/[^a-z0-9._]/g, '');
   };
 
   return (
     <OnboardingLayout
-      title="what's your first name?"
-      subtitle="this is how you'll appear to others"
-      currentStep={1}
+      title="choose a username"
+      subtitle="this is how others will find you"
+      currentStep={2}
       showBack={true}
     >
       <View className="flex-1 pt-8">
         <Input
-          value={name}
-          onChangeText={setName}
-          placeholder="your first name"
+          value={username}
+          onChangeText={(text) => setUsername(formatUsername(text))}
+          placeholder="username"
           autoCapitalize="none"
-          maxLength={30}
+          autoCorrect={false}
+          maxLength={20}
         />
       </View>
 
@@ -37,7 +42,7 @@ export default function NameScreen() {
         <Button
           title="continue"
           onPress={handleContinue}
-          disabled={name.trim().length < 2}
+          disabled={username.trim().length < 3}
         />
       </View>
     </OnboardingLayout>

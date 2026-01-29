@@ -35,7 +35,7 @@ export default function GenderScreen() {
             onPress={() => setSelected(option.id)}
             className={`flex-row items-center p-4 rounded-2xl mb-3 border-2 ${
               selected === option.id
-                ? 'border-orange-primary bg-orange-50'
+                ? 'border-orange-primary bg-white'
                 : 'border-gray-100 bg-white'
             }`}
             activeOpacity={0.7}

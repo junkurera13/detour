@@ -25,8 +25,8 @@ export default function ExploreScreen() {
     <SafeAreaView className="flex-1 bg-white">
       <View className="px-6 pt-4">
         <Text
-          className="text-2xl text-black mb-4"
-          style={{ fontFamily: 'InstrumentSans_700Bold' }}
+          className="text-5xl text-black mb-4"
+          style={{ fontFamily: 'InstrumentSerif_400Regular' }}
         >
           explore
         </Text>
@@ -44,29 +44,24 @@ export default function ExploreScreen() {
         </View>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="px-6 py-4"
-        contentContainerStyle={{ gap: 8 }}
-      >
+      <View className="flex-row px-6 py-4 gap-2">
         {categories.map((category) => (
           <TouchableOpacity
             key={category.id}
             onPress={() => setSelectedCategory(category.id)}
-            className="px-4 py-2 rounded-full flex-row items-center"
+            className="px-4 py-2 rounded-full flex-row items-center justify-center"
             style={{ backgroundColor: selectedCategory === category.id ? '#fd6b03' : '#F3F4F6' }}
           >
-            <Text className="mr-1">{category.emoji}</Text>
+            <Text className="mr-1 text-sm">{category.emoji}</Text>
             <Text
-              className={selectedCategory === category.id ? 'text-white' : 'text-black'}
+              className={`text-sm ${selectedCategory === category.id ? 'text-white' : 'text-black'}`}
               style={{ fontFamily: 'InstrumentSans_500Medium' }}
             >
               {category.label}
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       <ScrollView
         className="flex-1 px-6"

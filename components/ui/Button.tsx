@@ -3,7 +3,7 @@ import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'accent';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   loading?: boolean;
@@ -32,6 +32,43 @@ export function Button({
     md: 16,
     lg: 18,
   };
+
+  if (variant === 'accent') {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={disabled || loading}
+        activeOpacity={0.8}
+        style={{
+          width: fullWidth ? '100%' : undefined,
+          backgroundColor: '#fd6b03',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 16,
+          opacity: disabled ? 0.5 : 1,
+          ...sizeStyles[size],
+        }}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {icon}
+            <Text
+              style={{
+                fontFamily: 'InstrumentSans_600SemiBold',
+                fontSize: textSizeStyles[size],
+                color: '#fff',
+              }}
+            >
+              {title}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  }
 
   if (variant === 'primary') {
     return (

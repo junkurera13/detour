@@ -26,7 +26,7 @@ export default function InstagramScreen() {
     <OnboardingLayout
       title="link your instagram"
       subtitle="let others see more of your adventures"
-      currentStep={9}
+      currentStep={10}
       showSkip
       onSkip={handleSkip}
     >

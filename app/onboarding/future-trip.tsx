@@ -26,7 +26,7 @@ export default function FutureTripScreen() {
     <OnboardingLayout
       title="where to next?"
       subtitle="connect with nomads at your next destination"
-      currentStep={11}
+      currentStep={12}
       showSkip
       onSkip={handleSkip}
     >

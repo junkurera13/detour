@@ -1,8 +1,11 @@
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, Image } from 'react-native';
+import { useOnboarding } from '@/context/OnboardingContext';
 
 export default function TabLayout() {
+  const { data } = useOnboarding();
+  const profilePhoto = data.photos[0];
   return (
     <Tabs
       screenOptions={{
@@ -12,62 +15,88 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 1,
-          borderTopColor: '#F3F4F6',
-          paddingTop: 8,
-          paddingBottom: 8,
+          borderTopColor: '#E5E7EB',
           height: 88,
+          paddingTop: 12,
         },
-        tabBarLabelStyle: {
-          fontFamily: 'InstrumentSans_500Medium',
-          fontSize: 11,
-          marginTop: 4,
-        },
+        tabBarShowLabel: false,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'nearby',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="map-marker-radius" size={28} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'explore',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="binoculars" size={28} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="matches"
         options={{
-          title: 'matches',
-          tabBarIcon: ({ color, size }) => (
-            <View>
-              <Ionicons name="heart" size={size} color={color} />
-            </View>
+          tabBarIcon: ({ focused }) => (
+            <Image
+              source={focused
+                ? require('@/assets/images/heart-active-icon.png')
+                : require('@/assets/images/heart-icon.png')
+              }
+              style={{ width: 34, height: 34 }}
+              resizeMode="contain"
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="messages"
         options={{
-          title: 'messages',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="hand-heart" size={28} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            profilePhoto ? (
+              <View
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  borderWidth: 2,
+                  borderColor: focused ? '#fd6b03' : '#E5E7EB',
+                  overflow: 'hidden',
+                }}
+              >
+                <Image
+                  source={{ uri: profilePhoto }}
+                  style={{ width: '100%', height: '100%' }}
+                />
+              </View>
+            ) : (
+              <View
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  borderWidth: 2,
+                  borderColor: focused ? '#fd6b03' : '#E5E7EB',
+                  backgroundColor: '#F3F4F6',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <MaterialCommunityIcons name="account" size={18} color={color} />
+              </View>
+            )
           ),
         }}
       />

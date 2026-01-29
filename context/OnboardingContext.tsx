@@ -2,10 +2,13 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface OnboardingData {
   name: string;
+  username: string;
   birthday: Date | null;
   gender: string;
-  lookingFor: 'friends' | 'dating' | 'both' | null;
+  lookingFor: string[];
+  friendsPreference: string[];
   datingPreference: string[];
+  datingGoals: string[];
   lifestyle: string[];
   timeNomadic: string;
   interests: string[];
@@ -24,10 +27,13 @@ interface OnboardingContextType {
 
 const defaultData: OnboardingData = {
   name: '',
+  username: '',
   birthday: null,
   gender: '',
-  lookingFor: null,
+  lookingFor: [],
+  friendsPreference: [],
   datingPreference: [],
+  datingGoals: [],
   lifestyle: [],
   timeNomadic: '',
   interests: [],

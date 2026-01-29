@@ -21,7 +21,7 @@ export function OnboardingLayout({
   title,
   subtitle,
   currentStep,
-  totalSteps = 13,
+  totalSteps = 14,
   showBack = true,
   showSkip = false,
   onSkip,

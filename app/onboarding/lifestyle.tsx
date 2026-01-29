@@ -1,4 +1,4 @@
-import { View, Text } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { OnboardingLayout } from '@/components/ui/OnboardingLayout';
@@ -27,9 +27,15 @@ export default function LifestyleScreen() {
   const [selected, setSelected] = useState<string[]>(data.lifestyle);
 
   const toggleLifestyle = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id]
-    );
+    setSelected((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((l) => l !== id);
+      }
+      if (prev.length >= 3) {
+        return prev;
+      }
+      return [...prev, id];
+    });
   };
 
   const handleContinue = () => {
@@ -40,25 +46,26 @@ export default function LifestyleScreen() {
   return (
     <OnboardingLayout
       title="what's your lifestyle?"
-      subtitle="select all that apply"
-      currentStep={5}
-      scrollable
+      subtitle={`select up to 3 (${selected.length}/3)`}
+      currentStep={6}
     >
-      <View className="pt-4 pb-24">
-        <View className="flex-row flex-wrap">
-          {lifestyleOptions.map((option) => (
-            <SelectionChip
-              key={option.id}
-              label={option.label}
-              emoji={option.emoji}
-              selected={selected.includes(option.id)}
-              onPress={() => toggleLifestyle(option.id)}
-            />
-          ))}
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <View className="pt-4">
+          <View className="flex-row flex-wrap">
+            {lifestyleOptions.map((option) => (
+              <SelectionChip
+                key={option.id}
+                label={option.label}
+                emoji={option.emoji}
+                selected={selected.includes(option.id)}
+                onPress={() => toggleLifestyle(option.id)}
+              />
+            ))}
+          </View>
         </View>
-      </View>
+      </ScrollView>
 
-      <View className="absolute bottom-0 left-0 right-0 px-6 pb-8 pt-4">
+      <View className="pt-6 pb-8">
         <Button
           title="continue"
           onPress={handleContinue}

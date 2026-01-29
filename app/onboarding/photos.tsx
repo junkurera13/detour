@@ -151,7 +151,7 @@ export default function PhotosScreen() {
     <OnboardingLayout
       title="add your photos"
       subtitle="add 1-6 photos. tap to add, hold to remove."
-      currentStep={8}
+      currentStep={9}
     >
       <View className="flex-1 pt-4">
         {/* Row 1: Large photo + 2 small stacked */}

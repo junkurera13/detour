@@ -1,11 +1,11 @@
-import { View, Text, TouchableOpacity, Platform, Modal } from 'react-native';
+import { Button } from '@/components/ui/Button';
+import { OnboardingLayout } from '@/components/ui/OnboardingLayout';
+import { useOnboarding } from '@/context/OnboardingContext';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Ionicons } from '@expo/vector-icons';
-import { OnboardingLayout } from '@/components/ui/OnboardingLayout';
-import { Button } from '@/components/ui/Button';
-import { useOnboarding } from '@/context/OnboardingContext';
+import { Modal, Platform, Text, TouchableOpacity, View } from 'react-native';
 
 export default function BirthdayScreen() {
   const router = useRouter();

@@ -1,8 +1,9 @@
-import { View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useRouter } from 'expo-router';
+import { useState, useRef, useEffect } from 'react';
 
 const lifestyleLabels: Record<string, string> = {
   'van-life': 'van life',
@@ -49,28 +50,92 @@ const interestLabels: Record<string, { label: string; emoji: string }> = {
 const settingsItems = [
   { id: 'edit', label: 'edit profile', icon: 'create-outline' },
   { id: 'settings', label: 'settings', icon: 'settings-outline' },
-  { id: 'notifications', label: 'notifications', icon: 'notifications-outline' },
   { id: 'privacy', label: 'privacy', icon: 'shield-outline' },
   { id: 'help', label: 'help & support', icon: 'help-circle-outline' },
+];
+
+const recentViewers = [
+  { id: '1', photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' },
+  { id: '2', photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' },
+  { id: '3', photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100' },
 ];
 
 export default function ProfileScreen() {
   const { data, resetData } = useOnboarding();
   const router = useRouter();
+  const [menuVisible, setMenuVisible] = useState(false);
+  const slideAnim = useRef(new Animated.Value(400)).current;
+
+  useEffect(() => {
+    if (menuVisible) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 11,
+      }).start();
+    } else {
+      slideAnim.setValue(400);
+    }
+  }, [menuVisible]);
+
+  const closeMenu = () => {
+    Animated.timing(slideAnim, {
+      toValue: 400,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => setMenuVisible(false));
+  };
 
   const handleLogout = () => {
-    resetData();
-    router.replace('/onboarding');
+    closeMenu();
+    setTimeout(() => {
+      resetData();
+      router.replace('/onboarding');
+    }, 200);
   };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
+      <View className="px-6 pt-4 pb-6 flex-row items-center justify-between">
+        <Text
+          className="text-5xl text-black"
+          style={{ fontFamily: 'InstrumentSerif_400Regular' }}
+        >
+          profile
+        </Text>
+        <View className="flex-row items-center gap-3" style={{ marginTop: -8 }}>
+          <TouchableOpacity className="flex-row items-center bg-gray-100 rounded-full px-2 py-1">
+            {recentViewers.map((viewer, index) => (
+              <Image
+                key={viewer.id}
+                source={{ uri: viewer.photo }}
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: '#F3F4F6',
+                  marginLeft: index > 0 ? -8 : 0,
+                }}
+              />
+            ))}
+          </TouchableOpacity>
+          <TouchableOpacity>
+            <Ionicons name="share-outline" size={24} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setMenuVisible(true)}>
+            <Ionicons name="menu" size={24} color="#000" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
-        <View className="px-6 pt-4 pb-6 items-center">
+        <View className="px-6 pb-6 items-center">
           <View className="relative">
             {data.photos.length > 0 ? (
               <Image
@@ -94,6 +159,15 @@ export default function ProfileScreen() {
           >
             {data.name.toLowerCase() || 'your name'}
           </Text>
+
+          {data.username && (
+            <Text
+              className="text-gray-500 mt-1"
+              style={{ fontFamily: 'InstrumentSans_400Regular' }}
+            >
+              @{data.username}
+            </Text>
+          )}
 
           <View className="flex-row items-center mt-1">
             <Ionicons name="location-outline" size={16} color="#9CA3AF" />
@@ -217,44 +291,64 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        <View className="px-6">
-          <View className="bg-gray-50 rounded-2xl overflow-hidden">
-            {settingsItems.map((item, index) => (
-              <TouchableOpacity
-                key={item.id}
-                className={`flex-row items-center px-4 py-4 ${
-                  index < settingsItems.length - 1 ? 'border-b border-gray-100' : ''
-                }`}
-                activeOpacity={0.7}
-              >
-                <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
-                  <Ionicons name={item.icon as any} size={20} color="#000" />
-                </View>
-                <Text
-                  className="flex-1 text-black ml-3"
-                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                >
-                  {item.label}
-                </Text>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TouchableOpacity
-            onPress={handleLogout}
-            className="mt-4 py-4 items-center"
-            activeOpacity={0.7}
-          >
-            <Text
-              className="text-red-500"
-              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-            >
-              log out
-            </Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
+
+      <Modal
+        visible={menuVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={closeMenu}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <TouchableOpacity
+            className="flex-1"
+            activeOpacity={1}
+            onPress={closeMenu}
+          />
+          <Animated.View
+            style={{ transform: [{ translateY: slideAnim }] }}
+            className="bg-white rounded-t-3xl px-6 pb-10 pt-4"
+          >
+            <View className="w-10 h-1 bg-gray-300 rounded-full self-center mb-6" />
+
+            <View className="bg-gray-50 rounded-2xl overflow-hidden">
+              {settingsItems.map((item, index) => (
+                <TouchableOpacity
+                  key={item.id}
+                  className={`flex-row items-center px-4 py-4 ${
+                    index < settingsItems.length - 1 ? 'border-b border-gray-100' : ''
+                  }`}
+                  activeOpacity={0.7}
+                >
+                  <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
+                    <Ionicons name={item.icon as any} size={20} color="#000" />
+                  </View>
+                  <Text
+                    className="flex-1 text-black ml-3"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    {item.label}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              onPress={handleLogout}
+              className="mt-4 py-4 items-center"
+              activeOpacity={0.7}
+            >
+              <Text
+                className="text-red-500"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                log out
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

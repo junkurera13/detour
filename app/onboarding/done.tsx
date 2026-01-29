@@ -68,7 +68,7 @@ export default function DoneScreen() {
         <Button
           title="find nomads nearby"
           onPress={handleContinue}
-          icon={<Ionicons name="compass-outline" size={20} color="#fff" />}
+          variant="accent"
         />
       </View>
     </SafeAreaView>

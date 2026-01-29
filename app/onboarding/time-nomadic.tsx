@@ -28,7 +28,7 @@ export default function TimeNomadicScreen() {
     <OnboardingLayout
       title="how long have you been nomadic?"
       subtitle="we all started somewhere"
-      currentStep={6}
+      currentStep={7}
     >
       <View className="flex-1 pt-4">
         {timeOptions.map((option) => (
@@ -37,7 +37,7 @@ export default function TimeNomadicScreen() {
             onPress={() => setSelected(option.id)}
             className={`p-4 rounded-2xl mb-3 border-2 ${
               selected === option.id
-                ? 'border-orange-primary bg-orange-50'
+                ? 'border-orange-primary bg-white'
                 : 'border-gray-100 bg-white'
             }`}
             activeOpacity={0.7}

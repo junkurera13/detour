@@ -2,9 +2,30 @@ import { View, Text, TouchableOpacity, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useOnboarding } from '@/context/OnboardingContext';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { updateData } = useOnboarding();
+
+  const skipToApp = () => {
+    updateData({
+      name: 'Demo User',
+      username: 'demouser',
+      birthday: new Date('1995-06-15'),
+      gender: 'non-binary',
+      lookingFor: ['friends', 'dating'],
+      lifestyle: ['digital-nomad', 'van-life'],
+      timeNomadic: '1-2-years',
+      interests: ['hiking', 'photography', 'coffee'],
+      photos: ['https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400'],
+      instagram: 'demouser',
+      currentLocation: 'lisbon, portugal',
+      futureTrip: 'bali, indonesia',
+      hasCompletedOnboarding: true,
+    });
+    router.replace('/(tabs)');
+  };
 
   return (
     <ImageBackground
@@ -13,6 +34,14 @@ export default function WelcomeScreen() {
       resizeMode="cover"
     >
       <SafeAreaView className="flex-1">
+        <TouchableOpacity
+          onPress={skipToApp}
+          className="absolute top-12 right-6 z-10 bg-black/50 px-3 py-2 rounded-full"
+        >
+          <Text className="text-white text-xs" style={{ fontFamily: 'InstrumentSans_600SemiBold' }}>
+            DEV: Skip
+          </Text>
+        </TouchableOpacity>
         <View className="flex-1 px-6 pt-12">
           <View className="flex-1 items-center justify-end" style={{ paddingBottom: 85 }}>
             <Text
