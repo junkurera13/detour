@@ -1,16 +1,31 @@
 import { Redirect } from 'expo-router';
-import { useOnboarding } from '@/context/OnboardingContext';
+import { View, ActivityIndicator } from 'react-native';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 
 export default function Index() {
-  const { data } = useOnboarding();
+  const { isSignedIn, isLoading, convexUser, needsOnboarding } = useAuthenticatedUser();
 
-  // Not completed onboarding yet -> go to onboarding welcome
-  if (!data.hasCompletedOnboarding) {
+  // Show loading while checking auth state
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#fd6b03" />
+      </View>
+    );
+  }
+
+  // Not signed in -> go to onboarding/landing
+  if (!isSignedIn) {
     return <Redirect href="/onboarding" />;
   }
 
-  // Completed onboarding but still pending -> show waitlist screen
-  if (data.userStatus === 'pending') {
+  // Signed in but no Convex user -> needs onboarding
+  if (needsOnboarding || !convexUser) {
+    return <Redirect href="/onboarding/join-path" />;
+  }
+
+  // Signed in but pending approval
+  if (convexUser.userStatus === 'pending') {
     return <Redirect href="/pending" />;
   }
 

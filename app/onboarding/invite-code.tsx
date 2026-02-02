@@ -1,37 +1,54 @@
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
-import { validateInviteCode } from '@/utils/inviteCode';
 
 export default function InviteCodeScreen() {
   const router = useRouter();
   const { updateData } = useOnboarding();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
-  const [isValidating, setIsValidating] = useState(false);
+  const [debouncedCode, setDebouncedCode] = useState('');
 
-  const handleValidate = async () => {
-    setError('');
-    setIsValidating(true);
+  // Debounce code input for validation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (code.trim().length >= 4) {
+        setDebouncedCode(code.trim().toUpperCase());
+      } else {
+        setDebouncedCode('');
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [code]);
 
-    const result = await validateInviteCode(code);
+  // Validate code with Convex
+  const validation = useQuery(
+    api.inviteCodes.validate,
+    debouncedCode.length >= 4 ? { code: debouncedCode } : "skip"
+  );
 
-    if (result.isValid) {
+  const handleValidate = () => {
+    if (validation?.isValid) {
       updateData({
         joinPath: 'invite',
         inviteCode: code.toUpperCase().trim(),
       });
       router.push('/onboarding/name');
+    } else if (validation?.error) {
+      setError(validation.error);
     } else {
-      setError(result.error || 'invalid code');
+      setError('invalid code');
     }
-    setIsValidating(false);
   };
 
-  const isDisabled = code.trim().length < 4 || isValidating;
+  const isChecking = code.trim().length >= 4 && (debouncedCode !== code.trim().toUpperCase() || validation === undefined);
+  const isValid = validation?.isValid === true;
+  const isDisabled = code.trim().length < 4 || isChecking || !isValid;
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -81,6 +98,40 @@ export default function InviteCodeScreen() {
             }}
           />
 
+          {/* Validation status */}
+          {code.trim().length >= 4 && (
+            <View className="flex-row items-center mt-3">
+              {isChecking ? (
+                <Text
+                  className="text-gray-400 text-sm"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  checking code...
+                </Text>
+              ) : isValid ? (
+                <>
+                  <Ionicons name="checkmark-circle" size={16} color="#22c55e" />
+                  <Text
+                    className="text-green-500 text-sm ml-1"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    valid code
+                  </Text>
+                </>
+              ) : validation?.error ? (
+                <>
+                  <Ionicons name="close-circle" size={16} color="#ef4444" />
+                  <Text
+                    className="text-red-500 text-sm ml-1"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    {validation.error}
+                  </Text>
+                </>
+              ) : null}
+            </View>
+          )}
+
           {error ? (
             <Text
               className="text-red-500 mt-3 text-sm"
@@ -110,7 +161,7 @@ export default function InviteCodeScreen() {
                 color: isDisabled ? '#9CA3AF' : '#fff',
               }}
             >
-              {isValidating ? 'validating...' : 'validate code'}
+              {isChecking ? 'checking...' : 'continue'}
             </Text>
           </TouchableOpacity>
         </View>

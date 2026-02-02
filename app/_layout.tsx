@@ -3,7 +3,10 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { ConvexProvider, ConvexReactClient } from 'convex/react';
+import { ClerkProvider, ClerkLoaded, useAuth } from '@clerk/clerk-expo';
+import { ConvexReactClient } from 'convex/react';
+import { ConvexProviderWithClerk } from 'convex/react-clerk';
+import { tokenCache } from '@/lib/tokenCache';
 import {
   useFonts,
   InstrumentSans_400Regular,
@@ -18,6 +21,7 @@ import {
 import { OnboardingProvider } from '@/context/OnboardingContext';
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
+const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
 SplashScreen.preventAutoHideAsync();
 
@@ -41,38 +45,46 @@ export default function RootLayout() {
     return null;
   }
 
+  if (!clerkPublishableKey) {
+    throw new Error('Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY');
+  }
+
   return (
-    <ConvexProvider client={convex}>
-      <OnboardingProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: '#fff' },
-            animation: 'fade',
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen
-            name="onboarding"
-            options={{
-              gestureEnabled: false,
-            }}
-          />
-          <Stack.Screen
-            name="(tabs)"
-            options={{
-              gestureEnabled: false,
-            }}
-          />
-          <Stack.Screen
-            name="pending"
-            options={{
-              gestureEnabled: false,
-            }}
-          />
-        </Stack>
-        <StatusBar style="dark" />
-      </OnboardingProvider>
-    </ConvexProvider>
+    <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
+      <ClerkLoaded>
+        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+          <OnboardingProvider>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: '#fff' },
+                animation: 'fade',
+              }}
+            >
+              <Stack.Screen name="index" />
+              <Stack.Screen
+                name="onboarding"
+                options={{
+                  gestureEnabled: false,
+                }}
+              />
+              <Stack.Screen
+                name="(tabs)"
+                options={{
+                  gestureEnabled: false,
+                }}
+              />
+              <Stack.Screen
+                name="pending"
+                options={{
+                  gestureEnabled: false,
+                }}
+              />
+            </Stack>
+            <StatusBar style="dark" />
+          </OnboardingProvider>
+        </ConvexProviderWithClerk>
+      </ClerkLoaded>
+    </ClerkProvider>
   );
 }

@@ -1,34 +1,77 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
+import { useState } from 'react';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { EmailAuth } from '@/components/auth/EmailAuth';
+import { OAuthButtons } from '@/components/auth/OAuthButtons';
 
-export default function LandingScreen() {
+export default function AuthLandingScreen() {
   const router = useRouter();
   const { updateData } = useOnboarding();
+  const [showEmailAuth, setShowEmailAuth] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const skipToApp = () => {
-    updateData({
-      name: 'Demo User',
-      username: 'demouser',
-      birthday: new Date('1995-06-15'),
-      gender: 'non-binary',
-      lookingFor: ['friends', 'dating'],
-      lifestyle: ['digital-nomad', 'van-life'],
-      timeNomadic: '1-2-years',
-      interests: ['hiking', 'photography', 'coffee'],
-      photos: ['https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400'],
-      instagram: 'demouser',
-      currentLocation: 'lisbon, portugal',
-      futureTrip: 'bali, indonesia',
-      hasCompletedOnboarding: true,
-      joinPath: 'invite',
-      userStatus: 'approved',
-      inviteCode: 'DEVSKIP',
-    });
-    router.replace('/(tabs)');
+  const getOrCreateUser = useMutation(api.users.getOrCreateByToken);
+
+  const handleAuthSuccess = async () => {
+    setIsLoading(true);
+    try {
+      // Check if user exists in Convex
+      const result = await getOrCreateUser({});
+
+      if (result.isNew || !result.user) {
+        // New user - start onboarding
+        router.replace('/onboarding/name');
+      } else {
+        // Existing user - update local state and route based on status
+        const user = result.user;
+        updateData({
+          name: user.name,
+          username: user.username,
+          hasCompletedOnboarding: true,
+          userStatus: user.userStatus as 'none' | 'pending' | 'approved',
+        });
+
+        if (user.userStatus === 'approved') {
+          router.replace('/(tabs)');
+        } else {
+          router.replace('/pending');
+        }
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      Alert.alert('Error', 'Authentication failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (showEmailAuth) {
+    return (
+      <EmailAuth
+        onSuccess={handleAuthSuccess}
+        onBack={() => setShowEmailAuth(false)}
+      />
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#fd6b03" />
+        <Text
+          className="mt-4 text-gray-500"
+          style={{ fontFamily: 'InstrumentSans_400Regular' }}
+        >
+          signing you in...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -39,16 +82,8 @@ export default function LandingScreen() {
         cachePolicy="memory-disk"
       />
       <SafeAreaView className="flex-1">
-        <TouchableOpacity
-          onPress={skipToApp}
-          className="absolute top-12 right-6 z-10 bg-black/50 px-3 py-2 rounded-full"
-        >
-          <Text className="text-white text-xs" style={{ fontFamily: 'InstrumentSans_600SemiBold' }}>
-            DEV: Skip
-          </Text>
-        </TouchableOpacity>
         <View className="flex-1 px-6 pt-12">
-          <View className="flex-1 items-center justify-center" style={{ paddingBottom: 100 }}>
+          <View className="flex-1 items-center justify-end" style={{ paddingBottom: 100 }}>
             <Text
               className="text-white"
               style={{ fontFamily: 'InstrumentSerif_400Regular', fontSize: 96, marginBottom: -20 }}
@@ -62,34 +97,38 @@ export default function LandingScreen() {
               wander together.
             </Text>
           </View>
-        </View>
 
-        <View className="absolute left-0 right-0 px-6" style={{ bottom: 50 }}>
-          <TouchableOpacity
-            onPress={() => router.push('/onboarding/join-path')}
-            className="w-full items-center justify-center bg-white py-4 px-8 rounded-full"
-            activeOpacity={0.8}
-          >
-            <Text
-              className="text-black text-lg"
-              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+          <View className="pb-6 gap-3">
+            <TouchableOpacity
+              onPress={() => setShowEmailAuth(true)}
+              className="w-full items-center justify-center bg-white py-4 px-8 rounded-full"
+              activeOpacity={0.8}
             >
-              join detour
-            </Text>
-          </TouchableOpacity>
+              <Text
+                className="text-black text-lg"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                continue with email
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => router.push('/onboarding/auth?mode=login')}
-            activeOpacity={0.8}
-            className="py-4"
-          >
+            <OAuthButtons
+              onSuccess={handleAuthSuccess}
+              onError={(error) => Alert.alert('Error', error)}
+            />
+          </View>
+
+          <View className="pb-8">
             <Text
-              className="text-white text-lg text-center"
-              style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              className="text-center text-white"
+              style={{ fontFamily: 'InstrumentSans_500Medium', fontSize: 12, lineHeight: 18 }}
             >
-              already a member? login
+              by signing in or creating an account with detour,{'\n'}you agree with our{' '}
+              <Text className="underline text-white">terms of service</Text>
+              {' '}and{' '}
+              <Text className="underline text-white">privacy policy</Text>.
             </Text>
-          </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     </View>

@@ -1,9 +1,13 @@
-import { View, Text, Image, TouchableOpacity, Dimensions, StyleSheet, Modal, ScrollView } from 'react-native';
+import { View, Text, Image, TouchableOpacity, Dimensions, StyleSheet, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Doc } from '@/convex/_generated/dataModel';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
@@ -37,92 +41,35 @@ interface Profile {
   instagram?: string;
 }
 
-const mockProfiles: Profile[] = [
-  {
-    id: '1',
-    name: 'sarah',
-    age: 28,
-    location: 'lisbon, portugal',
-    lifestyle: ['digital nomad', 'slow travel'],
-    photos: [
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800',
-      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800',
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800',
-    ],
-    distance: '2 km away',
-    interests: ['hiking', 'photography', 'coffee', 'yoga'],
-    bio: 'exploring the world one city at a time. currently working remotely as a designer.',
-    timeNomadic: '2 years',
-    lookingFor: 'friends',
-    instagram: 'sarah.travels',
-  },
-  {
-    id: '2',
-    name: 'marcus',
-    age: 32,
-    location: 'lisbon, portugal',
-    lifestyle: ['van life', 'backpacker'],
-    photos: [
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800',
-      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800',
-    ],
-    distance: '5 km away',
-    interests: ['surfing', 'cooking', 'music', 'camping'],
-    bio: 'living the van life dream. always down for a surf session or beach bonfire.',
-    timeNomadic: '3 years',
-    lookingFor: 'dating',
-  },
-  {
-    id: '3',
-    name: 'emma',
-    age: 26,
-    location: 'lisbon, portugal',
-    lifestyle: ['digital nomad'],
-    photos: [
-      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=800',
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800',
-    ],
-    distance: '8 km away',
-    interests: ['reading', 'wine', 'art', 'languages'],
-    bio: 'freelance writer chasing inspiration around europe.',
-    timeNomadic: '1 year',
-    lookingFor: 'both',
-    instagram: 'emma.writes',
-  },
-  {
-    id: '4',
-    name: 'lucas',
-    age: 30,
-    location: 'lisbon, portugal',
-    lifestyle: ['perpetual traveler', 'remote worker'],
-    photos: [
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800',
-    ],
-    distance: '3 km away',
-    interests: ['fitness', 'coding', 'nightlife', 'gaming'],
-    bio: 'software engineer by day, explorer by night.',
-    timeNomadic: '4 years',
-    lookingFor: 'friends',
-  },
-  {
-    id: '5',
-    name: 'sofia',
-    age: 27,
-    location: 'lisbon, portugal',
-    lifestyle: ['hostel hopper', 'backpacker'],
-    photos: [
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800',
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800',
-      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800',
-    ],
-    distance: '1 km away',
-    interests: ['dancing', 'food', 'meditation', 'diving'],
-    bio: 'budget traveler making friends everywhere i go!',
-    timeNomadic: '6 months',
-    lookingFor: 'both',
-    instagram: 'sofia.adventures',
-  },
-];
+// Helper to calculate age from birthday string
+function calculateAge(birthday: string): number {
+  const birthDate = new Date(birthday);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+// Convert Convex user to Profile interface
+function convexUserToProfile(user: Doc<"users">): Profile {
+  return {
+    id: user._id,
+    name: user.name,
+    age: calculateAge(user.birthday),
+    location: user.currentLocation,
+    lifestyle: user.lifestyle,
+    photos: user.photos.length > 0 ? user.photos : ['https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800'],
+    distance: 'nearby',
+    interests: user.interests,
+    bio: '', // Schema doesn't have bio field
+    timeNomadic: user.timeNomadic,
+    lookingFor: user.lookingFor.join(', '),
+    instagram: user.instagram,
+  };
+}
 
 interface SwipeableCardProps {
   profile: Profile;
@@ -386,9 +333,29 @@ function SwipeableCard({ profile, isFirst, onSwipeLeft, onSwipeRight, swipeDirec
 
 export default function NearbyScreen() {
   const { data } = useOnboarding();
+  const { convexUser } = useAuthenticatedUser();
+  const userId = convexUser?._id;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+  const [isProcessingSwipe, setIsProcessingSwipe] = useState(false);
   const swipeProgress = useSharedValue(0);
+
+  // Fetch profiles from Convex
+  const convexUsers = useQuery(
+    api.users.getDiscoverUsers,
+    userId ? { currentUserId: userId, limit: 50 } : "skip"
+  );
+
+  // Create swipe mutation
+  const createSwipe = useMutation(api.swipes.create);
+
+  // Convert Convex users to Profile interface
+  const profiles = useMemo(() => {
+    if (!convexUsers) return [];
+    return convexUsers.map(convexUserToProfile);
+  }, [convexUsers]);
+
+  const isLoading = userId && convexUsers === undefined;
 
   // Animated style for X button - scales up when swiping left
   const passButtonAnimatedStyle = useAnimatedStyle(() => {
@@ -416,36 +383,66 @@ export default function NearbyScreen() {
     };
   });
 
+  const recordSwipe = async (action: 'like' | 'pass') => {
+    if (!userId || isProcessingSwipe) return;
+
+    const currentProfile = profiles[currentIndex];
+    if (!currentProfile) return;
+
+    setIsProcessingSwipe(true);
+    try {
+      const result = await createSwipe({
+        swiperId: userId,
+        swipedId: currentProfile.id as any, // The id is the Convex _id
+        action,
+      });
+
+      if (result.isMatch) {
+        // TODO: Show match modal in future enhancement
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        console.log('Match created!', result.matchId);
+      }
+    } catch (error) {
+      console.error('Failed to record swipe:', error);
+    } finally {
+      setIsProcessingSwipe(false);
+    }
+  };
+
   const handleSwipeLeft = useCallback(() => {
     setSwipeDirection(null);
+    recordSwipe('pass');
     setCurrentIndex((prev) => prev + 1);
-  }, []);
+  }, [userId, profiles, currentIndex]);
 
   const handleSwipeRight = useCallback(() => {
     setSwipeDirection(null);
+    recordSwipe('like');
     setCurrentIndex((prev) => prev + 1);
-  }, []);
+  }, [userId, profiles, currentIndex]);
 
   const handlePassPress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSwipeDirection('left');
     setTimeout(() => {
+      recordSwipe('pass');
       setCurrentIndex((prev) => prev + 1);
       setSwipeDirection(null);
     }, 350);
-  }, []);
+  }, [userId, profiles, currentIndex]);
 
   const handleLikePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSwipeDirection('right');
     setTimeout(() => {
+      recordSwipe('like');
       setCurrentIndex((prev) => prev + 1);
       setSwipeDirection(null);
     }, 350);
-  }, []);
+  }, [userId, profiles, currentIndex]);
 
-  const visibleProfiles = mockProfiles.slice(currentIndex, currentIndex + 2);
-  const isEmpty = currentIndex >= mockProfiles.length;
+  const visibleProfiles = profiles.slice(currentIndex, currentIndex + 2);
+  const isEmpty = !isLoading && currentIndex >= profiles.length;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -476,7 +473,14 @@ export default function NearbyScreen() {
 
         {/* Card Stack */}
         <View style={styles.cardContainer}>
-          {isEmpty ? (
+          {isLoading ? (
+            <View style={styles.emptyState}>
+              <ActivityIndicator size="large" color="#fd6b03" />
+              <Text style={[styles.emptySubtitle, { marginTop: 16 }]}>
+                finding nomads nearby...
+              </Text>
+            </View>
+          ) : isEmpty ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIcon}>
                 <Ionicons name="heart-outline" size={48} color="#9CA3AF" />

@@ -1,7 +1,12 @@
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useState, useEffect } from 'react';
+import { useMutation } from 'convex/react';
+import { useConvexAuth } from 'convex/react';
+import { useAuth } from '@clerk/clerk-expo';
+import { api } from '@/convex/_generated/api';
 import { useOnboarding } from '@/context/OnboardingContext';
 
 const timelineSteps = [
@@ -44,35 +49,117 @@ const maxFeatures = [
 export default function PaywallScreen() {
   const router = useRouter();
   const { data, updateData } = useOnboarding();
+  const { isAuthenticated, isLoading: isConvexLoading } = useConvexAuth();
+  const { isSignedIn, isLoaded: isClerkLoaded } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleStartTrial = () => {
-    const status = data.joinPath === 'invite' ? 'approved' : 'pending';
+  const createUser = useMutation(api.users.create);
+  const useInviteCode = useMutation(api.inviteCodes.use);
 
-    updateData({
-      hasCompletedOnboarding: true,
-      userStatus: status,
+  // Debug logging
+  useEffect(() => {
+    console.log('Paywall Auth State:', {
+      isClerkLoaded,
+      isSignedIn,
+      isConvexLoading,
+      isAuthenticated,
     });
+  }, [isClerkLoaded, isSignedIn, isConvexLoading, isAuthenticated]);
 
-    if (status === 'approved') {
-      router.replace('/onboarding/done');
-    } else {
-      router.replace('/pending');
+  // Show loading while auth is being established
+  const isAuthLoading = !isClerkLoaded || isConvexLoading;
+
+  const handleCreateUser = async () => {
+    console.log('handleCreateUser called', { isSubmitting, isAuthenticated, isSignedIn });
+
+    if (isSubmitting) return;
+
+    // Check if still loading
+    if (isConvexLoading || !isClerkLoaded) {
+      Alert.alert('Please wait', 'Still connecting to server...');
+      return;
+    }
+
+    // Check authentication - if Clerk is signed in but Convex isn't authenticated yet, wait
+    if (!isAuthenticated) {
+      if (isSignedIn) {
+        // Clerk is signed in but Convex hasn't synced yet - this is a JWT template issue
+        console.error('Clerk signed in but Convex not authenticated. Check JWT template setup.');
+        Alert.alert(
+          'Authentication Sync Issue',
+          'Your login is not syncing properly. Please ensure the JWT template named "convex" is set up in Clerk Dashboard, then restart the app.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Not Signed In',
+          'Please sign in first.',
+          [{ text: 'OK', onPress: () => router.replace('/onboarding') }]
+        );
+      }
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const userStatus = data.joinPath === 'invite' ? 'approved' : 'pending';
+
+      // Create user in Convex (tokenIdentifier is captured automatically from Clerk via ctx.auth)
+      const userId = await createUser({
+        name: data.name,
+        username: data.username,
+        birthday: data.birthday?.toISOString() ?? new Date().toISOString(),
+        gender: data.gender,
+        lookingFor: data.lookingFor,
+        datingPreference: data.datingPreference.length > 0 ? data.datingPreference : undefined,
+        lifestyle: data.lifestyle,
+        timeNomadic: data.timeNomadic,
+        interests: data.interests,
+        photos: data.photos,
+        instagram: data.instagram || undefined,
+        currentLocation: data.currentLocation,
+        futureTrip: data.futureTrip || undefined,
+        joinPath: data.joinPath ?? 'apply',
+        inviteCode: data.inviteCode || undefined,
+        userStatus,
+      });
+
+      // If user joined via invite code, consume it
+      if (data.joinPath === 'invite' && data.inviteCode) {
+        await useInviteCode({ code: data.inviteCode, userId });
+      }
+
+      // Update local onboarding state
+      updateData({
+        hasCompletedOnboarding: true,
+        userStatus,
+      });
+
+      // Route based on status
+      if (userStatus === 'approved') {
+        router.replace('/onboarding/done');
+      } else {
+        router.replace('/pending');
+      }
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      Alert.alert(
+        'Error',
+        'Failed to create your account. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  const handleStartTrial = () => {
+    handleCreateUser();
+  };
+
   const handleClose = () => {
-    const status = data.joinPath === 'invite' ? 'approved' : 'pending';
-
-    updateData({
-      hasCompletedOnboarding: true,
-      userStatus: status,
-    });
-
-    if (status === 'approved') {
-      router.replace('/onboarding/done');
-    } else {
-      router.replace('/pending');
-    }
+    handleCreateUser();
   };
 
   return (
@@ -189,18 +276,23 @@ export default function PaywallScreen() {
 
         <TouchableOpacity
           onPress={handleStartTrial}
+          disabled={isSubmitting}
           style={{
-            backgroundColor: '#fd6b03',
+            backgroundColor: isSubmitting ? '#fca560' : '#fd6b03',
             paddingVertical: 16,
             borderRadius: 16,
             alignItems: 'center',
+            flexDirection: 'row',
+            justifyContent: 'center',
+            gap: 8,
           }}
         >
+          {isSubmitting && <ActivityIndicator color="#fff" size="small" />}
           <Text
             className="text-white text-lg"
             style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
           >
-            try for $0.00
+            {isSubmitting ? 'creating account...' : 'try for $0.00'}
           </Text>
         </TouchableOpacity>
 

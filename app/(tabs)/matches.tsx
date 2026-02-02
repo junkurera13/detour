@@ -1,74 +1,93 @@
-import { View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 
-const matches = [
-  {
-    id: '1',
-    name: 'alex',
-    age: 29,
-    matchedAt: '2 hours ago',
-    photo: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400',
-    isNew: true,
-  },
-  {
-    id: '2',
-    name: 'jordan',
-    age: 31,
-    matchedAt: 'yesterday',
-    photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400',
-    isNew: false,
-  },
+// Placeholder for "likes you" section (premium feature)
+const mockLikes = [
+  { id: '1', photo: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400' },
+  { id: '2', photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400' },
+  { id: '3', photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400' },
 ];
 
-const likes = [
-  {
-    id: '3',
-    photo: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400',
-  },
-  {
-    id: '4',
-    photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
-  },
-  {
-    id: '5',
-    photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
-  },
-];
+// Helper to format relative time
+function formatRelativeTime(timestamp: number | undefined): string {
+  if (!timestamp) return 'recently';
+  const now = Date.now();
+  const diff = now - timestamp;
+  const minutes = Math.floor(diff / (1000 * 60));
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-const conversations = [
-  {
-    id: '1',
-    name: 'sarah',
-    lastMessage: 'that coffee spot looks amazing! want to go tomorrow?',
-    time: '2m',
-    photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-    unread: 2,
-    online: true,
-  },
-  {
-    id: '2',
-    name: 'alex',
-    lastMessage: "hey! just matched. saw you're also in lisbon",
-    time: '1h',
-    photo: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400',
-    unread: 1,
-    online: true,
-  },
-  {
-    id: '3',
-    name: 'jordan',
-    lastMessage: 'thanks for the coworking recommendation!',
-    time: 'yesterday',
-    photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400',
-    unread: 0,
-    online: false,
-  },
-];
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days === 1) return 'yesterday';
+  return `${days} days ago`;
+}
+
+// Helper to calculate age from birthday
+function calculateAge(birthday: string): number {
+  const birthDate = new Date(birthday);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
 
 export default function MatchesScreen() {
   const [activeTab, setActiveTab] = useState<'matches' | 'messages'>('matches');
+  const { convexUser } = useAuthenticatedUser();
+  const userId = convexUser?._id;
+
+  // Fetch matches from Convex
+  const matchesData = useQuery(
+    api.matches.getByUser,
+    userId ? { userId } : "skip"
+  );
+
+  const isLoading = userId && matchesData === undefined;
+
+  // Transform matches for display
+  const matches = useMemo(() => {
+    if (!matchesData) return [];
+    return matchesData.map((match) => {
+      const otherUser = match.otherUser;
+      const isNew = match.matchedAt && (Date.now() - match.matchedAt) < 24 * 60 * 60 * 1000;
+      return {
+        id: match._id,
+        name: otherUser?.name ?? 'Unknown',
+        age: otherUser?.birthday ? calculateAge(otherUser.birthday) : 0,
+        matchedAt: formatRelativeTime(match.matchedAt),
+        photo: otherUser?.photos?.[0] ?? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
+        isNew,
+      };
+    });
+  }, [matchesData]);
+
+  // For messages tab, we'd ideally have a getConversationPreviews query
+  // For now, we'll show matches as potential conversations
+  const conversations = useMemo(() => {
+    if (!matchesData) return [];
+    return matchesData.map((match) => {
+      const otherUser = match.otherUser;
+      return {
+        id: match._id,
+        name: otherUser?.name ?? 'Unknown',
+        lastMessage: 'Start a conversation!',
+        time: formatRelativeTime(match.matchedAt),
+        photo: otherUser?.photos?.[0] ?? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
+        unread: 0,
+        online: false,
+      };
+    });
+  }, [matchesData]);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -112,6 +131,17 @@ export default function MatchesScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
         >
+          {isLoading ? (
+            <View className="items-center py-20">
+              <ActivityIndicator size="large" color="#fd6b03" />
+              <Text
+                className="text-gray-500 mt-4"
+                style={{ fontFamily: 'InstrumentSans_400Regular' }}
+              >
+                loading your connections...
+              </Text>
+            </View>
+          ) : (
           <View className="pt-2">
             <View className="flex-row items-center justify-between mb-4">
               <Text
@@ -125,7 +155,7 @@ export default function MatchesScreen() {
                   className="text-white text-sm"
                   style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
                 >
-                  {likes.length}
+                  {mockLikes.length}
                 </Text>
               </View>
             </View>
@@ -136,7 +166,7 @@ export default function MatchesScreen() {
               className="mb-6"
               contentContainerStyle={{ gap: 12 }}
             >
-              {likes.map((like) => (
+              {mockLikes.map((like) => (
                 <TouchableOpacity
                   key={like.id}
                   className="relative"
@@ -226,6 +256,7 @@ export default function MatchesScreen() {
               ))
             )}
           </View>
+          )}
         </ScrollView>
       ) : (
         <ScrollView

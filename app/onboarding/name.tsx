@@ -21,7 +21,7 @@ export default function NameScreen() {
       title="what's your first name?"
       subtitle="this is how you'll appear to others"
       currentStep={1}
-      showBack={true}
+      showBack={false}
     >
       <View className="flex-1 pt-8">
         <Input

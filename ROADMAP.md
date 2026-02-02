@@ -1,10 +1,10 @@
 # Detour App - Production Roadmap
 
-## Current State Assessment: 5/10
+## Current State Assessment: 6/10
 
 ### Overview
 
-Detour is a React Native/Expo dating app targeting digital nomads. The current codebase represents a **polished UI prototype with backend foundation** - excellent visual design, complete navigation flow, comprehensive component architecture, and now includes Convex backend infrastructure with database schema and core API functions.
+Detour is a React Native/Expo dating app targeting digital nomads. The current codebase represents a **functional MVP with real data persistence** - excellent visual design, complete navigation flow, comprehensive component architecture, Convex backend fully connected to UI with working user creation, profile discovery, swiping, and matching.
 
 ---
 
@@ -18,17 +18,17 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
 | **Code Organization** | 8/10 | Logical folder structure, clear naming conventions, well-structured screens |
 | **Performance** | 7/10 | New Architecture enabled, expo-image with caching for optimized image loading |
 | **Accessibility** | 5/10 | Basic safe area support, needs enhancement |
-| **Error Handling** | 2/10 | Minimal try-catch, no error boundaries |
-| **Security** | 2/10 | No auth system yet, sensitive data in plain context |
+| **Error Handling** | 3/10 | Basic try-catch in mutations, no error boundaries yet |
+| **Security** | 2/10 | No auth system yet, session via device storage |
 | **Documentation** | 3/10 | CLAUDE.md exists with project guidance |
-| **Backend Integration** | 4/10 | Convex backend set up with schema, queries, and mutations |
-| **Data Persistence** | 3/10 | Convex database ready, not yet connected to UI |
+| **Backend Integration** | 7/10 | Convex fully connected - user creation, discovery, swiping, matching all work |
+| **Data Persistence** | 6/10 | Users, swipes, matches persist to Convex; session persists via AsyncStorage |
 | **Testing** | 0/10 | Zero test files exist |
 | **Payment System** | 0/10 | UI only, non-functional |
-| **Authentication** | 1/10 | UI flow complete, backend auth not implemented |
+| **Authentication** | 2/10 | Session management works, real auth (phone/social) not implemented |
 | **CI/CD Pipeline** | 0/10 | No automation exists |
 
-**Overall Score: 5/10** - High-fidelity prototype with backend foundation, not yet production-ready
+**Overall Score: 6/10** - Functional MVP with real data persistence, needs auth and polish for production
 
 ---
 
@@ -92,7 +92,7 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
   - Animated modals and slide-up sheets
   - Card shadows and visual polish
 
-### Backend Infrastructure (NEW) ✅ Foundation Complete
+### Backend Infrastructure ✅ Foundation Complete
 
 - **Convex Backend** - Real-time database and serverless functions
   - Database schema defined for users, matches, messages, swipes, inviteCodes
@@ -105,17 +105,42 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
   - Seed function for test invite codes (NOMAD2024, DETOUR, WANDERER, EXPLORER, DEVTEST)
   - ConvexProvider integrated into app root
 
+### Backend-UI Integration ✅ Complete
+
+- **Session Management**
+  - UserContext with AsyncStorage for persistent sessions
+  - useCurrentUser hook combining session + Convex queries
+  - Session survives app restarts
+
+- **Onboarding → Convex**
+  - User created in Convex when completing paywall
+  - Username availability checking (real-time)
+  - Invite code validation against Convex
+  - Pending users can enter invite code to skip waitlist (inline, no re-onboarding)
+
+- **Discovery & Swiping**
+  - Nearby tab fetches real profiles from `getDiscoverUsers`
+  - Swipes recorded to Convex with `swipes.create`
+  - Automatic match detection on mutual likes
+  - Loading states for data fetching
+
+- **Matches & Profile**
+  - Matches tab displays real matches from `matches.getByUser`
+  - Profile tab shows data from Convex user record
+  - Connection count reflects actual matches
+  - Logout clears both Convex session and local state
+
 ### Remaining Work
 
 | Feature | Status | Impact |
 |---------|--------|--------|
-| Backend-UI Connection | In Progress | Connect Convex to UI components |
-| User Authentication | Not started | Convex Auth or third-party needed |
-| Real Messaging UI | Not started | Backend ready, UI needs connection |
-| Matching Algorithm | Partial | Basic mutual-like matching exists |
+| User Authentication | Not started | Phone/social auth needed for security |
+| Real Messaging UI | Not started | Backend ready, need chat screen |
+| Photo Cloud Upload | Not started | Photos stored as local URIs currently |
 | Payment Processing | Not started | No revenue capability |
 | Push Notifications | Not started | Engagement critical |
 | Test Suite | Not started | High risk for changes |
+| Error Boundaries | Not started | App crashes not handled gracefully |
 | Error Monitoring | Not started | Blind to production issues |
 
 ---
@@ -138,11 +163,12 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
   - Implement fallback UI for crashes
   - Add error logging utility
 
-- [ ] **1.3 Implement local storage**
-  - Install and configure AsyncStorage
-  - Create storage service abstraction
-  - Persist onboarding progress locally
-  - Add data migration utilities
+- [x] **1.3 Implement local storage** ✅ PARTIAL
+  - Install and configure AsyncStorage ✅
+  - Session persistence (userId) ✅
+  - Create storage service abstraction (deferred)
+  - Persist onboarding progress locally (deferred - using Convex instead)
+  - Add data migration utilities (deferred)
 
 - [ ] **1.4 Environment configuration**
   - Create `.env.example` with required variables
@@ -558,8 +584,8 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
 
 | Phase | Duration | Deliverable | Score Impact | Status |
 |-------|----------|-------------|--------------|--------|
-| **Phase 1** | Weeks 1-3 | Infrastructure + Auth | 4/10 → 6/10 | 🟡 In Progress (Backend done, Auth pending) |
-| **Phase 2** | Weeks 4-8 | Core Features | 6/10 → 7/10 | ⬜ Not Started |
+| **Phase 1** | Weeks 1-3 | Infrastructure + Auth | 4/10 → 6/10 | 🟡 In Progress (Backend+UI done, Auth pending) |
+| **Phase 2** | Weeks 4-8 | Core Features | 6/10 → 7/10 | 🟡 Partially Started (Discovery/Matching done) |
 | **Phase 3** | Weeks 9-12 | Polish + Security | 7/10 → 9/10 | ⬜ Not Started |
 | **Phase 4** | Weeks 13-16 | Launch | 9/10 → 10/10 | ⬜ Not Started |
 
@@ -659,11 +685,31 @@ The roadmap prioritizes getting a minimum viable product (MVP) live, then iterat
 ---
 
 *Last updated: February 2, 2026*
-*Document version: 1.2*
+*Document version: 1.3*
 
 ---
 
 ## Changelog
+
+### v1.3 (February 2, 2026)
+- **Major: Backend-UI integration complete**
+  - Updated overall score from 5/10 to 6/10
+  - Backend Integration score: 4/10 → 7/10
+  - Data Persistence score: 3/10 → 6/10
+  - Authentication score: 1/10 → 2/10 (session management)
+  - Error Handling score: 2/10 → 3/10 (try-catch in mutations)
+- Created UserContext with AsyncStorage for session persistence
+- Created useCurrentUser hook for combining session + Convex queries
+- Connected paywall.tsx to create users in Convex on onboarding completion
+- Connected username.tsx with real-time availability checking
+- Connected invite-code.tsx with Convex validation
+- Connected Nearby tab to fetch profiles from getDiscoverUsers
+- Wired swipe actions to record likes/passes in Convex
+- Connected Matches tab to display real matches from matches.getByUser
+- Connected Profile tab to show Convex user data and real match count
+- Fixed pending page: users can now enter invite code inline without re-onboarding
+- Installed @react-native-async-storage/async-storage
+- Seeded test invite codes (DEVTEST, NOMAD2024, etc.)
 
 ### v1.2 (February 2, 2026)
 - **Major: Convex backend integration complete**

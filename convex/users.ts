@@ -1,6 +1,68 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+// Get the current authenticated user by their Clerk token
+export const getCurrentUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .first();
+
+    return user;
+  },
+});
+
+// Check if authenticated user exists, used after Clerk sign-in
+export const getOrCreateByToken = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const tokenIdentifier = identity.subject;
+
+    // Check if user exists with this token
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", tokenIdentifier))
+      .first();
+
+    if (existingUser) {
+      return { user: existingUser, isNew: false };
+    }
+
+    // Check if user exists by email (for account linking)
+    if (identity.email) {
+      const userByEmail = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", identity.email))
+        .first();
+
+      if (userByEmail) {
+        // Link existing user to Clerk
+        await ctx.db.patch(userByEmail._id, {
+          tokenIdentifier,
+          email: identity.email,
+          updatedAt: Date.now(),
+        });
+        return { user: userByEmail, isNew: false };
+      }
+    }
+
+    // Return null to indicate new user needs onboarding
+    return { user: null, isNew: true, tokenIdentifier };
+  },
+});
+
 export const create = mutation({
   args: {
     email: v.optional(v.string()),
@@ -24,9 +86,15 @@ export const create = mutation({
     userStatus: v.string(),
   },
   handler: async (ctx, args) => {
+    // Get the authenticated user's identity
+    const identity = await ctx.auth.getUserIdentity();
+    const tokenIdentifier = identity?.subject;
+
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
       ...args,
+      tokenIdentifier,
+      email: identity?.email ?? args.email,
       createdAt: now,
       updatedAt: now,
     });

@@ -1,9 +1,13 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { useClerk } from '@clerk/clerk-expo';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { useRouter } from 'expo-router';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 
 const lifestyleLabels: Record<string, string> = {
   'van-life': 'van life',
@@ -61,10 +65,44 @@ const recentViewers = [
 ];
 
 export default function ProfileScreen() {
-  const { data, resetData } = useOnboarding();
+  const { data: onboardingData, resetData } = useOnboarding();
+  const { convexUser: user } = useAuthenticatedUser();
+  const { signOut } = useClerk();
   const router = useRouter();
   const [menuVisible, setMenuVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(400)).current;
+
+  // Fetch match count for stats
+  const matchesData = useQuery(
+    api.matches.getByUser,
+    user?._id ? { userId: user._id } : "skip"
+  );
+
+  // Use Convex user data if available, fallback to onboarding data
+  const profileData = useMemo(() => {
+    if (user) {
+      return {
+        name: user.name,
+        username: user.username,
+        photos: user.photos,
+        currentLocation: user.currentLocation,
+        instagram: user.instagram,
+        lifestyle: user.lifestyle,
+        interests: user.interests,
+      };
+    }
+    return {
+      name: onboardingData.name,
+      username: onboardingData.username,
+      photos: onboardingData.photos,
+      currentLocation: onboardingData.currentLocation,
+      instagram: onboardingData.instagram,
+      lifestyle: onboardingData.lifestyle,
+      interests: onboardingData.interests,
+    };
+  }, [user, onboardingData]);
+
+  const matchCount = matchesData?.length ?? 0;
 
   useEffect(() => {
     if (menuVisible) {
@@ -87,10 +125,11 @@ export default function ProfileScreen() {
     }).start(() => setMenuVisible(false));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     closeMenu();
-    setTimeout(() => {
-      resetData();
+    setTimeout(async () => {
+      await signOut(); // Sign out from Clerk
+      resetData(); // Clear onboarding data
       router.replace('/onboarding');
     }, 200);
   };
@@ -137,9 +176,9 @@ export default function ProfileScreen() {
       >
         <View className="px-6 pb-6 items-center">
           <View className="relative">
-            {data.photos.length > 0 ? (
+            {profileData.photos.length > 0 ? (
               <Image
-                source={{ uri: data.photos[0] }}
+                source={{ uri: profileData.photos[0] }}
                 className="w-28 h-28 rounded-full"
                 resizeMode="cover"
               />
@@ -157,15 +196,15 @@ export default function ProfileScreen() {
             className="text-2xl text-black mt-4"
             style={{ fontFamily: 'InstrumentSans_700Bold' }}
           >
-            {data.name.toLowerCase() || 'your name'}
+            {profileData.name.toLowerCase() || 'your name'}
           </Text>
 
-          {data.username && (
+          {profileData.username && (
             <Text
               className="text-gray-500 mt-1"
               style={{ fontFamily: 'InstrumentSans_400Regular' }}
             >
-              @{data.username}
+              @{profileData.username}
             </Text>
           )}
 
@@ -175,18 +214,18 @@ export default function ProfileScreen() {
               className="text-gray-500 ml-1"
               style={{ fontFamily: 'InstrumentSans_400Regular' }}
             >
-              {data.currentLocation || 'location not set'}
+              {profileData.currentLocation || 'location not set'}
             </Text>
           </View>
 
-          {data.instagram && (
+          {profileData.instagram && (
             <View className="flex-row items-center mt-2">
               <Ionicons name="logo-instagram" size={16} color="#E4405F" />
               <Text
                 className="text-gray-700 ml-1"
                 style={{ fontFamily: 'InstrumentSans_500Medium' }}
               >
-                @{data.instagram}
+                @{profileData.instagram}
               </Text>
             </View>
           )}
@@ -199,7 +238,7 @@ export default function ProfileScreen() {
                 className="text-xl text-black"
                 style={{ fontFamily: 'InstrumentSans_700Bold' }}
               >
-                0
+                {matchCount}
               </Text>
               <Text
                 className="text-gray-500 text-sm"
@@ -214,7 +253,7 @@ export default function ProfileScreen() {
                 className="text-xl text-black"
                 style={{ fontFamily: 'InstrumentSans_700Bold' }}
               >
-                {data.photos.length}
+                {profileData.photos.length}
               </Text>
               <Text
                 className="text-gray-500 text-sm"
@@ -229,7 +268,7 @@ export default function ProfileScreen() {
                 className="text-xl text-black"
                 style={{ fontFamily: 'InstrumentSans_700Bold' }}
               >
-                {data.lifestyle.length}
+                {profileData.lifestyle.length}
               </Text>
               <Text
                 className="text-gray-500 text-sm"
@@ -241,7 +280,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {data.lifestyle.length > 0 && (
+        {profileData.lifestyle.length > 0 && (
           <View className="px-6 mb-6">
             <Text
               className="text-lg text-black mb-3"
@@ -250,7 +289,7 @@ export default function ProfileScreen() {
               lifestyle
             </Text>
             <View className="flex-row flex-wrap gap-2">
-              {data.lifestyle.map((style) => (
+              {profileData.lifestyle.map((style) => (
                 <View key={style} className="bg-gray-100 px-3 py-2 rounded-full">
                   <Text
                     className="text-gray-700"
@@ -264,7 +303,7 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {data.interests.length > 0 && (
+        {profileData.interests.length > 0 && (
           <View className="px-6 mb-6">
             <Text
               className="text-lg text-black mb-3"
@@ -273,7 +312,7 @@ export default function ProfileScreen() {
               interests
             </Text>
             <View className="flex-row flex-wrap gap-2">
-              {data.interests.map((interest) => {
+              {profileData.interests.map((interest) => {
                 const info = interestLabels[interest];
                 return (
                   <View key={interest} className="bg-gray-100 px-3 py-2 rounded-full flex-row items-center">

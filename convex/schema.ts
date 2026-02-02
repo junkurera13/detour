@@ -4,6 +4,7 @@ import { v } from "convex/values";
 export default defineSchema({
   users: defineTable({
     // Auth
+    tokenIdentifier: v.optional(v.string()), // Clerk token identifier (subject)
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
     authProvider: v.optional(v.string()), // "phone", "google", "apple"
@@ -40,6 +41,7 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_token", ["tokenIdentifier"])
     .index("by_username", ["username"])
     .index("by_email", ["email"])
     .index("by_phone", ["phone"])
