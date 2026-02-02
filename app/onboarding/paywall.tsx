@@ -43,16 +43,36 @@ const maxFeatures = [
 
 export default function PaywallScreen() {
   const router = useRouter();
-  const { updateData } = useOnboarding();
+  const { data, updateData } = useOnboarding();
 
   const handleStartTrial = () => {
-    updateData({ hasCompletedOnboarding: true });
-    router.replace('/onboarding/done');
+    const status = data.joinPath === 'invite' ? 'approved' : 'pending';
+
+    updateData({
+      hasCompletedOnboarding: true,
+      userStatus: status,
+    });
+
+    if (status === 'approved') {
+      router.replace('/onboarding/done');
+    } else {
+      router.replace('/pending');
+    }
   };
 
   const handleClose = () => {
-    updateData({ hasCompletedOnboarding: true });
-    router.replace('/onboarding/done');
+    const status = data.joinPath === 'invite' ? 'approved' : 'pending';
+
+    updateData({
+      hasCompletedOnboarding: true,
+      userStatus: status,
+    });
+
+    if (status === 'approved') {
+      router.replace('/onboarding/done');
+    } else {
+      router.replace('/pending');
+    }
   };
 
   return (

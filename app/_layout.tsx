@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import {
   useFonts,
   InstrumentSans_400Regular,
@@ -15,6 +16,8 @@ import {
   InstrumentSerif_400Regular_Italic,
 } from '@expo-google-fonts/instrument-serif';
 import { OnboardingProvider } from '@/context/OnboardingContext';
+
+const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
 
 SplashScreen.preventAutoHideAsync();
 
@@ -39,29 +42,37 @@ export default function RootLayout() {
   }
 
   return (
-    <OnboardingProvider>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: '#fff' },
-          animation: 'fade',
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen
-          name="onboarding"
-          options={{
-            gestureEnabled: false,
+    <ConvexProvider client={convex}>
+      <OnboardingProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#fff' },
+            animation: 'fade',
           }}
-        />
-        <Stack.Screen
-          name="(tabs)"
-          options={{
-            gestureEnabled: false,
-          }}
-        />
-      </Stack>
-      <StatusBar style="dark" />
-    </OnboardingProvider>
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen
+            name="onboarding"
+            options={{
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="(tabs)"
+            options={{
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="pending"
+            options={{
+              gestureEnabled: false,
+            }}
+          />
+        </Stack>
+        <StatusBar style="dark" />
+      </OnboardingProvider>
+    </ConvexProvider>
   );
 }

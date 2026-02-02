@@ -17,6 +17,9 @@ export interface OnboardingData {
   currentLocation: string;
   futureTrip: string;
   hasCompletedOnboarding: boolean;
+  joinPath: 'apply' | 'invite' | null;
+  userStatus: 'none' | 'pending' | 'approved';
+  inviteCode: string;
 }
 
 interface OnboardingContextType {
@@ -42,6 +45,9 @@ const defaultData: OnboardingData = {
   currentLocation: '',
   futureTrip: '',
   hasCompletedOnboarding: false,
+  joinPath: null,
+  userStatus: 'none',
+  inviteCode: '',
 };
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);

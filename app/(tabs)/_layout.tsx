@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { View, Image } from 'react-native';
 import { useOnboarding } from '@/context/OnboardingContext';
+import * as Haptics from 'expo-haptics';
 
 export default function TabLayout() {
   const { data } = useOnboarding();
@@ -14,12 +15,16 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarStyle: {
           backgroundColor: '#fff',
-          borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopWidth: 0,
           height: 88,
           paddingTop: 12,
         },
         tabBarShowLabel: false,
+      }}
+      screenListeners={{
+        tabPress: () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        },
       }}
     >
       <Tabs.Screen
@@ -34,7 +39,7 @@ export default function TabLayout() {
         name="explore"
         options={{
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="binoculars" size={28} color={color} />
+            <MaterialCommunityIcons name="compass-outline" size={28} color={color} />
           ),
         }}
       />

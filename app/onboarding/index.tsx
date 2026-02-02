@@ -1,10 +1,10 @@
-import { View, Text, TouchableOpacity, ImageBackground } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useOnboarding } from '@/context/OnboardingContext';
 
-export default function WelcomeScreen() {
+export default function LandingScreen() {
   const router = useRouter();
   const { updateData } = useOnboarding();
 
@@ -23,16 +23,21 @@ export default function WelcomeScreen() {
       currentLocation: 'lisbon, portugal',
       futureTrip: 'bali, indonesia',
       hasCompletedOnboarding: true,
+      joinPath: 'invite',
+      userStatus: 'approved',
+      inviteCode: 'DEVSKIP',
     });
     router.replace('/(tabs)');
   };
 
   return (
-    <ImageBackground
-      source={require('@/assets/images/onboarding-bg.png')}
-      style={{ flex: 1 }}
-      resizeMode="cover"
-    >
+    <View style={{ flex: 1 }}>
+      <Image
+        source={require('@/assets/images/onboarding-bg.png')}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+      />
       <SafeAreaView className="flex-1">
         <TouchableOpacity
           onPress={skipToApp}
@@ -43,7 +48,7 @@ export default function WelcomeScreen() {
           </Text>
         </TouchableOpacity>
         <View className="flex-1 px-6 pt-12">
-          <View className="flex-1 items-center justify-end" style={{ paddingBottom: 85 }}>
+          <View className="flex-1 items-center justify-center" style={{ paddingBottom: 100 }}>
             <Text
               className="text-white"
               style={{ fontFamily: 'InstrumentSerif_400Regular', fontSize: 96, marginBottom: -20 }}
@@ -57,10 +62,11 @@ export default function WelcomeScreen() {
               wander together.
             </Text>
           </View>
+        </View>
 
-        <View className="pb-6 gap-3">
+        <View className="absolute left-0 right-0 px-6" style={{ bottom: 50 }}>
           <TouchableOpacity
-            onPress={() => router.push('/onboarding/name')}
+            onPress={() => router.push('/onboarding/join-path')}
             className="w-full items-center justify-center bg-white py-4 px-8 rounded-full"
             activeOpacity={0.8}
           >
@@ -68,67 +74,24 @@ export default function WelcomeScreen() {
               className="text-black text-lg"
               style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
             >
-              continue with phone
+              join detour
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => router.push('/onboarding/name')}
-            className="w-full flex-row items-center justify-center bg-white py-4 px-8 rounded-full"
+            onPress={() => router.push('/onboarding/auth?mode=login')}
             activeOpacity={0.8}
+            className="py-4"
           >
-            <Ionicons name="logo-google" size={20} color="#000" />
             <Text
-              className="text-black text-lg ml-3"
-              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              className="text-white text-lg text-center"
+              style={{ fontFamily: 'InstrumentSans_500Medium' }}
             >
-              google
+              already a member? login
             </Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => router.push('/onboarding/name')}
-            className="w-full flex-row items-center justify-center bg-white py-4 px-8 rounded-full"
-            activeOpacity={0.8}
-          >
-            <Ionicons name="logo-apple" size={22} color="#000" />
-            <Text
-              className="text-black text-lg ml-3"
-              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-            >
-              apple
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View className="pb-8">
-          <Text
-            className="text-center text-white"
-            style={{ fontFamily: 'InstrumentSans_500Medium', fontSize: 10, lineHeight: 16 }}
-          >
-            by signing in or creating an account with detour,{'\n'}you agree with our{' '}
-            <Text
-              className="underline text-white"
-              onPress={() => {
-                // TODO: Open terms of service
-              }}
-            >
-              terms of service
-            </Text>
-            {' '}and{' '}
-            <Text
-              className="underline text-white"
-              onPress={() => {
-                // TODO: Open privacy policy
-              }}
-            >
-              privacy policy
-            </Text>
-            .
-          </Text>
-        </View>
         </View>
       </SafeAreaView>
-    </ImageBackground>
+    </View>
   );
 }
