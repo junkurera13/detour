@@ -35,6 +35,10 @@ export function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) {
 
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
+        // Wait for Clerk token to propagate to Convex
+        // This delay is necessary because ConvexProviderWithClerk needs time
+        // to sync the new auth token after setActive completes
+        await new Promise(resolve => setTimeout(resolve, 1000));
         onSuccess();
       }
     } catch (err: any) {

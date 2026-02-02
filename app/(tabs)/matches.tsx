@@ -3,15 +3,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
 import { useQuery } from 'convex/react';
+import { useRouter } from 'expo-router';
 import { api } from '@/convex/_generated/api';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
-
-// Placeholder for "likes you" section (premium feature)
-const mockLikes = [
-  { id: '1', photo: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400' },
-  { id: '2', photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400' },
-  { id: '3', photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400' },
-];
+import { mockLikesYou, mockMatches, mockConversations } from '@/data/mockData';
 
 // Helper to format relative time
 function formatRelativeTime(timestamp: number | undefined): string {
@@ -44,7 +39,15 @@ function calculateAge(birthday: string): number {
 export default function MatchesScreen() {
   const [activeTab, setActiveTab] = useState<'matches' | 'messages'>('matches');
   const { convexUser } = useAuthenticatedUser();
+  const router = useRouter();
   const userId = convexUser?._id;
+
+  const handleOpenChat = (matchId: string) => {
+    // Only navigate to real chats (Convex IDs), not mock data
+    if (!matchId.startsWith('match_') && !matchId.startsWith('conv_')) {
+      router.push(`/chat/${matchId}`);
+    }
+  };
 
   // Fetch matches from Convex
   const matchesData = useQuery(
@@ -52,42 +55,70 @@ export default function MatchesScreen() {
     userId ? { userId } : "skip"
   );
 
+  // Fetch conversation previews for messages tab
+  const conversationPreviews = useQuery(
+    api.messages.getConversationPreviews,
+    userId ? { userId } : "skip"
+  );
+
   const isLoading = userId && matchesData === undefined;
 
-  // Transform matches for display
+  // Transform matches for display, fall back to mock data
   const matches = useMemo(() => {
-    if (!matchesData) return [];
-    return matchesData.map((match) => {
-      const otherUser = match.otherUser;
-      const isNew = match.matchedAt && (Date.now() - match.matchedAt) < 24 * 60 * 60 * 1000;
-      return {
-        id: match._id,
-        name: otherUser?.name ?? 'Unknown',
-        age: otherUser?.birthday ? calculateAge(otherUser.birthday) : 0,
-        matchedAt: formatRelativeTime(match.matchedAt),
-        photo: otherUser?.photos?.[0] ?? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-        isNew,
-      };
-    });
+    // If we have real matches from Convex, use them
+    if (matchesData && matchesData.length > 0) {
+      return matchesData.map((match) => {
+        const otherUser = match.otherUser;
+        const isNew = match.matchedAt && (Date.now() - match.matchedAt) < 24 * 60 * 60 * 1000;
+        return {
+          id: match._id,
+          name: otherUser?.name ?? 'Unknown',
+          age: otherUser?.birthday ? calculateAge(otherUser.birthday) : 0,
+          matchedAt: formatRelativeTime(match.matchedAt),
+          photo: otherUser?.photos?.[0] ?? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
+          isNew,
+        };
+      });
+    }
+    // Fall back to mock matches for testing
+    return mockMatches.map((match) => ({
+      id: match.id,
+      name: match.user.name,
+      age: match.user.age,
+      matchedAt: match.matchedAt,
+      photo: match.user.photos[0],
+      isNew: match.hasNewMessage,
+    }));
   }, [matchesData]);
 
-  // For messages tab, we'd ideally have a getConversationPreviews query
-  // For now, we'll show matches as potential conversations
+  // For messages tab, use real conversation previews or fall back to mock
   const conversations = useMemo(() => {
-    if (!matchesData) return [];
-    return matchesData.map((match) => {
-      const otherUser = match.otherUser;
-      return {
-        id: match._id,
-        name: otherUser?.name ?? 'Unknown',
-        lastMessage: 'Start a conversation!',
-        time: formatRelativeTime(match.matchedAt),
-        photo: otherUser?.photos?.[0] ?? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-        unread: 0,
-        online: false,
-      };
-    });
-  }, [matchesData]);
+    // If we have real conversation previews from Convex, use them
+    if (conversationPreviews && conversationPreviews.length > 0) {
+      return conversationPreviews.map((preview) => {
+        const otherUser = preview.otherUser;
+        return {
+          id: preview.matchId,
+          name: otherUser?.name ?? 'Unknown',
+          lastMessage: preview.lastMessage?.content || 'Start a conversation!',
+          time: formatRelativeTime(preview.lastMessage?.createdAt || preview.matchedAt),
+          photo: otherUser?.photos?.[0] ?? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
+          unread: preview.unreadCount,
+          online: false,
+        };
+      });
+    }
+    // Fall back to mock conversations for testing
+    return mockConversations.map((convo) => ({
+      id: convo.id,
+      name: convo.user.name,
+      lastMessage: convo.messages[convo.messages.length - 1]?.content || 'Start a conversation!',
+      time: convo.lastMessageAt,
+      photo: convo.user.photos[0],
+      unread: convo.unreadCount,
+      online: convo.user.isOnline || false,
+    }));
+  }, [conversationPreviews]);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -155,7 +186,7 @@ export default function MatchesScreen() {
                   className="text-white text-sm"
                   style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
                 >
-                  {mockLikes.length}
+                  {mockLikesYou.length}
                 </Text>
               </View>
             </View>
@@ -166,14 +197,14 @@ export default function MatchesScreen() {
               className="mb-6"
               contentContainerStyle={{ gap: 12 }}
             >
-              {mockLikes.map((like) => (
+              {mockLikesYou.map((user) => (
                 <TouchableOpacity
-                  key={like.id}
+                  key={user.id}
                   className="relative"
                   activeOpacity={0.9}
                 >
                   <Image
-                    source={{ uri: like.photo }}
+                    source={{ uri: user.photos[0] }}
                     className="w-24 h-32 rounded-2xl"
                     resizeMode="cover"
                     blurRadius={20}
@@ -224,6 +255,7 @@ export default function MatchesScreen() {
                   key={match.id}
                   className="flex-row items-center p-4 bg-gray-50 rounded-2xl mb-3"
                   activeOpacity={0.7}
+                  onPress={() => handleOpenChat(match.id)}
                 >
                   <View className="relative">
                     <Image
@@ -249,7 +281,10 @@ export default function MatchesScreen() {
                       matched {match.matchedAt}
                     </Text>
                   </View>
-                  <TouchableOpacity className="w-10 h-10 bg-white rounded-full items-center justify-center">
+                  <TouchableOpacity
+                    className="w-10 h-10 bg-white rounded-full items-center justify-center"
+                    onPress={() => handleOpenChat(match.id)}
+                  >
                     <Ionicons name="chatbubble" size={20} color="#000" />
                   </TouchableOpacity>
                 </TouchableOpacity>
@@ -288,6 +323,7 @@ export default function MatchesScreen() {
                 key={convo.id}
                 className="flex-row px-6 py-4 border-b border-gray-100"
                 activeOpacity={0.7}
+                onPress={() => handleOpenChat(convo.id)}
               >
                 <View className="relative">
                   <Image

@@ -19,35 +19,51 @@ export default function AuthLandingScreen() {
 
   const handleAuthSuccess = async () => {
     setIsLoading(true);
-    try {
-      // Check if user exists in Convex
-      const result = await getOrCreateUser({});
 
-      if (result.isNew || !result.user) {
-        // New user - start onboarding
-        router.replace('/onboarding/name');
-      } else {
-        // Existing user - update local state and route based on status
-        const user = result.user;
-        updateData({
-          name: user.name,
-          username: user.username,
-          hasCompletedOnboarding: true,
-          userStatus: user.userStatus as 'none' | 'pending' | 'approved',
-        });
+    // Retry logic to handle token propagation delay
+    const maxRetries = 3;
+    let lastError: unknown;
 
-        if (user.userStatus === 'approved') {
-          router.replace('/(tabs)');
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Check if user exists in Convex
+        const result = await getOrCreateUser({});
+
+        if (result.isNew || !result.user) {
+          // New user - start onboarding
+          router.replace('/onboarding/name');
         } else {
-          router.replace('/pending');
+          // Existing user - update local state and route based on status
+          const user = result.user;
+          updateData({
+            name: user.name,
+            username: user.username,
+            hasCompletedOnboarding: true,
+            userStatus: user.userStatus as 'none' | 'pending' | 'approved',
+          });
+
+          if (user.userStatus === 'approved') {
+            router.replace('/(tabs)');
+          } else {
+            router.replace('/pending');
+          }
+        }
+        return; // Success, exit the function
+      } catch (error) {
+        lastError = error;
+        console.error(`Auth attempt ${attempt}/${maxRetries} failed:`, error);
+
+        if (attempt < maxRetries) {
+          // Wait before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
       }
-    } catch (error) {
-      console.error('Auth error:', error);
-      Alert.alert('Error', 'Authentication failed. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
+
+    // All retries failed
+    console.error('Auth error after all retries:', lastError);
+    Alert.alert('Error', 'Authentication failed. Please try again.');
+    setIsLoading(false);
   };
 
   if (showEmailAuth) {

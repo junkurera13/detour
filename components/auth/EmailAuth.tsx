@@ -21,10 +21,14 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
   const [error, setError] = useState('');
   const [isNewUser, setIsNewUser] = useState(false);
 
+  // Helper to wait for Convex to sync the auth token
+  const waitForTokenSync = () => new Promise(resolve => setTimeout(resolve, 1000));
+
   // Helper to complete authentication
   const completeAuth = useCallback(async () => {
     // Check if already signed in
     if (isSignedIn) {
+      await waitForTokenSync();
       onSuccess();
       return true;
     }
@@ -32,6 +36,7 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
     // Try to activate signUp session
     if (signUp?.status === 'complete' && signUp?.createdSessionId) {
       await setActiveSignUp!({ session: signUp.createdSessionId });
+      await waitForTokenSync();
       onSuccess();
       return true;
     }
@@ -39,6 +44,7 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
     // Try to activate signIn session
     if (signIn?.status === 'complete' && signIn?.createdSessionId) {
       await setActiveSignIn!({ session: signIn.createdSessionId });
+      await waitForTokenSync();
       onSuccess();
       return true;
     }
@@ -101,6 +107,7 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
               if (signUpAttempt.createdSessionId) {
                 await setActiveSignUp!({ session: signUpAttempt.createdSessionId });
               }
+              await waitForTokenSync();
               onSuccess();
               return;
             }
@@ -112,6 +119,7 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
               console.log('Email verified but missing:', signUpAttempt.missingFields);
               if (signUpAttempt.createdSessionId) {
                 await setActiveSignUp!({ session: signUpAttempt.createdSessionId });
+                await waitForTokenSync();
                 onSuccess();
                 return;
               }
@@ -126,6 +134,7 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
                   prepareErr.errors[0]?.message?.toLowerCase().includes('verified')) {
                 if (signUp!.status === 'complete' && signUp!.createdSessionId) {
                   await setActiveSignUp!({ session: signUp!.createdSessionId });
+                  await waitForTokenSync();
                   onSuccess();
                   return;
                 }
@@ -186,6 +195,7 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
           if (result.createdSessionId) {
             await setActiveSignUp!({ session: result.createdSessionId });
           }
+          await waitForTokenSync();
           onSuccess();
           return;
         } else if (result.status === 'missing_requirements') {
@@ -207,6 +217,7 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
           if (result.createdSessionId) {
             await setActiveSignIn!({ session: result.createdSessionId });
           }
+          await waitForTokenSync();
           onSuccess();
           return;
         } else if (result.status === 'needs_second_factor') {
@@ -234,6 +245,7 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
             if (signUp.createdSessionId) {
               await setActiveSignUp!({ session: signUp.createdSessionId });
             }
+            await waitForTokenSync();
             onSuccess();
             return;
           }
@@ -244,6 +256,7 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
 
           // If signed in through some other means, proceed
           if (isSignedIn) {
+            await waitForTokenSync();
             onSuccess();
             return;
           }

@@ -66,6 +66,77 @@ export const markAsRead = mutation({
   },
 });
 
+export const getLastMessage = query({
+  args: { matchId: v.id("matches") },
+  handler: async (ctx, args) => {
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_match", (q) => q.eq("matchId", args.matchId))
+      .order("desc")
+      .first();
+    return messages;
+  },
+});
+
+export const getConversationPreviews = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    // Get all matches for this user
+    const matchesAsUser1 = await ctx.db
+      .query("matches")
+      .withIndex("by_user1", (q) => q.eq("user1Id", args.userId))
+      .filter((q) => q.eq(q.field("status"), "matched"))
+      .collect();
+
+    const matchesAsUser2 = await ctx.db
+      .query("matches")
+      .withIndex("by_user2", (q) => q.eq("user2Id", args.userId))
+      .filter((q) => q.eq(q.field("status"), "matched"))
+      .collect();
+
+    const allMatches = [...matchesAsUser1, ...matchesAsUser2];
+
+    // Get conversation preview for each match
+    const previews = await Promise.all(
+      allMatches.map(async (match) => {
+        const otherUserId =
+          match.user1Id === args.userId ? match.user2Id : match.user1Id;
+        const otherUser = await ctx.db.get(otherUserId);
+
+        // Get last message
+        const lastMessage = await ctx.db
+          .query("messages")
+          .withIndex("by_match", (q) => q.eq("matchId", match._id))
+          .order("desc")
+          .first();
+
+        // Count unread messages
+        const unreadMessages = await ctx.db
+          .query("messages")
+          .withIndex("by_match", (q) => q.eq("matchId", match._id))
+          .filter((q) => q.neq(q.field("senderId"), args.userId))
+          .filter((q) => q.eq(q.field("readAt"), undefined))
+          .collect();
+
+        return {
+          matchId: match._id,
+          otherUser,
+          lastMessage,
+          unreadCount: unreadMessages.length,
+          matchedAt: match.matchedAt,
+        };
+      })
+    );
+
+    // Sort by last message time (most recent first)
+    return previews.sort((a, b) => {
+      const aTime = a.lastMessage?.createdAt || a.matchedAt || 0;
+      const bTime = b.lastMessage?.createdAt || b.matchedAt || 0;
+      return bTime - aTime;
+    });
+  },
+});
+
 export const getUnreadCount = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {

@@ -8,6 +8,7 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useRouter } from 'expo-router';
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { mockProfileViewers, mockMatches } from '@/data/mockData';
 
 const lifestyleLabels: Record<string, string> = {
   'van-life': 'van life',
@@ -58,11 +59,12 @@ const settingsItems = [
   { id: 'help', label: 'help & support', icon: 'help-circle-outline' },
 ];
 
-const recentViewers = [
-  { id: '1', photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' },
-  { id: '2', photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' },
-  { id: '3', photo: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100' },
-];
+// Use mock profile viewers from centralized data
+const recentViewers = mockProfileViewers.slice(0, 4).map(user => ({
+  id: user.id,
+  photo: user.photos[0],
+  name: user.name,
+}));
 
 export default function ProfileScreen() {
   const { data: onboardingData, resetData } = useOnboarding();
@@ -70,6 +72,7 @@ export default function ProfileScreen() {
   const { signOut } = useClerk();
   const router = useRouter();
   const [menuVisible, setMenuVisible] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const slideAnim = useRef(new Animated.Value(400)).current;
 
   // Fetch match count for stats
@@ -102,7 +105,8 @@ export default function ProfileScreen() {
     };
   }, [user, onboardingData]);
 
-  const matchCount = matchesData?.length ?? 0;
+  // Use real match count if available, otherwise use mock data count
+  const matchCount = (matchesData && matchesData.length > 0) ? matchesData.length : mockMatches.length;
 
   useEffect(() => {
     if (menuVisible) {
@@ -126,13 +130,38 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     closeMenu();
+    // Small delay to let the menu close animation complete
     setTimeout(async () => {
-      await signOut(); // Sign out from Clerk
-      resetData(); // Clear onboarding data
-      router.replace('/onboarding');
-    }, 200);
+      try {
+        await signOut(); // Sign out from Clerk first
+        resetData(); // Then clear onboarding data
+        // Use replace with the full path to break out of tabs
+        router.replace('/onboarding');
+      } catch (error) {
+        console.error('Logout error:', error);
+        // Force navigation even if signOut fails
+        resetData();
+        router.replace('/onboarding');
+      }
+    }, 300);
   };
+
+  // Show loading screen while logging out
+  if (isLoggingOut) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#fd6b03" />
+        <Text
+          className="mt-4 text-gray-500"
+          style={{ fontFamily: 'InstrumentSans_400Regular' }}
+        >
+          logging out...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-white">

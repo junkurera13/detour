@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { mockUsers, mockActivities as importedMockActivities } from '@/data/mockData';
 
 // Interest ID to label mapping
 const interestLabels: Record<string, string> = {
@@ -103,10 +104,11 @@ interface MatchingRouteUser {
   name: string;
   age: number;
   photo: string;
-  futureTrip: string;
+  futureTrip?: string;
   arrivalDate: string;
   lifestyle: string[];
   currentLocation: string;
+  isOnline?: boolean;
 }
 
 interface Activity {
@@ -122,159 +124,35 @@ interface Activity {
   maxAttendees: number;
 }
 
-// Mock data for matching routes
-const mockMatchingUsers: MatchingRouteUser[] = [
-  {
-    id: '1',
-    name: 'Maya',
-    age: 28,
-    photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-    futureTrip: 'Bali',
-    arrivalDate: 'Feb 15',
-    lifestyle: ['digital-nomad', 'slow-travel'],
-    currentLocation: 'Bangkok',
-  },
-  {
-    id: '2',
-    name: 'Alex',
-    age: 32,
-    photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-    futureTrip: 'Bali',
-    arrivalDate: 'Feb 18',
-    lifestyle: ['backpacker', 'hostel-hopper'],
-    currentLocation: 'Singapore',
-  },
-  {
-    id: '3',
-    name: 'Sophia',
-    age: 26,
-    photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400',
-    futureTrip: 'Bali',
-    arrivalDate: 'Feb 20',
-    lifestyle: ['van-life', 'perpetual-traveler'],
-    currentLocation: 'Melbourne',
-  },
-  {
-    id: '4',
-    name: 'James',
-    age: 30,
-    photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
-    futureTrip: 'Bali',
-    arrivalDate: 'Feb 22',
-    lifestyle: ['digital-nomad', 'slow-travel'],
-    currentLocation: 'Tokyo',
-  },
-  {
-    id: '5',
-    name: 'Luna',
-    age: 27,
-    photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
-    futureTrip: 'Bali',
-    arrivalDate: 'Feb 25',
-    lifestyle: ['content-creator', 'perpetual-traveler'],
-    currentLocation: 'Seoul',
-  },
-];
+// Generate arrival dates dynamically
+const arrivalDates = ['Feb 10', 'Feb 12', 'Feb 15', 'Feb 18', 'Feb 20', 'Feb 22', 'Feb 25', 'Mar 1', 'Mar 5'];
 
-// Mock data for activities
-const mockActivities: Activity[] = [
-  {
-    id: '1',
-    title: 'sunrise surf session',
-    category: 'surfing',
-    photo: 'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=600',
-    host: { name: 'Kai', photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200' },
-    date: 'Tomorrow',
-    time: '6:00 AM',
-    location: 'Echo Beach, Canggu',
-    attendees: 4,
-    maxAttendees: 8,
-  },
-  {
-    id: '2',
-    title: 'yoga & meditation retreat',
-    category: 'yoga',
-    photo: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=600',
-    host: { name: 'Priya', photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200' },
-    date: 'Saturday',
-    time: '7:30 AM',
-    location: 'Ubud Yoga House',
-    attendees: 12,
-    maxAttendees: 15,
-  },
-  {
-    id: '3',
-    title: 'coffee tasting experience',
-    category: 'coffee-cafes',
-    photo: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600',
-    host: { name: 'Marco', photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200' },
-    date: 'Sunday',
-    time: '10:00 AM',
-    location: 'Seniman Coffee Studio',
-    attendees: 6,
-    maxAttendees: 10,
-  },
-  {
-    id: '4',
-    title: 'sunset hike to viewpoint',
-    category: 'hiking',
-    photo: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=600',
-    host: { name: 'Nina', photo: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200' },
-    date: 'Monday',
-    time: '4:00 PM',
-    location: 'Campuhan Ridge Walk',
-    attendees: 8,
-    maxAttendees: 12,
-  },
-  {
-    id: '5',
-    title: 'coworking & networking',
-    category: 'cafe-working',
-    photo: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600',
-    host: { name: 'David', photo: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200' },
-    date: 'Tuesday',
-    time: '9:00 AM',
-    location: 'Dojo Bali',
-    attendees: 15,
-    maxAttendees: 25,
-  },
-  {
-    id: '6',
-    title: 'beach volleyball game',
-    category: 'beach',
-    photo: 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=600',
-    host: { name: 'Carlos', photo: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=200' },
-    date: 'Wednesday',
-    time: '5:00 PM',
-    location: 'Seminyak Beach',
-    attendees: 10,
-    maxAttendees: 16,
-  },
-  {
-    id: '7',
-    title: 'live music & jam session',
-    category: 'live-music',
-    photo: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600',
-    host: { name: 'Zara', photo: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=200' },
-    date: 'Thursday',
-    time: '7:00 PM',
-    location: 'Old Man\'s Bar',
-    attendees: 20,
-    maxAttendees: 50,
-  },
-  {
-    id: '8',
-    title: 'photography walk',
-    category: 'photography',
-    photo: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=600',
-    host: { name: 'Liam', photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200' },
-    date: 'Friday',
-    time: '5:30 PM',
-    location: 'Tanah Lot Temple',
-    attendees: 5,
-    maxAttendees: 8,
-  },
-];
+// Convert mockUsers to MatchingRouteUser format
+const mockMatchingUsers: MatchingRouteUser[] = mockUsers.slice(0, 15).map((user, index) => ({
+  id: user.id,
+  name: user.name,
+  age: user.age,
+  photo: user.photos[0],
+  futureTrip: user.futureTrip,
+  arrivalDate: arrivalDates[index % arrivalDates.length],
+  lifestyle: user.lifestyle,
+  currentLocation: user.location,
+  isOnline: user.isOnline,
+}));
+
+// Use the comprehensive mock activities
+const mockActivities: Activity[] = importedMockActivities.map((activity) => ({
+  id: activity.id,
+  title: activity.title.toLowerCase(),
+  category: activity.category,
+  photo: activity.image,
+  host: { name: activity.host.name, photo: activity.host.avatar },
+  date: activity.date,
+  time: activity.time,
+  location: activity.location,
+  attendees: activity.attendees,
+  maxAttendees: activity.maxAttendees,
+}));
 
 export default function ExploreScreen() {
   const { data } = useOnboarding();
@@ -436,18 +314,33 @@ export default function ExploreScreen() {
                 className="flex-row items-center p-4 bg-gray-50 rounded-2xl mb-3"
                 activeOpacity={0.7}
               >
-                <Image
-                  source={{ uri: user.photo }}
-                  className="w-16 h-16 rounded-full"
-                  resizeMode="cover"
-                />
+                <View className="relative">
+                  <Image
+                    source={{ uri: user.photo }}
+                    className="w-16 h-16 rounded-full"
+                    resizeMode="cover"
+                  />
+                  {user.isOnline && (
+                    <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+                  )}
+                </View>
                 <View className="flex-1 ml-4">
-                  <Text
-                    className="text-black text-lg"
-                    style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                  >
-                    {user.name}, {user.age}
-                  </Text>
+                  <View className="flex-row items-center">
+                    <Text
+                      className="text-black text-lg"
+                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                    >
+                      {user.name}, {user.age}
+                    </Text>
+                    {user.isOnline && (
+                      <Text
+                        className="text-green-500 text-xs ml-2"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        online
+                      </Text>
+                    )}
+                  </View>
                   <Text
                     className="text-gray-500 text-sm"
                     style={{ fontFamily: 'InstrumentSans_400Regular' }}

@@ -9,6 +9,7 @@ import { Doc } from '@/convex/_generated/dataModel';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useCallback, useMemo } from 'react';
 import * as Haptics from 'expo-haptics';
+import { mockUsers, MockUser } from '@/data/mockData';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -67,6 +68,24 @@ function convexUserToProfile(user: Doc<"users">): Profile {
     bio: '', // Schema doesn't have bio field
     timeNomadic: user.timeNomadic,
     lookingFor: user.lookingFor.join(', '),
+    instagram: user.instagram,
+  };
+}
+
+// Convert MockUser to Profile interface
+function mockUserToProfile(user: MockUser): Profile {
+  return {
+    id: user.id,
+    name: user.name,
+    age: user.age,
+    location: user.location,
+    lifestyle: user.lifestyle,
+    photos: user.photos,
+    distance: user.isOnline ? 'online now' : (user.lastActive || 'nearby'),
+    interests: user.interests,
+    bio: user.bio,
+    timeNomadic: user.timeNomadic,
+    lookingFor: user.lookingFor,
     instagram: user.instagram,
   };
 }
@@ -349,10 +368,14 @@ export default function NearbyScreen() {
   // Create swipe mutation
   const createSwipe = useMutation(api.swipes.create);
 
-  // Convert Convex users to Profile interface
+  // Convert Convex users to Profile interface, fall back to mock data
   const profiles = useMemo(() => {
-    if (!convexUsers) return [];
-    return convexUsers.map(convexUserToProfile);
+    // If we have Convex users, use them
+    if (convexUsers && convexUsers.length > 0) {
+      return convexUsers.map(convexUserToProfile);
+    }
+    // Fall back to mock data for testing when no real users exist
+    return mockUsers.map(mockUserToProfile);
   }, [convexUsers]);
 
   const isLoading = userId && convexUsers === undefined;
@@ -388,6 +411,17 @@ export default function NearbyScreen() {
 
     const currentProfile = profiles[currentIndex];
     if (!currentProfile) return;
+
+    // Skip recording swipe for mock users (their IDs start with "user_")
+    // Only record swipes for real Convex users
+    if (currentProfile.id.startsWith('user_')) {
+      // Mock user - simulate a match sometimes for testing
+      if (action === 'like' && Math.random() < 0.3) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        console.log('Mock match with', currentProfile.name);
+      }
+      return;
+    }
 
     setIsProcessingSwipe(true);
     try {

@@ -41,7 +41,7 @@ export function OnboardingLayout({
               <Ionicons name="chevron-back" size={24} color="#000" />
             </TouchableOpacity>
           ) : (
-            <View className="w-10" />
+            <View className="w-10 h-10" />
           )}
 
           {currentStep !== undefined && (
@@ -100,10 +100,11 @@ export function OnboardingLayout({
       style={{ flex: 1 }}
       resizeMode="cover"
     >
-      <SafeAreaView className="flex-1">
+      <SafeAreaView className="flex-1" edges={['top', 'left', 'right']}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           className="flex-1"
+          keyboardVerticalOffset={0}
         >
           {content}
         </KeyboardAvoidingView>
