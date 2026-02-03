@@ -152,13 +152,13 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
 
 #### Week 1: Development Infrastructure
 
-- [ ] **1.1 Set up testing framework**
+- [x] **1.1 Set up testing framework** ✅ COMPLETE
   - Install Jest and React Native Testing Library
   - Configure test environment for Expo
   - Create test utilities and mocks
   - Add npm scripts for test execution
 
-- [ ] **1.2 Add error boundaries**
+- [x] **1.2 Add error boundaries** ✅ COMPLETE
   - Create global ErrorBoundary component
   - Implement fallback UI for crashes
   - Add error logging utility
@@ -170,12 +170,12 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
   - Persist onboarding progress locally (deferred - using Convex instead)
   - Add data migration utilities (deferred)
 
-- [ ] **1.4 Environment configuration**
+- [x] **1.4 Environment configuration** ✅ COMPLETE
   - Create `.env.example` with required variables
   - Set up environment-specific configs (dev, staging, prod)
   - Configure Expo env var handling
 
-- [ ] **1.5 Documentation foundation**
+- [x] **1.5 Documentation foundation** ✅ COMPLETE
   - Create README with setup instructions
   - Document folder structure
   - Add CONTRIBUTING.md guidelines

@@ -20,9 +20,11 @@ import {
 } from '@expo-google-fonts/instrument-serif';
 import { OnboardingProvider } from '@/context/OnboardingContext';
 import { RevenueCatProvider } from '@/context/RevenueCatContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { env } from '@/lib/env';
 
-const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
-const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+const convex = new ConvexReactClient(env.convexUrl);
+const clerkPublishableKey = env.clerkPublishableKey;
 
 SplashScreen.preventAutoHideAsync();
 
@@ -56,6 +58,7 @@ export default function RootLayout() {
         <RevenueCatProvider>
           <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
             <OnboardingProvider>
+            <ErrorBoundary>
               <Stack
                 screenOptions={{
                   headerShown: false,
@@ -84,6 +87,7 @@ export default function RootLayout() {
                 />
               </Stack>
               <StatusBar style="dark" />
+            </ErrorBoundary>
             </OnboardingProvider>
           </ConvexProviderWithClerk>
         </RevenueCatProvider>

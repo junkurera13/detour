@@ -1,50 +1,76 @@
-# Welcome to your Expo app 👋
+# Detour
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Detour is a React Native (Expo) dating app for digital nomads. This repo contains the mobile client, built with Expo Router, Clerk auth, Convex backend, and RevenueCat for subscriptions.
 
-## Get started
+**Stack**
+- Expo SDK 54 + React Native
+- Expo Router
+- Clerk Authentication
+- Convex (DB + functions)
+- RevenueCat subscriptions
+- NativeWind styling
 
+**Requirements**
+- Node.js 18+
+- npm 9+
+- Xcode (iOS) or Android Studio (Android)
+
+**Setup**
 1. Install dependencies
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. Create local env file
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+3. Fill in env variables (see `.env.example`)
+
+4. Start the app
 
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+**Environment variables**
+Set these in `.env.local` (local) or EAS secrets (cloud builds):
+- `EXPO_PUBLIC_APP_ENV`
+- `EXPO_PUBLIC_CONVEX_URL`
+- `EXPO_PUBLIC_CONVEX_SITE_URL`
+- `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`
+- `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+**Development builds**
+RevenueCat requires a development build to test purchases. Expo Go runs the SDK in Preview API mode.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+**Scripts**
+- `npm run start` Start Expo dev server
+- `npm run ios` Run on iOS simulator
+- `npm run android` Run on Android emulator
+- `npm run web` Run on web
+- `npm run lint` Lint the project
+- `npm run test` Run Jest tests
+- `npm run test:watch` Watch tests
+- `npm run test:coverage` Coverage report
 
-## Get a fresh project
+**Folder structure**
+- `app/` Expo Router screens
+- `components/` Shared UI and utilities
+- `context/` App providers
+- `hooks/` Custom hooks
+- `convex/` Backend schema and functions
+- `lib/` Shared helpers (env, logging)
 
-When you're ready, run:
+**RevenueCat setup**
+- Create products: `monthly`, `yearly`
+- Create entitlement: `detour_plus`
+- Create a default offering that includes both packages
+- Configure App Store / Play Console products and connect them in RevenueCat
 
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+**Contributing**
+See `CONTRIBUTING.md` for branch, commit, and PR guidelines.

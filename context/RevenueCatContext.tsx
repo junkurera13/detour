@@ -8,6 +8,7 @@ import Purchases, {
 } from 'react-native-purchases';
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import { useAuth } from '@clerk/clerk-expo';
+import { env } from '@/lib/env';
 
 export const DETOUR_PLUS_ENTITLEMENT = 'detour_plus';
 
@@ -30,18 +31,10 @@ const RevenueCatContext = createContext<RevenueCatContextValue | undefined>(unde
 
 const getApiKey = () => {
   if (Platform.OS === 'ios') {
-    return (
-      process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ??
-      process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ??
-      ''
-    );
+    return env.revenueCatIosKey || env.revenueCatKey || '';
   }
   if (Platform.OS === 'android') {
-    return (
-      process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY ??
-      process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ??
-      ''
-    );
+    return env.revenueCatAndroidKey || env.revenueCatKey || '';
   }
   return '';
 };
