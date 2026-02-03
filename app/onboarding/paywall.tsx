@@ -8,6 +8,8 @@ import { useConvexAuth } from 'convex/react';
 import { useAuth } from '@clerk/clerk-expo';
 import { api } from '@/convex/_generated/api';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { DETOUR_PLUS_ENTITLEMENT, useRevenueCat } from '@/context/RevenueCatContext';
+import { PAYWALL_RESULT } from 'react-native-purchases-ui';
 
 const timelineSteps = [
   {
@@ -51,7 +53,16 @@ export default function PaywallScreen() {
   const { data, updateData } = useOnboarding();
   const { isAuthenticated, isLoading: isConvexLoading } = useConvexAuth();
   const { isSignedIn, isLoaded: isClerkLoaded } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'yearly' | 'monthly'>('yearly');
+
+  const {
+    offerings,
+    purchasePackage,
+    restorePurchases,
+    presentPaywall,
+    isLoading: isRevenueCatLoading,
+  } = useRevenueCat();
 
   const createUser = useMutation(api.users.create);
   const useInviteCode = useMutation(api.inviteCodes.use);
@@ -69,10 +80,8 @@ export default function PaywallScreen() {
   // Show loading while auth is being established
   const isAuthLoading = !isClerkLoaded || isConvexLoading;
 
-  const handleCreateUser = async () => {
-    console.log('handleCreateUser called', { isSubmitting, isAuthenticated, isSignedIn });
-
-    if (isSubmitting) return;
+  const createUserInternal = async () => {
+    console.log('handleCreateUser called', { isProcessing, isAuthenticated, isSignedIn });
 
     // Check if still loading
     if (isConvexLoading || !isClerkLoaded) {
@@ -99,8 +108,6 @@ export default function PaywallScreen() {
       }
       return;
     }
-
-    setIsSubmitting(true);
 
     try {
       const userStatus = data.joinPath === 'invite' ? 'approved' : 'pending';
@@ -149,17 +156,87 @@ export default function PaywallScreen() {
         'Failed to create your account. Please try again.',
         [{ text: 'OK' }]
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  const handleStartTrial = () => {
-    handleCreateUser();
+  const hasDetourPlus = (info: any) =>
+    Boolean(info?.entitlements?.active?.[DETOUR_PLUS_ENTITLEMENT]);
+
+  const currentOffering = offerings?.current;
+  const packageById = (id: string) =>
+    currentOffering?.availablePackages?.find((pkg) => pkg.identifier === id);
+  const monthlyPackage = currentOffering?.monthly ?? packageById('monthly');
+  const yearlyPackage = currentOffering?.annual ?? packageById('yearly');
+  const selectedPackage = selectedPlan === 'monthly' ? monthlyPackage : yearlyPackage;
+
+  const priceLabel = selectedPackage?.product?.priceString
+    ? `${selectedPackage.product.priceString}/${selectedPlan === 'monthly' ? 'month' : 'year'}`
+    : selectedPlan === 'monthly'
+      ? '$?/month'
+      : '$?/year';
+
+  const handleStartTrial = async () => {
+    if (isProcessing) return;
+    if (!selectedPackage) {
+      Alert.alert('Plans not ready', 'Pricing is still loading. Please try again.');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const info = await purchasePackage(selectedPackage);
+      if (!info) return;
+
+      if (!hasDetourPlus(info)) {
+        Alert.alert('Subscription inactive', 'Purchase did not unlock detour plus.');
+        return;
+      }
+
+      await createUserInternal();
+    } catch (error) {
+      console.error('Purchase error:', error);
+      Alert.alert('Purchase failed', 'Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleClose = () => {
-    handleCreateUser();
+  const handleShowRevenueCatPaywall = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      const result = await presentPaywall();
+      if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
+        await createUserInternal();
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      const info = await restorePurchases();
+      if (info && hasDetourPlus(info)) {
+        await createUserInternal();
+        return;
+      }
+      Alert.alert('No active subscription', 'We could not find an active detour plus subscription.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleClose = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      await createUserInternal();
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -266,19 +343,72 @@ export default function PaywallScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View className="px-6 pb-6 pt-4 border-t border-gray-100">
+        <View className="px-6 pb-6 pt-4 border-t border-gray-100">
+          <View className="mb-4">
+            <Text
+              className="text-sm text-gray-400 uppercase mb-3"
+              style={{ fontFamily: 'InstrumentSans_500Medium' }}
+            >
+              choose your plan
+            </Text>
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => setSelectedPlan('yearly')}
+                className={`flex-1 rounded-2xl border px-4 py-3 ${
+                  selectedPlan === 'yearly' ? 'border-black' : 'border-gray-200'
+                }`}
+                activeOpacity={0.8}
+                disabled={isRevenueCatLoading}
+              >
+                <Text
+                  className="text-sm text-gray-500"
+                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                >
+                  yearly
+                </Text>
+                <Text
+                  className="text-lg text-black"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  {yearlyPackage?.product?.priceString ?? '$?/year'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setSelectedPlan('monthly')}
+                className={`flex-1 rounded-2xl border px-4 py-3 ${
+                  selectedPlan === 'monthly' ? 'border-black' : 'border-gray-200'
+                }`}
+                activeOpacity={0.8}
+                disabled={isRevenueCatLoading}
+              >
+                <Text
+                  className="text-sm text-gray-500"
+                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                >
+                  monthly
+                </Text>
+                <Text
+                  className="text-lg text-black"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  {monthlyPackage?.product?.priceString ?? '$?/month'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
         <Text
           className="text-center text-gray-500 mb-3"
           style={{ fontFamily: 'InstrumentSans_400Regular' }}
         >
-          free for 3 days, then $99/year
+          free for 3 days, then {priceLabel}
         </Text>
 
         <TouchableOpacity
           onPress={handleStartTrial}
-          disabled={isSubmitting}
+          disabled={isProcessing || isRevenueCatLoading || !selectedPackage}
           style={{
-            backgroundColor: isSubmitting ? '#fca560' : '#fd6b03',
+            backgroundColor: isProcessing ? '#fca560' : '#fd6b03',
             paddingVertical: 16,
             borderRadius: 16,
             alignItems: 'center',
@@ -287,12 +417,25 @@ export default function PaywallScreen() {
             gap: 8,
           }}
         >
-          {isSubmitting && <ActivityIndicator color="#fff" size="small" />}
+          {isProcessing && <ActivityIndicator color="#fff" size="small" />}
           <Text
             className="text-white text-lg"
             style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
           >
-            {isSubmitting ? 'creating account...' : 'try for $0.00'}
+            {isProcessing ? 'processing...' : 'try for $0.00'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleShowRevenueCatPaywall}
+          className="mt-3"
+          disabled={isProcessing}
+        >
+          <Text
+            className="text-center text-gray-400 text-sm"
+            style={{ fontFamily: 'InstrumentSans_400Regular' }}
+          >
+            view all plans
           </Text>
         </TouchableOpacity>
 
@@ -315,7 +458,7 @@ export default function PaywallScreen() {
             </Text>
           </TouchableOpacity>
           <Text className="text-gray-300">•</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleRestore}>
             <Text
               className="text-gray-400 text-sm"
               style={{ fontFamily: 'InstrumentSans_400Regular' }}

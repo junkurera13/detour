@@ -9,6 +9,7 @@ import { api } from '@/convex/_generated/api';
 import { useRouter } from 'expo-router';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { mockProfileViewers, mockMatches } from '@/data/mockData';
+import { useRevenueCat } from '@/context/RevenueCatContext';
 
 const lifestyleLabels: Record<string, string> = {
   'van-life': 'van life',
@@ -57,6 +58,7 @@ const settingsItems = [
   { id: 'settings', label: 'settings', icon: 'settings-outline' },
   { id: 'privacy', label: 'privacy', icon: 'shield-outline' },
   { id: 'help', label: 'help & support', icon: 'help-circle-outline' },
+  { id: 'subscription', label: 'manage subscription', icon: 'card-outline' },
 ];
 
 // Use mock profile viewers from centralized data
@@ -70,6 +72,7 @@ export default function ProfileScreen() {
   const { data: onboardingData, resetData } = useOnboarding();
   const { convexUser: user } = useAuthenticatedUser();
   const { signOut } = useClerk();
+  const { openCustomerCenter } = useRevenueCat();
   const router = useRouter();
   const [menuVisible, setMenuVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -146,6 +149,13 @@ export default function ProfileScreen() {
         router.replace('/onboarding');
       }
     }, 300);
+  };
+
+  const handleSettingsAction = async (id: string) => {
+    closeMenu();
+    if (id === 'subscription') {
+      await openCustomerCenter();
+    }
   };
 
   // Show loading screen while logging out
@@ -387,6 +397,7 @@ export default function ProfileScreen() {
                     index < settingsItems.length - 1 ? 'border-b border-gray-100' : ''
                   }`}
                   activeOpacity={0.7}
+                  onPress={() => handleSettingsAction(item.id)}
                 >
                   <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
                     <Ionicons name={item.icon as any} size={20} color="#000" />
