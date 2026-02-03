@@ -135,7 +135,7 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
 | Feature | Status | Impact |
 |---------|--------|--------|
 | User Authentication | ✅ Complete | Clerk auth with phone, Google, Apple |
-| Real Messaging UI | Not started | Backend ready, need chat screen |
+| Real Messaging UI | ✅ Complete | Chat screen with real-time Convex integration |
 | Photo Cloud Upload | Not started | Photos stored as local URIs currently |
 | Payment Processing | 🟡 In Progress | RevenueCat SDK integrated, needs store products |
 | Push Notifications | Not started | Engagement critical |
@@ -290,23 +290,23 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
 
 #### Week 6: Messaging System
 
-- [ ] **6.1 Real-time messaging backend**
-  - WebSocket server setup
-  - Message delivery system
-  - Read receipt tracking
-  - Typing indicators
+- [x] **6.1 Real-time messaging backend** ✅ COMPLETE
+  - Convex real-time queries (automatic WebSocket-like behavior)
+  - Message delivery via `api.messages.send`
+  - Read receipt tracking via `api.messages.markAsRead`
+  - ⚠️ Typing indicators (not implemented)
 
-- [ ] **6.2 Chat UI implementation**
-  - Individual chat screen
-  - Message bubbles and timestamps
-  - Image/GIF sharing
-  - Message reactions
+- [x] **6.2 Chat UI implementation** ✅ COMPLETE
+  - Individual chat screen (`/app/chat/[matchId].tsx`)
+  - Message bubbles with timestamps and time separators
+  - ⚠️ Image/GIF sharing (not implemented)
+  - ⚠️ Message reactions (not implemented)
 
-- [ ] **6.3 Conversation management**
-  - Conversation list with last message
+- [x] **6.3 Conversation management** ✅ COMPLETE
+  - Conversation list with last message preview
   - Unread count badges
-  - Archive/delete conversations
-  - Block user from conversation
+  - ⚠️ Archive/delete conversations (not implemented)
+  - ⚠️ Block user from conversation (not implemented)
 
 - [ ] **6.4 Push notifications setup**
   - Expo Notifications configuration
@@ -591,7 +591,7 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
 | Phase | Duration | Deliverable | Score Impact | Status |
 |-------|----------|-------------|--------------|--------|
 | **Phase 1** | Weeks 1-3 | Infrastructure + Auth | 4/10 → 6/10 | ✅ Complete (Convex + Clerk auth) |
-| **Phase 2** | Weeks 4-8 | Core Features | 6/10 → 7/10 | 🟡 In Progress (Discovery/Matching/Payments done, Messaging pending) |
+| **Phase 2** | Weeks 4-8 | Core Features | 6/10 → 7/10 | 🟡 In Progress (Discovery/Matching/Payments/Messaging done, Push notifications pending) |
 | **Phase 3** | Weeks 9-12 | Polish + Security | 7/10 → 9/10 | ⬜ Not Started |
 | **Phase 4** | Weeks 13-16 | Launch | 9/10 → 10/10 | ⬜ Not Started |
 
@@ -660,7 +660,7 @@ A production-ready Detour app (10/10) will have:
 - [x] Complete profile creation and editing ✅ Convex
 - [x] Real-time location-based discovery ✅ Convex
 - [x] Working matching system with algorithm ✅ Convex
-- [ ] Functional real-time messaging
+- [x] Functional real-time messaging ✅ Convex real-time
 - [x] Working payment processing and subscriptions ✅ RevenueCat (needs store products)
 - [ ] Push notifications for matches and messages
 - [ ] 70%+ test coverage
@@ -677,26 +677,40 @@ A production-ready Detour app (10/10) will have:
 
 ## Conclusion
 
-The Detour codebase has progressed significantly with authentication (Clerk), backend (Convex), and payments (RevenueCat) now integrated. The primary remaining work is completing the messaging UI, setting up store products for payments, and production hardening.
+The Detour codebase has progressed significantly with authentication (Clerk), backend (Convex), payments (RevenueCat), and real-time messaging now integrated. The primary remaining work is setting up store products for payments, push notifications, and production hardening.
 
-**Estimated timeline to production: 8-10 weeks**
+**Estimated timeline to production: 6-8 weeks**
 
 This timeline assumes:
 - 1-2 full-time developers
 - No major scope changes
 - RevenueCat dashboard + store products configured
-- Focus on messaging, testing, and polish
+- Focus on push notifications, testing, and polish
 
 The roadmap prioritizes getting a minimum viable product (MVP) live, then iterating based on user feedback. Features like advanced matching algorithms, social features, and additional languages can be added post-launch.
 
 ---
 
 *Last updated: February 3, 2026*
-*Document version: 1.4*
+*Document version: 1.5*
 
 ---
 
 ## Changelog
+
+### v1.5 (February 3, 2026)
+- **Messaging UI marked as complete**
+  - Chat screen fully implemented at `/app/chat/[matchId].tsx`
+  - Real-time messages via Convex `api.messages.getByMatch`
+  - Send messages via `api.messages.send`
+  - Mark as read via `api.messages.markAsRead`
+  - Auto-scroll to new messages
+  - Message bubbles with timestamps and time separators
+  - Conversation list in matches tab with unread badges
+  - Navigation from matches → chat with slide animation
+- Updated Week 6 messaging tasks to reflect completion
+- Updated Phase 2 milestone status
+- Remaining messaging features noted: typing indicators, image sharing, reactions, archive/delete, block user
 
 ### v1.4 (February 3, 2026)
 - **Major: Authentication and Payments complete**
