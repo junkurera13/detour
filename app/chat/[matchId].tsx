@@ -475,9 +475,9 @@ export default function ChatScreen() {
               <View className="flex-row justify-start mb-2 px-4">
                 <View className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
                   <View className="flex-row items-center gap-1">
-                    <View className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" />
-                    <View className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style={{ animationDelay: '150ms' }} />
-                    <View className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style={{ animationDelay: '300ms' }} />
+                    <View className="w-2 h-2 rounded-full bg-gray-400" />
+                    <View className="w-2 h-2 rounded-full bg-gray-400" />
+                    <View className="w-2 h-2 rounded-full bg-gray-400" />
                   </View>
                 </View>
               </View>
