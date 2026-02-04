@@ -406,7 +406,7 @@ export default function NearbyScreen() {
     };
   });
 
-  const recordSwipe = async (action: 'like' | 'pass') => {
+  const recordSwipe = useCallback(async (action: 'like' | 'pass') => {
     if (!userId || isProcessingSwipe) return;
 
     const currentProfile = profiles[currentIndex];
@@ -441,19 +441,19 @@ export default function NearbyScreen() {
     } finally {
       setIsProcessingSwipe(false);
     }
-  };
+  }, [createSwipe, currentIndex, isProcessingSwipe, profiles, userId]);
 
   const handleSwipeLeft = useCallback(() => {
     setSwipeDirection(null);
     recordSwipe('pass');
     setCurrentIndex((prev) => prev + 1);
-  }, [userId, profiles, currentIndex]);
+  }, [recordSwipe]);
 
   const handleSwipeRight = useCallback(() => {
     setSwipeDirection(null);
     recordSwipe('like');
     setCurrentIndex((prev) => prev + 1);
-  }, [userId, profiles, currentIndex]);
+  }, [recordSwipe]);
 
   const handlePassPress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -463,7 +463,7 @@ export default function NearbyScreen() {
       setCurrentIndex((prev) => prev + 1);
       setSwipeDirection(null);
     }, 350);
-  }, [userId, profiles, currentIndex]);
+  }, [recordSwipe]);
 
   const handleLikePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -473,7 +473,7 @@ export default function NearbyScreen() {
       setCurrentIndex((prev) => prev + 1);
       setSwipeDirection(null);
     }, 350);
-  }, [userId, profiles, currentIndex]);
+  }, [recordSwipe]);
 
   const visibleProfiles = profiles.slice(currentIndex, currentIndex + 2);
   const isEmpty = !isLoading && currentIndex >= profiles.length;

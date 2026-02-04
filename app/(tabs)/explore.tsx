@@ -160,7 +160,7 @@ export default function ExploreScreen() {
   const [selectedInterest, setSelectedInterest] = useState<string | null>(null);
 
   // Get user's interests for filter pills
-  const userInterests = data.interests || [];
+  const userInterests = useMemo(() => data.interests || [], [data.interests]);
 
   // Filter activities based on selected interest
   const filteredActivities = useMemo(() => {

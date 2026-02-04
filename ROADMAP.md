@@ -206,6 +206,7 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
   - GitHub Actions for linting and tests
   - Automated build verification
   - Branch protection rules (recommended in CONTRIBUTING.md)
+  - CI checks verified clean (lint, typecheck, tests)
 
 #### Week 3: Authentication System
 

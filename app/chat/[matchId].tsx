@@ -96,7 +96,7 @@ export default function ChatScreen() {
         });
       }
     }
-  }, [matchId, userId, messages]);
+  }, [matchId, userId, messages, markAsRead]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function ChatScreen() {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  }, [messages?.length]);
+  }, [messages]);
 
   const handleSend = async () => {
     if (!messageText.trim() || !matchId || !userId || isSending) return;

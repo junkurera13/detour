@@ -3,8 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
-import { useMutation } from 'convex/react';
-import { useConvexAuth } from 'convex/react';
+import { useMutation, useConvexAuth } from 'convex/react';
 import { useAuth } from '@clerk/clerk-expo';
 import { api } from '@/convex/_generated/api';
 import { useOnboarding } from '@/context/OnboardingContext';
@@ -66,7 +65,6 @@ export default function PaywallScreen() {
     uploadPhotos,
     isUploading,
     progress: uploadProgress,
-    error: uploadError,
   } = usePhotoUpload();
 
   const createUser = useMutation(api.users.create);

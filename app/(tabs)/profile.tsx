@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useClerk } from '@clerk/clerk-expo';
@@ -122,7 +122,7 @@ export default function ProfileScreen() {
     } else {
       slideAnim.setValue(400);
     }
-  }, [menuVisible]);
+  }, [menuVisible, slideAnim]);
 
   const closeMenu = () => {
     Animated.timing(slideAnim, {

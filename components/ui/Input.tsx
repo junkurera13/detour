@@ -1,5 +1,4 @@
 import { TextInput, View, Text } from 'react-native';
-import { useState } from 'react';
 
 interface InputProps {
   value: string;
@@ -26,8 +25,6 @@ export function Input({
   numberOfLines = 1,
   prefix,
 }: InputProps) {
-  const [isFocused, setIsFocused] = useState(false);
-
   return (
     <View className="w-full">
       {label && (
@@ -71,8 +68,6 @@ export function Input({
           maxLength={maxLength}
           multiline={multiline}
           numberOfLines={numberOfLines}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
           style={{
             flex: 1,
             fontSize: 18,
