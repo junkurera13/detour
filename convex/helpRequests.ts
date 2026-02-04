@@ -332,7 +332,16 @@ export const acceptOffer = mutation({
       requestId: args.requestId,
     });
 
-    return { success: true };
+    // Create a conversation between requester and offerer
+    const conversationId = await ctx.db.insert("helpConversations", {
+      requestId: args.requestId,
+      offerId: args.offerId,
+      requesterId: request.authorId,
+      offererId: offer.offererId,
+      createdAt: now,
+    });
+
+    return { success: true, conversationId };
   },
 });
 

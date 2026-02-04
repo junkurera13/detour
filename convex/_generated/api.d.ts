@@ -9,6 +9,7 @@
  */
 
 import type * as files from "../files.js";
+import type * as helpMessages from "../helpMessages.js";
 import type * as helpOffers from "../helpOffers.js";
 import type * as helpRequests from "../helpRequests.js";
 import type * as inviteCodes from "../inviteCodes.js";
@@ -27,6 +28,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   files: typeof files;
+  helpMessages: typeof helpMessages;
   helpOffers: typeof helpOffers;
   helpRequests: typeof helpRequests;
   inviteCodes: typeof inviteCodes;

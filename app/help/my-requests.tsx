@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -7,7 +7,6 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
 const statusTabs = [
-  { id: 'all', label: 'all' },
   { id: 'open', label: 'open' },
   { id: 'in_progress', label: 'in progress' },
   { id: 'completed', label: 'completed' },
@@ -24,31 +23,24 @@ const formatTime = (timestamp: number) => {
   return `${days}d ago`;
 };
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'open':
-      return { bg: 'bg-blue-100', text: 'text-blue-700' };
-    case 'in_progress':
-      return { bg: 'bg-yellow-100', text: 'text-yellow-700' };
-    case 'completed':
-      return { bg: 'bg-green-100', text: 'text-green-700' };
-    case 'cancelled':
-      return { bg: 'bg-red-100', text: 'text-red-700' };
-    default:
-      return { bg: 'bg-gray-100', text: 'text-gray-700' };
-  }
-};
+const formatPrice = (cents: number) => `$${(cents / 100).toFixed(0)}`;
 
 export default function MyRequestsScreen() {
   const router = useRouter();
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('open');
 
   const requests = useQuery(api.helpRequests.getMyRequests, {
-    status: selectedStatus === 'all' ? undefined : selectedStatus,
+    status: selectedStatus,
   });
 
-  const handleRequestPress = (requestId: string) => {
-    router.push(`/help/${requestId}` as any);
+  const handleRequestPress = (request: any) => {
+    // If in_progress, go to chat room
+    if (request.status === 'in_progress' && request.conversationId) {
+      router.push(`/help/chat/${request.conversationId}` as any);
+    } else {
+      // Otherwise go to request detail
+      router.push(`/help/${request._id}` as any);
+    }
   };
 
   return (
@@ -111,9 +103,7 @@ export default function MyRequestsScreen() {
             className="text-gray-500 text-center"
             style={{ fontFamily: 'InstrumentSans_400Regular' }}
           >
-            {selectedStatus === 'all'
-              ? "you haven't posted any requests yet"
-              : `no ${selectedStatus.replace('_', ' ')} requests`}
+            {`no ${selectedStatus.replace('_', ' ')} requests`}
           </Text>
         </View>
       ) : (
@@ -123,35 +113,13 @@ export default function MyRequestsScreen() {
           contentContainerStyle={{ paddingBottom: 20 }}
         >
           {requests.map((request) => {
-            const statusStyle = getStatusColor(request.status);
             return (
               <TouchableOpacity
                 key={request._id}
-                onPress={() => handleRequestPress(request._id)}
-                className="mx-6 mb-4 p-4 bg-gray-50 rounded-2xl"
+                onPress={() => handleRequestPress(request)}
+                className="mx-6 mb-4 p-5 bg-gray-50 rounded-2xl"
                 activeOpacity={0.7}
               >
-                <View className="flex-row items-center justify-between mb-2">
-                  <View className={`px-2 py-1 rounded-full ${statusStyle.bg}`}>
-                    <Text
-                      className={`text-xs ${statusStyle.text}`}
-                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                    >
-                      {request.status.replace('_', ' ')}
-                    </Text>
-                  </View>
-                  {request.isUrgent && (
-                    <View className="bg-red-100 px-2 py-1 rounded-full">
-                      <Text
-                        className="text-red-600 text-xs"
-                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                      >
-                        urgent
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
                 <Text
                   className="text-black text-lg mb-2"
                   style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
@@ -159,15 +127,29 @@ export default function MyRequestsScreen() {
                   {request.title}
                 </Text>
 
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center">
-                    <View className="bg-gray-200 px-3 py-1 rounded-full mr-2">
-                      <Text
-                        className="text-gray-700 text-sm"
-                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                      >
-                        {request.category}
-                      </Text>
+                {/* Footer - varies by status */}
+                {request.status === 'open' ? (
+                  // Open: show category, urgent label, and offer count
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      <View className="bg-gray-200 px-3 py-1 rounded-full mr-2">
+                        <Text
+                          className="text-gray-700 text-sm"
+                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        >
+                          {request.category}
+                        </Text>
+                      </View>
+                      {request.isUrgent && (
+                        <View className="bg-red-100 px-3 py-1 rounded-full mr-2">
+                          <Text
+                            className="text-red-600"
+                            style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                          >
+                            urgent
+                          </Text>
+                        </View>
+                      )}
                     </View>
                     <Text
                       className="text-gray-500 text-sm"
@@ -176,13 +158,81 @@ export default function MyRequestsScreen() {
                       {request.offerCount} {request.offerCount === 1 ? 'offer' : 'offers'}
                     </Text>
                   </View>
-                  <Text
-                    className="text-gray-400 text-sm"
-                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                  >
-                    {formatTime(request.createdAt)}
-                  </Text>
-                </View>
+                ) : request.status === 'in_progress' ? (
+                  // In Progress: show helper info
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      {(request as any).helper && (
+                        <>
+                          <Image
+                            source={{ uri: (request as any).helper.photos?.[0] || 'https://via.placeholder.com/24' }}
+                            className="w-6 h-6 rounded-full mr-2"
+                          />
+                          <Text
+                            className="text-gray-700 text-sm"
+                            style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                          >
+                            {(request as any).helper.name}
+                          </Text>
+                        </>
+                      )}
+                      {(request as any).acceptedPrice && (
+                        <View className="bg-green-100 px-2 py-0.5 rounded-full ml-2">
+                          <Text
+                            className="text-green-700 text-xs"
+                            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                          >
+                            {formatPrice((request as any).acceptedPrice)}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text
+                      className="text-gray-400 text-sm"
+                      style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                    >
+                      {formatTime(request.createdAt)}
+                    </Text>
+                  </View>
+                ) : (
+                  // Completed: show helper info and paid status
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      {(request as any).helper && (
+                        <>
+                          <Image
+                            source={{ uri: (request as any).helper.photos?.[0] || 'https://via.placeholder.com/24' }}
+                            className="w-6 h-6 rounded-full mr-2"
+                          />
+                          <Text
+                            className="text-gray-700 text-sm"
+                            style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                          >
+                            {(request as any).helper.name}
+                          </Text>
+                        </>
+                      )}
+                      {(request as any).isPaidOut && (
+                        <View className="bg-green-100 px-2 py-0.5 rounded-full ml-2">
+                          <Text
+                            className="text-green-700 text-xs"
+                            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                          >
+                            paid out
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    {(request as any).acceptedPrice && (
+                      <Text
+                        className="text-gray-500 text-sm"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        {formatPrice((request as any).acceptedPrice)}
+                      </Text>
+                    )}
+                  </View>
+                )}
               </TouchableOpacity>
             );
           })}

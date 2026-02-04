@@ -128,4 +128,28 @@ export default defineSchema({
   })
     .index("by_request", ["requestId"])
     .index("by_offerer", ["offererId"]),
+
+  // Help messaging (for accepted offers)
+  helpConversations: defineTable({
+    requestId: v.id("helpRequests"),
+    offerId: v.id("helpOffers"),
+    requesterId: v.id("users"), // person who posted the request
+    offererId: v.id("users"), // person who made the offer
+    lastMessageAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_request", ["requestId"])
+    .index("by_requester", ["requesterId"])
+    .index("by_offerer", ["offererId"]),
+
+  helpMessages: defineTable({
+    conversationId: v.id("helpConversations"),
+    senderId: v.id("users"),
+    content: v.string(),
+    messageType: v.string(), // "text", "image"
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_sender", ["senderId"]),
 });

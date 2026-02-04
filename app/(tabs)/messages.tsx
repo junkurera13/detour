@@ -1,11 +1,10 @@
 import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { mockHelpRequests } from '@/data/mockData';
 
 const categories = [
   { id: 'all', label: 'all' },
@@ -32,21 +31,9 @@ export default function HelpScreen() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
 
-  const realRequests = useQuery(api.helpRequests.listOpen, {
+  const requests = useQuery(api.helpRequests.listOpen, {
     category: selectedCategory === 'all' ? undefined : selectedCategory,
   });
-
-  // Use real data if available, otherwise fall back to mock data
-  const requests = useMemo(() => {
-    if (realRequests === undefined) return undefined; // Still loading
-    if (realRequests && realRequests.length > 0) return realRequests;
-
-    // Filter mock data by category if needed
-    const filtered = selectedCategory === 'all'
-      ? mockHelpRequests
-      : mockHelpRequests.filter(r => r.category === selectedCategory);
-    return filtered;
-  }, [realRequests, selectedCategory]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -66,13 +53,27 @@ export default function HelpScreen() {
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       {/* Header */}
       <View className="px-6 pt-4 pb-4 flex-row items-center justify-between">
-        <Text
-          className="text-5xl text-black"
-          style={{ fontFamily: 'InstrumentSerif_400Regular' }}
-        >
-          help
-        </Text>
+        <View className="flex-row items-center">
+          <Text
+            className="text-5xl text-black"
+            style={{ fontFamily: 'InstrumentSerif_400Regular' }}
+          >
+            help
+          </Text>
+          <Text
+            className="text-black text-xs ml-2"
+            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+          >
+            beta
+          </Text>
+        </View>
         <View className="flex-row items-center gap-2">
+          <TouchableOpacity
+            onPress={() => router.push('/help/chats' as any)}
+            className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
+          >
+            <Ionicons name="chatbubbles-outline" size={20} color="#000" />
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/help/my-requests' as any)}
             className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
@@ -180,16 +181,12 @@ export default function HelpScreen() {
                     )}
                   </View>
                 </View>
-                {request.isUrgent && (
-                  <View className="bg-red-100 px-2 py-1 rounded-full">
-                    <Text
-                      className="text-red-600 text-xs"
-                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                    >
-                      urgent
-                    </Text>
-                  </View>
-                )}
+                <Text
+                  className="text-gray-400 text-sm"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  {formatTime(request.createdAt)}
+                </Text>
               </View>
 
               {/* Title */}
@@ -220,22 +217,26 @@ export default function HelpScreen() {
                       {request.category}
                     </Text>
                   </View>
-                  <View className="flex-row items-center">
-                    <MaterialCommunityIcons name="hand-wave-outline" size={16} color="#9CA3AF" />
-                    <Text
-                      className="text-gray-500 text-sm ml-1"
-                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                    >
-                      {request.offerCount} {request.offerCount === 1 ? 'offer' : 'offers'}
-                    </Text>
-                  </View>
+                  {request.isUrgent && (
+                    <View className="bg-red-100 px-3 py-1 rounded-full mr-2">
+                      <Text
+                        className="text-red-600"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        urgent
+                      </Text>
+                    </View>
+                  )}
                 </View>
-                <Text
-                  className="text-gray-400 text-sm"
-                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                >
-                  {formatTime(request.createdAt)}
-                </Text>
+                <View className="flex-row items-center">
+                  <MaterialCommunityIcons name="hand-wave-outline" size={16} color="#9CA3AF" />
+                  <Text
+                    className="text-gray-500 text-sm ml-1"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    {request.offerCount} {request.offerCount === 1 ? 'offer' : 'offers'}
+                  </Text>
+                </View>
               </View>
             </TouchableOpacity>
           ))}

@@ -4,11 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useClerk } from '@clerk/clerk-expo';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
 import { useRouter } from 'expo-router';
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { mockProfileViewers, mockMatches } from '@/data/mockData';
+import { mockProfileViewers } from '@/data/mockData';
 import { useRevenueCat } from '@/context/RevenueCatContext';
 
 const lifestyleLabels: Record<string, string> = {
@@ -53,6 +51,9 @@ const interestLabels: Record<string, { label: string; emoji: string }> = {
   'food': { label: 'food', emoji: '🍜' },
 };
 
+const builderSkillChips = ['repairs', 'electrical', 'build', 'plumbing'];
+const builderFocusTags = ['van systems', 'solar', 'water', 'woodwork'];
+
 const settingsItems = [
   { id: 'edit', label: 'edit profile', icon: 'create-outline' },
   { id: 'settings', label: 'settings', icon: 'settings-outline' },
@@ -78,12 +79,6 @@ export default function ProfileScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const slideAnim = useRef(new Animated.Value(400)).current;
 
-  // Fetch match count for stats
-  const matchesData = useQuery(
-    api.matches.getByUser,
-    user?._id ? { userId: user._id } : "skip"
-  );
-
   // Use Convex user data if available, fallback to onboarding data
   const profileData = useMemo(() => {
     if (user) {
@@ -107,9 +102,6 @@ export default function ProfileScreen() {
       interests: onboardingData.interests,
     };
   }, [user, onboardingData]);
-
-  // Use real match count if available, otherwise use mock data count
-  const matchCount = (matchesData && matchesData.length > 0) ? matchesData.length : mockMatches.length;
 
   useEffect(() => {
     if (menuVisible) {
@@ -270,114 +262,89 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        <View className="px-6 mb-6">
-          <View className="flex-row justify-around bg-gray-50 rounded-2xl py-4">
-            <View className="items-center">
-              <Text
-                className="text-xl text-black"
-                style={{ fontFamily: 'InstrumentSans_700Bold' }}
-              >
-                {matchCount}
-              </Text>
-              <Text
-                className="text-gray-500 text-sm"
-                style={{ fontFamily: 'InstrumentSans_400Regular' }}
-              >
-                connections
-              </Text>
-            </View>
-            <View className="w-px bg-gray-200" />
-            <View className="items-center">
-              <Text
-                className="text-xl text-black"
-                style={{ fontFamily: 'InstrumentSans_700Bold' }}
-              >
-                {profileData.photos.length}
-              </Text>
-              <Text
-                className="text-gray-500 text-sm"
-                style={{ fontFamily: 'InstrumentSans_400Regular' }}
-              >
-                photos
-              </Text>
-            </View>
-            <View className="w-px bg-gray-200" />
-            <View className="items-center">
-              <Text
-                className="text-xl text-black"
-                style={{ fontFamily: 'InstrumentSans_700Bold' }}
-              >
-                {profileData.lifestyle.length}
-              </Text>
-              <Text
-                className="text-gray-500 text-sm"
-                style={{ fontFamily: 'InstrumentSans_400Regular' }}
-              >
-                lifestyles
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Help Activity Section */}
+        {/* Builder Profile Bento (Public) */}
         <View className="px-6 mb-6">
           <Text
             className="text-lg text-black mb-3"
             style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
           >
-            help activity
+            builder profile
           </Text>
-          <View className="flex-row gap-3">
-            <TouchableOpacity
-              onPress={() => router.push('/help/my-requests' as any)}
-              className="flex-1 bg-gray-50 rounded-2xl p-4 flex-row items-center"
-              activeOpacity={0.7}
-            >
-              <View className="w-10 h-10 bg-orange-100 rounded-full items-center justify-center">
-                <Ionicons name="document-text-outline" size={20} color="#fd6b03" />
-              </View>
-              <View className="ml-3 flex-1">
+          <View className="bg-gray-50 rounded-3xl p-5">
+            <View className="flex-row items-center justify-between">
+              <View>
                 <Text
-                  className="text-black"
-                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                  className="text-sm text-gray-500"
+                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
                 >
-                  my requests
+                  reputation
+                </Text>
+                <View className="flex-row items-end mt-1">
+                  <Text
+                    className="text-3xl text-black"
+                    style={{ fontFamily: 'InstrumentSans_700Bold' }}
+                  >
+                    4.9
+                  </Text>
+                  <Text
+                    className="text-gray-400 ml-1 mb-1"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    /5
+                  </Text>
+                </View>
+              </View>
+              <View className="items-end">
+                <Text
+                  className="text-sm text-gray-500"
+                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                >
+                  response time
                 </Text>
                 <Text
-                  className="text-gray-500 text-xs"
-                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                  className="text-2xl text-black mt-1"
+                  style={{ fontFamily: 'InstrumentSans_700Bold' }}
                 >
-                  help you&apos;ve asked for
+                  ~2h
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          </View>
-          <View className="flex-row gap-3 mt-3">
-            <TouchableOpacity
-              onPress={() => router.push('/help/my-offers' as any)}
-              className="flex-1 bg-gray-50 rounded-2xl p-4 flex-row items-center"
-              activeOpacity={0.7}
-            >
-              <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center">
-                <Ionicons name="hand-right-outline" size={20} color="#16a34a" />
-              </View>
-              <View className="ml-3 flex-1">
-                <Text
-                  className="text-black"
-                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                >
-                  my offers
-                </Text>
-                <Text
-                  className="text-gray-500 text-xs"
-                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                >
-                  help you&apos;ve offered
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
+            </View>
+
+            <View className="flex-row flex-wrap gap-2 mt-4">
+              {builderSkillChips.map((skill) => (
+                <View key={skill} className="bg-white px-3 py-2 rounded-full">
+                  <Text
+                    className="text-gray-700 text-xs"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    {skill}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            <View className="flex-row flex-wrap gap-2 mt-3">
+              {builderFocusTags.map((tag) => (
+                <View key={tag} className="bg-white px-3 py-2 rounded-full">
+                  <Text
+                    className="text-gray-500 text-xs"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    {tag}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            <View className="flex-row items-center mt-4">
+              <Ionicons name="shield-checkmark" size={18} color="#16a34a" />
+              <Text
+                className="text-gray-500 text-xs ml-2"
+                style={{ fontFamily: 'InstrumentSans_400Regular' }}
+              >
+                verified helper • based on help feedback
+              </Text>
+            </View>
           </View>
         </View>
 

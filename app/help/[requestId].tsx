@@ -1,13 +1,12 @@
 import { View, Text, TouchableOpacity, ScrollView, Image, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/Button';
-import { mockHelpRequests } from '@/data/mockData';
 
 const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
@@ -22,65 +21,23 @@ const formatTime = (timestamp: number) => {
   return `${days}d ago`;
 };
 
-// Mock offers for demo purposes
-const mockOffers = [
-  {
-    _id: 'offer_1',
-    price: 7500,
-    message: 'I have 5 years experience with solar setups on vans. I can diagnose the issue and fix it same day. Have all the tools needed.',
-    status: 'pending',
-    createdAt: Date.now() - 3600000,
-    offerer: {
-      name: 'Mike',
-      photos: ['https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face'],
-      currentLocation: 'canggu, bali',
-    },
-  },
-  {
-    _id: 'offer_2',
-    price: 5000,
-    message: 'Electrician by trade, been working on van conversions for 2 years. Can come check it out tomorrow morning.',
-    status: 'pending',
-    createdAt: Date.now() - 7200000,
-    offerer: {
-      name: 'Sarah',
-      photos: ['https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=500&fit=crop&crop=face'],
-      currentLocation: 'seminyak, bali',
-    },
-  },
-];
-
 export default function HelpRequestDetailScreen() {
   const router = useRouter();
   const { requestId } = useLocalSearchParams<{ requestId: string }>();
 
-  // Check if this is a mock request
-  const isMockRequest = requestId?.startsWith('help_');
-
-  // Find mock request if applicable
-  const mockRequest = useMemo(() => {
-    if (!isMockRequest) return null;
-    return mockHelpRequests.find(r => r._id === requestId) || null;
-  }, [requestId, isMockRequest]);
-
-  // Only query Convex if it's not a mock request
-  const convexRequest = useQuery(
+  const request = useQuery(
     api.helpRequests.getById,
-    !isMockRequest ? { id: requestId as Id<"helpRequests"> } : "skip"
+    requestId ? { id: requestId as Id<"helpRequests"> } : "skip"
   );
-  const convexOffers = useQuery(
+  const offers = useQuery(
     api.helpOffers.getByRequest,
-    !isMockRequest ? { requestId: requestId as Id<"helpRequests"> } : "skip"
+    requestId ? { requestId: requestId as Id<"helpRequests"> } : "skip"
   );
   const userOffer = useQuery(
     api.helpOffers.getUserOfferForRequest,
-    !isMockRequest ? { requestId: requestId as Id<"helpRequests"> } : "skip"
+    requestId ? { requestId: requestId as Id<"helpRequests"> } : "skip"
   );
   const currentUser = useQuery(api.users.getCurrentUser);
-
-  // Use mock or real data
-  const request = isMockRequest ? mockRequest : convexRequest;
-  const offers = isMockRequest ? mockOffers : convexOffers;
 
   const createOffer = useMutation(api.helpOffers.create);
   const acceptOffer = useMutation(api.helpRequests.acceptOffer);
@@ -93,9 +50,8 @@ export default function HelpRequestDetailScreen() {
   const [offerMessage, setOfferMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // For mock data, user is never the author (so they can see the "make offer" flow)
-  const isAuthor = isMockRequest ? false : currentUser?._id === (request as any)?.authorId;
-  const hasExistingOffer = isMockRequest ? false : !!userOffer;
+  const isAuthor = currentUser?._id === request?.authorId;
+  const hasExistingOffer = !!userOffer;
 
   const handleSubmitOffer = async () => {
     if (!offerPrice || !offerMessage.trim() || isSubmitting) return;
@@ -108,17 +64,11 @@ export default function HelpRequestDetailScreen() {
 
     setIsSubmitting(true);
     try {
-      if (isMockRequest) {
-        // Simulate success for mock data
-        await new Promise(resolve => setTimeout(resolve, 500));
-        Alert.alert('Offer submitted!', 'Your offer has been sent to the requester.');
-      } else {
-        await createOffer({
-          requestId: requestId as Id<"helpRequests">,
-          price: priceInCents,
-          message: offerMessage.trim(),
-        });
-      }
+      await createOffer({
+        requestId: requestId as Id<"helpRequests">,
+        price: priceInCents,
+        message: offerMessage.trim(),
+      });
       setShowOfferModal(false);
       setOfferPrice('');
       setOfferMessage('');
@@ -280,14 +230,16 @@ export default function HelpRequestDetailScreen() {
         </View>
 
         {/* Description */}
-        <View className="px-6 py-4">
-          <Text
-            className="text-black leading-6"
-            style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 16 }}
-          >
-            {request.description}
-          </Text>
-        </View>
+        {request.description ? (
+          <View className="px-6 py-4">
+            <Text
+              className="text-black leading-6"
+              style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 16 }}
+            >
+              {request.description}
+            </Text>
+          </View>
+        ) : null}
 
         {/* Photos */}
         {request.photos && request.photos.length > 0 && (

@@ -7,7 +7,6 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
 const statusTabs = [
-  { id: 'all', label: 'all' },
   { id: 'pending', label: 'pending' },
   { id: 'accepted', label: 'accepted' },
   { id: 'rejected', label: 'rejected' },
@@ -26,27 +25,12 @@ const formatTime = (timestamp: number) => {
   return `${days}d ago`;
 };
 
-const getOfferStatusColor = (status: string) => {
-  switch (status) {
-    case 'pending':
-      return { bg: 'bg-yellow-100', text: 'text-yellow-700' };
-    case 'accepted':
-      return { bg: 'bg-green-100', text: 'text-green-700' };
-    case 'rejected':
-      return { bg: 'bg-red-100', text: 'text-red-700' };
-    case 'withdrawn':
-      return { bg: 'bg-gray-100', text: 'text-gray-700' };
-    default:
-      return { bg: 'bg-gray-100', text: 'text-gray-700' };
-  }
-};
-
 export default function MyOffersScreen() {
   const router = useRouter();
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('pending');
 
   const offers = useQuery(api.helpOffers.getMyOffers, {
-    status: selectedStatus === 'all' ? undefined : selectedStatus,
+    status: selectedStatus,
   });
 
   const handleOfferPress = (requestId: string) => {
@@ -113,9 +97,7 @@ export default function MyOffersScreen() {
             className="text-gray-500 text-center"
             style={{ fontFamily: 'InstrumentSans_400Regular' }}
           >
-            {selectedStatus === 'all'
-              ? "you haven't made any offers yet"
-              : `no ${selectedStatus} offers`}
+            {`no ${selectedStatus} offers`}
           </Text>
         </View>
       ) : (
@@ -124,34 +106,13 @@ export default function MyOffersScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
         >
-          {offers.map((offer) => {
-            const statusStyle = getOfferStatusColor(offer.status);
-            return (
+          {offers.map((offer) => (
               <TouchableOpacity
                 key={offer._id}
                 onPress={() => offer.request && handleOfferPress(offer.request._id)}
-                className="mx-6 mb-4 p-4 bg-gray-50 rounded-2xl"
+                className="mx-6 mb-4 p-5 bg-gray-50 rounded-2xl"
                 activeOpacity={0.7}
               >
-                <View className="flex-row items-center justify-between mb-2">
-                  <View className={`px-2 py-1 rounded-full ${statusStyle.bg}`}>
-                    <Text
-                      className={`text-xs ${statusStyle.text}`}
-                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                    >
-                      {offer.status}
-                    </Text>
-                  </View>
-                  <View className="bg-green-100 px-3 py-1 rounded-full">
-                    <Text
-                      className="text-green-700"
-                      style={{ fontFamily: 'InstrumentSans_700Bold' }}
-                    >
-                      {formatPrice(offer.price)}
-                    </Text>
-                  </View>
-                </View>
-
                 {offer.request && (
                   <>
                     <Text
@@ -192,15 +153,24 @@ export default function MyOffersScreen() {
                   {offer.message}
                 </Text>
 
-                <Text
-                  className="text-gray-400 text-sm"
-                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                >
-                  offered {formatTime(offer.createdAt)}
-                </Text>
+                <View className="flex-row items-center justify-between">
+                  <Text
+                    className="text-gray-400 text-sm"
+                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                  >
+                    offered {formatTime(offer.createdAt)}
+                  </Text>
+                  <View className="bg-green-100 px-3 py-1 rounded-full">
+                    <Text
+                      className="text-green-700"
+                      style={{ fontFamily: 'InstrumentSans_700Bold' }}
+                    >
+                      {formatPrice(offer.price)}
+                    </Text>
+                  </View>
+                </View>
               </TouchableOpacity>
-            );
-          })}
+          ))}
         </ScrollView>
       )}
     </SafeAreaView>

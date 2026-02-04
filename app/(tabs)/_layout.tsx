@@ -9,8 +9,8 @@ export default function TabLayout() {
   const { data } = useOnboarding();
   const profilePhoto = data.photos[0];
   const insets = useSafeAreaInsets();
-  const tabBarHeight = 72 + insets.bottom;
-  const tabBarPaddingBottom = Math.max(insets.bottom, 16);
+  const tabBarHeight = 62 + insets.bottom;
+  const tabBarPaddingBottom = Math.max(insets.bottom, 12);
   return (
     <Tabs
       screenOptions={{
@@ -22,10 +22,10 @@ export default function TabLayout() {
           borderTopWidth: 0,
           height: tabBarHeight,
           paddingBottom: tabBarPaddingBottom,
-          paddingTop: 10,
+          paddingTop: 4,
         },
         tabBarIconStyle: {
-          marginTop: 6,
+          marginTop: 16,
         },
         tabBarShowLabel: false,
       }}
