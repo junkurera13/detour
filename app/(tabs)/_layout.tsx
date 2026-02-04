@@ -1,12 +1,16 @@
 import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { View, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOnboarding } from '@/context/OnboardingContext';
 import * as Haptics from 'expo-haptics';
 
 export default function TabLayout() {
   const { data } = useOnboarding();
   const profilePhoto = data.photos[0];
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = 72 + insets.bottom;
+  const tabBarPaddingBottom = Math.max(insets.bottom, 16);
   return (
     <Tabs
       screenOptions={{
@@ -16,8 +20,12 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 0,
-          height: 85,
-          paddingBottom: 28,
+          height: tabBarHeight,
+          paddingBottom: tabBarPaddingBottom,
+          paddingTop: 10,
+        },
+        tabBarIconStyle: {
+          marginTop: 2,
         },
         tabBarShowLabel: false,
       }}

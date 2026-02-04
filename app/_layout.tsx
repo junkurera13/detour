@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { ClerkProvider, ClerkLoaded, useAuth } from '@clerk/clerk-expo';
 import { ConvexReactClient } from 'convex/react';
 import { ConvexProviderWithClerk } from 'convex/react-clerk';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { tokenCache } from '@/lib/tokenCache';
 import {
   useFonts,
@@ -56,44 +57,46 @@ export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
       <ClerkLoaded>
-        <RevenueCatProvider>
-          <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-            <NotificationsProvider>
-              <OnboardingProvider>
-                <ErrorBoundary>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: '#fff' },
-                  animation: 'fade',
-                }}
-              >
-                <Stack.Screen name="index" />
-                <Stack.Screen
-                  name="onboarding"
-                  options={{
-                    gestureEnabled: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="(tabs)"
-                  options={{
-                    gestureEnabled: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="pending"
-                  options={{
-                    gestureEnabled: false,
-                  }}
-                />
-              </Stack>
-              <StatusBar style="dark" />
-                </ErrorBoundary>
-              </OnboardingProvider>
-            </NotificationsProvider>
-          </ConvexProviderWithClerk>
-        </RevenueCatProvider>
+        <SafeAreaProvider>
+          <RevenueCatProvider>
+            <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+              <NotificationsProvider>
+                <OnboardingProvider>
+                  <ErrorBoundary>
+                    <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: '#fff' },
+                        animation: 'fade',
+                      }}
+                    >
+                      <Stack.Screen name="index" />
+                      <Stack.Screen
+                        name="onboarding"
+                        options={{
+                          gestureEnabled: false,
+                        }}
+                      />
+                      <Stack.Screen
+                        name="(tabs)"
+                        options={{
+                          gestureEnabled: false,
+                        }}
+                      />
+                      <Stack.Screen
+                        name="pending"
+                        options={{
+                          gestureEnabled: false,
+                        }}
+                      />
+                    </Stack>
+                    <StatusBar style="dark" />
+                  </ErrorBoundary>
+                </OnboardingProvider>
+              </NotificationsProvider>
+            </ConvexProviderWithClerk>
+          </RevenueCatProvider>
+        </SafeAreaProvider>
       </ClerkLoaded>
     </ClerkProvider>
   );
