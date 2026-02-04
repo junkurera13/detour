@@ -9,6 +9,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { api } from '@/convex/_generated/api';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { DETOUR_PLUS_ENTITLEMENT, useRevenueCat } from '@/context/RevenueCatContext';
+import { usePhotoUpload } from '@/hooks/usePhotoUpload';
 
 const timelineSteps = [
   {
@@ -61,6 +62,13 @@ export default function PaywallScreen() {
     isLoading: isRevenueCatLoading,
   } = useRevenueCat();
 
+  const {
+    uploadPhotos,
+    isUploading,
+    progress: uploadProgress,
+    error: uploadError,
+  } = usePhotoUpload();
+
   const createUser = useMutation(api.users.create);
   const useInviteCode = useMutation(api.inviteCodes.use);
 
@@ -106,6 +114,27 @@ export default function PaywallScreen() {
     try {
       const userStatus = data.joinPath === 'invite' ? 'approved' : 'pending';
 
+      // Upload photos to Convex storage first
+      let photoUrls = data.photos;
+      if (data.photos.length > 0) {
+        const hasLocalPhotos = data.photos.some(
+          (p) => p.startsWith('file://') || p.startsWith('ph://')
+        );
+        if (hasLocalPhotos) {
+          try {
+            photoUrls = await uploadPhotos(data.photos);
+          } catch (uploadErr) {
+            console.error('Photo upload failed:', uploadErr);
+            Alert.alert(
+              'Photo Upload Failed',
+              'Failed to upload your photos. Please try again.',
+              [{ text: 'OK' }]
+            );
+            return;
+          }
+        }
+      }
+
       // Create user in Convex (tokenIdentifier is captured automatically from Clerk via ctx.auth)
       const userId = await createUser({
         name: data.name,
@@ -117,7 +146,7 @@ export default function PaywallScreen() {
         lifestyle: data.lifestyle,
         timeNomadic: data.timeNomadic,
         interests: data.interests,
-        photos: data.photos,
+        photos: photoUrls,
         instagram: data.instagram || undefined,
         currentLocation: data.currentLocation,
         futureTrip: data.futureTrip || undefined,
@@ -190,7 +219,7 @@ export default function PaywallScreen() {
   };
 
   const handleRestore = async () => {
-    if (isProcessing) return;
+    if (isProcessing || isUploading) return;
     setIsProcessing(true);
     try {
       const info = await restorePurchases();
@@ -205,7 +234,7 @@ export default function PaywallScreen() {
   };
 
   const handleClose = async () => {
-    if (isProcessing) return;
+    if (isProcessing || isUploading) return;
     setIsProcessing(true);
     try {
       await createUserInternal();
@@ -328,9 +357,9 @@ export default function PaywallScreen() {
 
         <TouchableOpacity
           onPress={handleStartTrial}
-          disabled={isProcessing || isRevenueCatLoading || !yearlyPackage}
+          disabled={isProcessing || isRevenueCatLoading || isUploading || !yearlyPackage}
           style={{
-            backgroundColor: isProcessing ? '#fca560' : '#fd6b03',
+            backgroundColor: isProcessing || isUploading ? '#fca560' : '#fd6b03',
             paddingVertical: 16,
             borderRadius: 16,
             alignItems: 'center',
@@ -377,6 +406,79 @@ export default function PaywallScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Upload Progress Overlay */}
+      {isUploading && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: 'white',
+              borderRadius: 16,
+              padding: 24,
+              marginHorizontal: 24,
+              width: '80%',
+              alignItems: 'center',
+            }}
+          >
+            <ActivityIndicator size="large" color="#fd6b03" />
+            <Text
+              style={{
+                fontFamily: 'InstrumentSans_600SemiBold',
+                fontSize: 18,
+                color: '#000',
+                marginTop: 16,
+                textAlign: 'center',
+              }}
+            >
+              uploading photos...
+            </Text>
+            {uploadProgress && (
+              <>
+                <Text
+                  style={{
+                    fontFamily: 'InstrumentSans_400Regular',
+                    fontSize: 14,
+                    color: '#6B7280',
+                    marginTop: 8,
+                    textAlign: 'center',
+                  }}
+                >
+                  {uploadProgress.current} of {uploadProgress.total}
+                </Text>
+                <View
+                  style={{
+                    marginTop: 16,
+                    height: 8,
+                    backgroundColor: '#E5E7EB',
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                    width: '100%',
+                  }}
+                >
+                  <View
+                    style={{
+                      height: '100%',
+                      backgroundColor: '#fd6b03',
+                      width: `${uploadProgress.percentage}%`,
+                    }}
+                  />
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

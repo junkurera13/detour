@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Detour is a React Native/Expo dating app for digital nomads. Currently a high-fidelity UI prototype (no backend integration).
+Detour is a React Native/Expo dating app for digital nomads. Functional MVP with Convex backend, Clerk auth, and RevenueCat payments.
 
 ## Development Commands
 
@@ -20,6 +20,9 @@ npm run lint       # Run ESLint
 
 - **Framework**: React Native with Expo SDK 54
 - **Routing**: expo-router (file-based routing)
+- **Backend**: Convex (real-time database + serverless functions + file storage)
+- **Auth**: Clerk (phone, Google, Apple sign-in)
+- **Payments**: RevenueCat (subscriptions)
 - **Styling**: NativeWind (Tailwind CSS for React Native)
 - **State**: React Context API
 - **Language**: TypeScript (strict mode enabled)
@@ -32,10 +35,14 @@ npm run lint       # Run ESLint
 - `app/` - File-based routes (expo-router)
   - `onboarding/` - 13-step onboarding flow (auth, profile setup, paywall)
   - `(tabs)/` - Main app with 5 tabs (Nearby, Explore, Matches, Messages, Profile)
+  - `chat/` - Chat screens for messaging
+- `convex/` - Convex backend (schema, mutations, queries)
+  - `schema.ts` - Database schema (users, matches, messages, swipes, inviteCodes)
+  - `files.ts` - File storage mutations for photo uploads
 - `components/` - Reusable components
   - `ui/` - UI primitives (Button, Input, SelectionChip, OnboardingLayout, ProgressBar)
-- `context/` - React Context providers (OnboardingContext)
-- `hooks/` - Custom React hooks
+- `context/` - React Context providers (OnboardingContext, RevenueCatContext)
+- `hooks/` - Custom React hooks (usePhotoUpload, useCurrentUser, etc.)
 - `constants/` - Theme colors and fonts
 - `assets/images/` - Icons and brand assets
 
@@ -106,9 +113,18 @@ Files with extensions `.ios.ts`, `.android.ts`, `.web.ts` are loaded based on pl
 
 ## Current State
 
-This is a UI prototype with mock data. See `ROADMAP.md` for production requirements including:
-- Backend API integration (not started)
-- Authentication system (UI only, no implementation)
-- Data persistence (none - data lost on restart)
-- Testing (0 test files)
-- Payment processing (UI only)
+Functional MVP (7/10) with backend fully integrated. See `ROADMAP.md` for full details.
+
+**Implemented:**
+- Convex backend (users, matches, messages, swipes, inviteCodes)
+- Clerk authentication (phone, Google, Apple sign-in)
+- RevenueCat subscriptions (SDK integrated, needs store products)
+- Photo cloud upload (Convex File Storage)
+- Real-time messaging
+- Discovery and swiping
+
+**Remaining for production:**
+- Push notifications
+- App Store / Play Store products for RevenueCat
+- Error monitoring (Sentry)
+- Testing suite

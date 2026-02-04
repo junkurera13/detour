@@ -8,6 +8,11 @@ Thanks for helping improve Detour. This guide keeps changes consistent and revie
 3. Run `npm run lint` and `npm run test` before opening a PR.
 4. Open a PR with a clear summary and screenshots for UI changes.
 
+**Branch protection (recommended)**
+- Require `CI` to pass before merging.
+- Require at least 1 approving review.
+- Require branches to be up to date before merge.
+
 **Code style**
 - Prefer TypeScript types for props and utilities.
 - Keep components small and composable.

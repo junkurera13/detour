@@ -136,7 +136,7 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
 |---------|--------|--------|
 | User Authentication | ✅ Complete | Clerk auth with phone, Google, Apple |
 | Real Messaging UI | ✅ Complete | Chat screen with real-time Convex integration |
-| Photo Cloud Upload | Not started | Photos stored as local URIs currently |
+| Photo Cloud Upload | ✅ Complete | Convex File Storage with progress UI |
 | Payment Processing | 🟡 In Progress | RevenueCat SDK integrated, needs store products |
 | Push Notifications | Not started | Engagement critical |
 | Test Suite | Not started | High risk for changes |
@@ -201,10 +201,10 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
   - InviteCodes table (code management, usage tracking)
   - Indexes for efficient queries (by_username, by_email, by_location, etc.)
 
-- [ ] **2.4 Set up CI/CD pipeline**
+- [x] **2.4 Set up CI/CD pipeline** ✅ COMPLETE
   - GitHub Actions for linting and tests
   - Automated build verification
-  - Branch protection rules
+  - Branch protection rules (recommended in CONTRIBUTING.md)
 
 #### Week 3: Authentication System
 
@@ -244,11 +244,12 @@ Detour is a React Native/Expo dating app targeting digital nomads. The current c
   - Fetch profile endpoint
   - Delete profile endpoint
 
-- [ ] **4.2 Photo upload system**
-  - Cloud storage integration (S3/Firebase Storage)
-  - Image compression and optimization
-  - Upload progress indicators
-  - Photo reordering capability
+- [x] **4.2 Photo upload system** ✅ COMPLETE
+  - Convex File Storage integration (`convex/files.ts`)
+  - Image compression via expo-image-picker (quality: 0.8)
+  - Upload progress indicators with modal overlay
+  - `usePhotoUpload` hook with retry logic (3 attempts, exponential backoff)
+  - ⚠️ Photo reordering (not implemented - future enhancement)
 
 - [ ] **4.3 Profile completion flow**
   - Save onboarding data to backend
@@ -691,12 +692,27 @@ The roadmap prioritizes getting a minimum viable product (MVP) live, then iterat
 
 ---
 
-*Last updated: February 3, 2026*
-*Document version: 1.5*
+*Last updated: February 4, 2026*
+*Document version: 1.6*
 
 ---
 
 ## Changelog
+
+### v1.6 (February 4, 2026)
+- **Photo Cloud Upload complete**
+  - Created `convex/files.ts` with Convex File Storage mutations
+  - `generateUploadUrl` - creates signed upload URLs (auth required)
+  - `getUrl` - converts storage IDs to public URLs
+  - Created `hooks/usePhotoUpload.ts` - reusable upload hook
+  - Sequential upload with progress tracking (current/total/percentage)
+  - Automatic retry logic (3 attempts with exponential backoff)
+  - Skips already-uploaded URLs for retry scenarios
+  - Modified `app/onboarding/paywall.tsx` to upload photos before user creation
+  - Added upload progress modal overlay with progress bar
+  - Photos now stored as Convex storage URLs instead of local URIs
+- Updated Week 4 task 4.2 (Photo upload system) to complete
+- Updated Remaining Work table
 
 ### v1.5 (February 3, 2026)
 - **Messaging UI marked as complete**
