@@ -37,6 +37,9 @@ export default defineSchema({
     inviteCode: v.optional(v.string()),
     userStatus: v.string(), // "pending", "approved", "rejected"
 
+    // Push Notifications
+    expoPushToken: v.optional(v.string()),
+
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),

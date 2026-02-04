@@ -45,6 +45,7 @@ npm run lint       # Run ESLint
 - `hooks/` - Custom React hooks (usePhotoUpload, useCurrentUser, etc.)
 - `constants/` - Theme colors and fonts
 - `assets/images/` - Icons and brand assets
+- `docs/` - Project documentation (architecture, API, deployment, setup guides)
 
 ### Routing Pattern
 

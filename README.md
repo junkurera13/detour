@@ -1,76 +1,207 @@
 # Detour
 
-Detour is a React Native (Expo) dating app for digital nomads. This repo contains the mobile client, built with Expo Router, Clerk auth, Convex backend, and RevenueCat for subscriptions.
+A React Native dating app for digital nomads, built with Expo.
 
-**Stack**
-- Expo SDK 54 + React Native
-- Expo Router
-- Clerk Authentication
-- Convex (DB + functions)
-- RevenueCat subscriptions
-- NativeWind styling
+## Overview
 
-**Requirements**
+Detour helps digital nomads connect with like-minded travelers. Features include:
+- Profile discovery based on location
+- Real-time messaging
+- Match notifications
+- Subscription-based premium features
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Mobile** | React Native + Expo SDK 54 |
+| **Routing** | Expo Router (file-based) |
+| **Backend** | Convex (DB + functions + file storage) |
+| **Auth** | Clerk (phone, Google, Apple) |
+| **Payments** | RevenueCat (subscriptions) |
+| **Notifications** | Expo Notifications |
+| **Styling** | NativeWind (Tailwind CSS) |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Mobile App (Expo)                       │
+├─────────────────────────────────────────────────────────────┤
+│  Screens (app/)  │  Contexts  │  Hooks  │  Components      │
+└────────┬─────────┴─────┬──────┴────┬────┴────────┬─────────┘
+         │               │           │             │
+         ▼               ▼           ▼             ▼
+    ┌─────────┐    ┌─────────┐  ┌─────────┐  ┌──────────┐
+    │  Clerk  │    │ Convex  │  │RevenueCat│ │Expo Push │
+    │  (Auth) │    │(Backend)│  │(Payments)│ │(Notifs)  │
+    └─────────┘    └─────────┘  └─────────┘  └──────────┘
+```
+
+**Data Flow:**
+1. User authenticates via Clerk → JWT token issued
+2. Token validated by Convex → User data loaded
+3. User actions (swipe, message) → Convex mutations
+4. Matches/messages → Trigger push notifications
+5. Subscription status → RevenueCat entitlements
+
+See [docs/architecture.md](docs/architecture.md) for detailed diagrams.
+
+## Quick Start
+
+### Prerequisites
+
 - Node.js 18+
 - npm 9+
 - Xcode (iOS) or Android Studio (Android)
+- Physical device for push notifications
 
-**Setup**
-1. Install dependencies
+### Setup
 
+1. **Install dependencies**
    ```bash
    npm install
    ```
 
-2. Create local env file
-
+2. **Create environment file**
    ```bash
    cp .env.example .env.local
    ```
 
-3. Fill in env variables (see `.env.example`)
+3. **Configure environment variables** (see below)
 
-4. Start the app
+4. **Start Convex backend**
+   ```bash
+   npx convex dev
+   ```
 
+5. **Start Expo**
    ```bash
    npx expo start
    ```
 
-**Environment variables**
-Set these in `.env.local` (local) or EAS secrets (cloud builds):
-- `EXPO_PUBLIC_APP_ENV`
-- `EXPO_PUBLIC_CONVEX_URL`
-- `EXPO_PUBLIC_CONVEX_SITE_URL`
-- `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
-- `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`
-- `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`
+### Environment Variables
 
-**Development builds**
-RevenueCat requires a development build to test purchases. Expo Go runs the SDK in Preview API mode.
+Create `.env.local` with:
 
-**Scripts**
-- `npm run start` Start Expo dev server
-- `npm run ios` Run on iOS simulator
-- `npm run android` Run on Android emulator
-- `npm run web` Run on web
-- `npm run lint` Lint the project
-- `npm run test` Run Jest tests
-- `npm run test:watch` Watch tests
-- `npm run test:coverage` Coverage report
+```bash
+# Convex
+CONVEX_DEPLOYMENT=dev:your-project
+EXPO_PUBLIC_CONVEX_URL=https://your-project.convex.cloud
 
-**Folder structure**
-- `app/` Expo Router screens
-- `components/` Shared UI and utilities
-- `context/` App providers
-- `hooks/` Custom hooks
-- `convex/` Backend schema and functions
-- `lib/` Shared helpers (env, logging)
+# Clerk
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxx
 
-**RevenueCat setup**
-- Create products: `monthly`, `yearly`
-- Create entitlement: `detour_plus`
-- Create a default offering that includes both packages
-- Configure App Store / Play Console products and connect them in RevenueCat
+# RevenueCat
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY=appl_xxx
+EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY=goog_xxx
 
-**Contributing**
-See `CONTRIBUTING.md` for branch, commit, and PR guidelines.
+# App
+EXPO_PUBLIC_APP_ENV=development
+```
+
+## Project Structure
+
+```
+detour/
+├── app/                    # Expo Router screens
+│   ├── (tabs)/            # Main app tabs
+│   ├── onboarding/        # Onboarding flow
+│   ├── chat/              # Chat screens
+│   └── _layout.tsx        # Root layout
+├── convex/                 # Backend
+│   ├── schema.ts          # Database schema
+│   ├── users.ts           # User functions
+│   ├── matches.ts         # Match functions
+│   ├── messages.ts        # Message functions
+│   ├── swipes.ts          # Swipe + match creation
+│   ├── files.ts           # File storage
+│   └── notifications.ts   # Push notifications
+├── components/             # UI components
+├── context/               # React contexts
+├── hooks/                 # Custom hooks
+├── lib/                   # Utilities
+└── docs/                  # Documentation
+```
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm start` | Start Expo dev server |
+| `npm run ios` | Run on iOS simulator |
+| `npm run android` | Run on Android emulator |
+| `npm run lint` | Lint code |
+| `npm run typecheck` | Type check |
+| `npm run test` | Run tests |
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](docs/architecture.md) | System design & data flow |
+| [API Reference](docs/api.md) | Convex function documentation |
+| [Deployment](docs/deployment.md) | Build & release guide |
+| **Setup Guides** | |
+| [Clerk Setup](docs/setup/clerk.md) | Authentication configuration |
+| [Convex Setup](docs/setup/convex.md) | Backend configuration |
+| [RevenueCat Setup](docs/setup/revenuecat.md) | Payments configuration |
+| [Push Notifications](docs/setup/push-notifications.md) | Notification setup |
+| [Troubleshooting](docs/troubleshooting.md) | Common issues & solutions |
+
+## Key Features
+
+### Authentication
+- Phone (SMS verification)
+- Google OAuth
+- Apple Sign-In
+- Secure token storage
+
+### Discovery
+- Location-based profiles
+- Swipe to like/pass
+- Automatic match detection
+
+### Messaging
+- Real-time chat
+- Read receipts
+- Message previews
+
+### Notifications
+- Match alerts
+- Message notifications
+- Deep linking to chat
+
+### Subscriptions
+- Free trial support
+- Monthly/yearly plans
+- Restore purchases
+
+## Development
+
+### RevenueCat Testing
+
+RevenueCat requires a development build for purchase testing:
+
+```bash
+eas build --profile development --platform ios
+```
+
+Use sandbox/test accounts for purchases.
+
+### Push Notification Testing
+
+Push notifications require:
+1. Physical device (not simulator)
+2. EAS project configured
+3. APNs key (iOS) / FCM (Android) for production
+
+Test with [Expo Push Tool](https://expo.dev/notifications).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+Proprietary - All rights reserved.

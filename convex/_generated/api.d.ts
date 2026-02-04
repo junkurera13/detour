@@ -12,6 +12,7 @@ import type * as files from "../files.js";
 import type * as inviteCodes from "../inviteCodes.js";
 import type * as matches from "../matches.js";
 import type * as messages from "../messages.js";
+import type * as notifications from "../notifications.js";
 import type * as seed from "../seed.js";
 import type * as swipes from "../swipes.js";
 import type * as users from "../users.js";
@@ -27,6 +28,7 @@ declare const fullApi: ApiFromModules<{
   inviteCodes: typeof inviteCodes;
   matches: typeof matches;
   messages: typeof messages;
+  notifications: typeof notifications;
   seed: typeof seed;
   swipes: typeof swipes;
   users: typeof users;

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 
 // Get the current authenticated user by their Clerk token
 export const getCurrentUser = query({
@@ -217,5 +217,44 @@ export const checkUsernameAvailable = query({
       .withIndex("by_username", (q) => q.eq("username", args.username))
       .first();
     return !existing;
+  },
+});
+
+// Save push notification token for authenticated user
+export const savePushToken = mutation({
+  args: {
+    expoPushToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .first();
+
+    if (!user) {
+      // User may not be created yet during onboarding
+      console.log("User not found for push token save, will save later");
+      return { success: false, error: "User not found" };
+    }
+
+    await ctx.db.patch(user._id, {
+      expoPushToken: args.expoPushToken,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// Internal query to get user by ID (for notifications)
+export const getByIdInternal = internalQuery({
+  args: { id: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
   },
 });

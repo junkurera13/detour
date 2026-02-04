@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 export const create = mutation({
   args: {
@@ -49,6 +50,26 @@ export const create = mutation({
           matchedAt: Date.now(),
           createdAt: Date.now(),
         });
+
+        // Send push notifications to both users
+        const swiper = await ctx.db.get(args.swiperId);
+        const swiped = await ctx.db.get(args.swipedId);
+
+        if (swiper && swiped) {
+          // Notify the swiped user
+          await ctx.scheduler.runAfter(0, internal.notifications.sendMatchNotification, {
+            recipientId: args.swipedId,
+            matcherName: swiper.name,
+            matchId,
+          });
+
+          // Notify the swiper
+          await ctx.scheduler.runAfter(0, internal.notifications.sendMatchNotification, {
+            recipientId: args.swiperId,
+            matcherName: swiped.name,
+            matchId,
+          });
+        }
 
         return { success: true, isMatch: true, matchId };
       }

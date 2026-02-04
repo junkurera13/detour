@@ -20,6 +20,7 @@ import {
 } from '@expo-google-fonts/instrument-serif';
 import { OnboardingProvider } from '@/context/OnboardingContext';
 import { RevenueCatProvider } from '@/context/RevenueCatContext';
+import { NotificationsProvider } from '@/context/NotificationsContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { env } from '@/lib/env';
 
@@ -57,8 +58,9 @@ export default function RootLayout() {
       <ClerkLoaded>
         <RevenueCatProvider>
           <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-            <OnboardingProvider>
-            <ErrorBoundary>
+            <NotificationsProvider>
+              <OnboardingProvider>
+                <ErrorBoundary>
               <Stack
                 screenOptions={{
                   headerShown: false,
@@ -87,8 +89,9 @@ export default function RootLayout() {
                 />
               </Stack>
               <StatusBar style="dark" />
-            </ErrorBoundary>
-            </OnboardingProvider>
+                </ErrorBoundary>
+              </OnboardingProvider>
+            </NotificationsProvider>
           </ConvexProviderWithClerk>
         </RevenueCatProvider>
       </ClerkLoaded>

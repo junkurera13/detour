@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 export const send = mutation({
   args: {
@@ -16,6 +17,24 @@ export const send = mutation({
       messageType: args.messageType ?? "text",
       createdAt: Date.now(),
     });
+
+    // Send push notification to recipient
+    const match = await ctx.db.get(args.matchId);
+    if (match) {
+      const recipientId =
+        match.user1Id === args.senderId ? match.user2Id : match.user1Id;
+
+      const sender = await ctx.db.get(args.senderId);
+      if (sender) {
+        await ctx.scheduler.runAfter(0, internal.notifications.sendMessageNotification, {
+          recipientId,
+          senderName: sender.name,
+          messagePreview: args.content,
+          matchId: args.matchId,
+        });
+      }
+    }
+
     return messageId;
   },
 });
