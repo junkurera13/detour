@@ -52,7 +52,7 @@ export default function DoneScreen() {
             className="text-3xl text-black text-center mb-3"
             style={{ fontFamily: 'InstrumentSans_700Bold' }}
           >
-            you're all set, {data.name.toLowerCase()}!
+            you&apos;re all set, {data.name.toLowerCase()}!
           </Text>
 
           <Text

@@ -78,7 +78,7 @@ export default function LocationScreen() {
               className="text-sm text-gray-500"
               style={{ fontFamily: 'InstrumentSans_400Regular' }}
             >
-              we'll find the nearest city
+              we&apos;ll find the nearest city
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />

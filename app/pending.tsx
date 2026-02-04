@@ -40,7 +40,7 @@ export default function PendingScreen() {
   );
 
   // Mutations
-  const useInviteCode = useMutation(api.inviteCodes.use);
+  const consumeInviteCode = useMutation(api.inviteCodes.use);
   const updateUser = useMutation(api.users.update);
 
   const isChecking = code.trim().length >= 4 && (debouncedCode !== code.trim().toUpperCase() || validation === undefined);
@@ -54,7 +54,7 @@ export default function PendingScreen() {
 
     try {
       // Use the invite code
-      await useInviteCode({ code: code.trim().toUpperCase(), userId });
+      await consumeInviteCode({ code: code.trim().toUpperCase(), userId });
 
       // Update user status to approved
       await updateUser({ id: userId, userStatus: 'approved' });
@@ -107,7 +107,7 @@ export default function PendingScreen() {
             className="text-3xl text-black text-center mb-3"
             style={{ fontFamily: 'InstrumentSans_700Bold' }}
           >
-            you're on the list{data.name ? `, ${data.name.toLowerCase()}` : ''}!
+            you&apos;re on the list{data.name ? `, ${data.name.toLowerCase()}` : ''}!
           </Text>
 
           {/* Description */}
@@ -115,8 +115,8 @@ export default function PendingScreen() {
             className="text-lg text-gray-500 text-center px-4 leading-7"
             style={{ fontFamily: 'InstrumentSans_400Regular' }}
           >
-            we're reviewing your application and will{'\n'}
-            notify you when you're approved.
+            we&apos;re reviewing your application and will{'\n'}
+            notify you when you&apos;re approved.
           </Text>
 
           {/* Position indicator (mock) */}

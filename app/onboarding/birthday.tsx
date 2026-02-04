@@ -131,7 +131,7 @@ export default function BirthdayScreen() {
               className="text-2xl mb-2"
               style={{ fontFamily: 'InstrumentSans_600SemiBold', color: '#fd6b03' }}
             >
-              you're {calculateAge(date)}
+              you&apos;re {calculateAge(date)}
             </Text>
             <Text
               className="text-base text-gray-500 mb-1"
@@ -143,7 +143,7 @@ export default function BirthdayScreen() {
               className="text-sm text-gray-500 mb-6"
               style={{ fontFamily: 'InstrumentSans_400Regular' }}
             >
-              make sure this is the right date. you won't be able to change it later.
+              make sure this is the right date. you won&apos;t be able to change it later.
             </Text>
             <View className="flex-row items-center gap-3">
               <TouchableOpacity

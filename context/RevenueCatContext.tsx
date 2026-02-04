@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import Purchases, {
   CustomerInfo,
   LOG_LEVEL,
-  Offerings,
+  PurchasesOfferings,
   PurchasesPackage,
 } from 'react-native-purchases';
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
@@ -16,10 +16,10 @@ type RevenueCatContextValue = {
   isConfigured: boolean;
   isLoading: boolean;
   customerInfo: CustomerInfo | null;
-  offerings: Offerings | null;
+  offerings: PurchasesOfferings | null;
   hasDetourPlus: boolean;
   refreshCustomerInfo: () => Promise<CustomerInfo | null>;
-  refreshOfferings: () => Promise<Offerings | null>;
+  refreshOfferings: () => Promise<PurchasesOfferings | null>;
   purchasePackage: (pkg: PurchasesPackage) => Promise<CustomerInfo | null>;
   restorePurchases: () => Promise<CustomerInfo | null>;
   presentPaywall: () => Promise<PAYWALL_RESULT>;
@@ -44,7 +44,7 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
   const [isConfigured, setIsConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
-  const [offerings, setOfferings] = useState<Offerings | null>(null);
+  const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
   const lastUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {

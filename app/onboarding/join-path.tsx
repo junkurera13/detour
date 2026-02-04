@@ -38,7 +38,7 @@ export default function JoinPathScreen() {
           className="text-lg text-gray-500 leading-7"
           style={{ fontFamily: 'InstrumentSans_400Regular' }}
         >
-          we carefully review every application to ensure our community stays authentic and filled with genuine nomads looking to connect.{'\n\n'}complete your profile and we'll let you know when you're in.
+          we carefully review every application to ensure our community stays authentic and filled with genuine nomads looking to connect.{'\n\n'}complete your profile and we&apos;ll let you know when you&apos;re in.
         </Text>
       </View>
 

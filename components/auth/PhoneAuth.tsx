@@ -209,7 +209,7 @@ export function PhoneAuth({ mode, onSuccess, onBack }: PhoneAuthProps) {
                 className="text-gray-500 text-sm"
                 style={{ fontFamily: 'InstrumentSans_400Regular' }}
               >
-                didn't receive a code?{' '}
+                didn&apos;t receive a code?{' '}
                 <Text style={{ color: '#fd6b03' }}>resend</Text>
               </Text>
             </TouchableOpacity>

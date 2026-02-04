@@ -70,7 +70,7 @@ export default function PaywallScreen() {
   } = usePhotoUpload();
 
   const createUser = useMutation(api.users.create);
-  const useInviteCode = useMutation(api.inviteCodes.use);
+  const consumeInviteCode = useMutation(api.inviteCodes.use);
 
   // Debug logging
   useEffect(() => {
@@ -157,7 +157,7 @@ export default function PaywallScreen() {
 
       // If user joined via invite code, consume it
       if (data.joinPath === 'invite' && data.inviteCode) {
-        await useInviteCode({ code: data.inviteCode, userId });
+        await consumeInviteCode({ code: data.inviteCode, userId });
       }
 
       // Update local onboarding state
@@ -187,7 +187,7 @@ export default function PaywallScreen() {
 
   const currentOffering = offerings?.current;
   const packageById = (id: string) =>
-    currentOffering?.availablePackages?.find((pkg) => pkg.identifier === id);
+    currentOffering?.availablePackages?.find((pkg: { identifier: string }) => pkg.identifier === id);
   const yearlyPackage = currentOffering?.annual ?? packageById('yearly') ?? packageById('detour_plus_yearly');
 
   const priceLabel = yearlyPackage?.product?.priceString ?? '$99.99/year';
