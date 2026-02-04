@@ -97,4 +97,34 @@ export default defineSchema({
     .index("by_swiper", ["swiperId"])
     .index("by_swiped", ["swipedId"])
     .index("by_pair", ["swiperId", "swipedId"]),
+
+  helpRequests: defineTable({
+    authorId: v.id("users"),
+    title: v.string(),
+    description: v.string(),
+    category: v.string(), // "repairs", "electrical", "build", "plumbing", "other"
+    location: v.string(),
+    isUrgent: v.boolean(),
+    status: v.string(), // "open", "in_progress", "completed", "cancelled"
+    acceptedOfferId: v.optional(v.id("helpOffers")),
+    acceptedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_author", ["authorId"])
+    .index("by_status", ["status"])
+    .index("by_category", ["category"])
+    .index("by_created", ["createdAt"]),
+
+  helpOffers: defineTable({
+    requestId: v.id("helpRequests"),
+    offererId: v.id("users"),
+    price: v.number(), // cents to avoid floating point issues
+    message: v.string(),
+    status: v.string(), // "pending", "accepted", "rejected", "withdrawn"
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_request", ["requestId"])
+    .index("by_offerer", ["offererId"]),
 });

@@ -121,7 +121,7 @@ export default function MatchesScreen() {
   }, [conversationPreviews]);
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       <View className="px-6 pt-4 pb-4">
         <Text
           className="text-5xl text-black"

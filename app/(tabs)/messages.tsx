@@ -1,62 +1,11 @@
-import { View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
-
-const helpRequests = [
-  {
-    id: '1',
-    author: 'jake',
-    authorPhoto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
-    location: 'san diego, ca',
-    title: 'sunroof leaking during rain',
-    description: 'my sprinter van sunroof started leaking last night. need someone who can reseal or replace the gasket.',
-    budget: '$150',
-    category: 'repairs',
-    urgent: true,
-    responses: 4,
-    time: '2h ago',
-  },
-  {
-    id: '2',
-    author: 'maya',
-    authorPhoto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-    location: 'portland, or',
-    title: 'solar panel installation help',
-    description: 'looking for someone experienced with solar setups to help me install 400w on my ford transit roof.',
-    budget: '$200',
-    category: 'electrical',
-    urgent: false,
-    responses: 7,
-    time: '5h ago',
-  },
-  {
-    id: '3',
-    author: 'tom',
-    authorPhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-    location: 'austin, tx',
-    title: 'diesel heater not igniting',
-    description: 'chinese diesel heater stopped working. makes clicking noise but wont start. anyone nearby who can diagnose?',
-    budget: '$100',
-    category: 'repairs',
-    urgent: true,
-    responses: 2,
-    time: '1d ago',
-  },
-  {
-    id: '4',
-    author: 'lisa',
-    authorPhoto: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400',
-    location: 'denver, co',
-    title: 'need help building bed frame',
-    description: 'have all the wood cut, just need an extra pair of hands and some guidance on the build.',
-    budget: '$75',
-    category: 'build',
-    urgent: false,
-    responses: 3,
-    time: '1d ago',
-  },
-];
+import { useState, useCallback, useMemo } from 'react';
+import { useRouter } from 'expo-router';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { mockHelpRequests } from '@/data/mockData';
 
 const categories = [
   { id: 'all', label: 'all' },
@@ -64,17 +13,58 @@ const categories = [
   { id: 'electrical', label: 'electrical' },
   { id: 'build', label: 'build' },
   { id: 'plumbing', label: 'plumbing' },
+  { id: 'other', label: 'other' },
 ];
 
-export default function MarketplaceScreen() {
-  const [selectedCategory, setSelectedCategory] = useState('all');
+const formatTime = (timestamp: number) => {
+  const diff = Date.now() - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
 
-  const filteredRequests = selectedCategory === 'all'
-    ? helpRequests
-    : helpRequests.filter(r => r.category === selectedCategory);
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
+};
+
+export default function HelpScreen() {
+  const router = useRouter();
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const realRequests = useQuery(api.helpRequests.listOpen, {
+    category: selectedCategory === 'all' ? undefined : selectedCategory,
+  });
+
+  // Use real data if available, otherwise fall back to mock data
+  const requests = useMemo(() => {
+    if (realRequests === undefined) return undefined; // Still loading
+    if (realRequests && realRequests.length > 0) return realRequests;
+
+    // Filter mock data by category if needed
+    const filtered = selectedCategory === 'all'
+      ? mockHelpRequests
+      : mockHelpRequests.filter(r => r.category === selectedCategory);
+    return filtered;
+  }, [realRequests, selectedCategory]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    // Convex will automatically refetch, just need to show spinner briefly
+    setTimeout(() => setRefreshing(false), 500);
+  }, []);
+
+  const handlePostPress = () => {
+    router.push('/help/create' as any);
+  };
+
+  const handleRequestPress = (requestId: string) => {
+    router.push(`/help/${requestId}` as any);
+  };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+      {/* Header */}
       <View className="px-6 pt-4 pb-4 flex-row items-center justify-between">
         <Text
           className="text-5xl text-black"
@@ -82,20 +72,23 @@ export default function MarketplaceScreen() {
         >
           help
         </Text>
-        <TouchableOpacity
-          className="flex-row items-center px-4 py-2 rounded-full"
-          style={{ backgroundColor: '#fd6b03' }}
-        >
-          <Ionicons name="add" size={18} color="#fff" />
-          <Text
-            className="text-white ml-1"
-            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+        <View className="flex-row items-center gap-2">
+          <TouchableOpacity
+            onPress={() => router.push('/help/my-requests' as any)}
+            className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
           >
-            post
-          </Text>
-        </TouchableOpacity>
+            <Ionicons name="document-text-outline" size={20} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/help/my-offers' as any)}
+            className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
+          >
+            <Ionicons name="hand-right-outline" size={20} color="#000" />
+          </TouchableOpacity>
+        </View>
       </View>
 
+      {/* Category Filter */}
       <View className="pb-4">
         <ScrollView
           horizontal
@@ -120,95 +113,142 @@ export default function MarketplaceScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
-      >
-        {filteredRequests.map((request) => (
-          <TouchableOpacity
-            key={request.id}
-            className="mx-6 mb-4 p-4 bg-gray-50 rounded-2xl"
-            activeOpacity={0.7}
+      {/* Content */}
+      {requests === undefined ? (
+        // Loading state
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#fd6b03" />
+        </View>
+      ) : requests.length === 0 ? (
+        // Empty state
+        <View className="flex-1 items-center justify-center px-6">
+          <View className="w-24 h-24 rounded-full bg-gray-100 items-center justify-center mb-4">
+            <Ionicons name="hand-left-outline" size={48} color="#9CA3AF" />
+          </View>
+          <Text
+            className="text-xl text-black text-center mb-2"
+            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
           >
-            <View className="flex-row items-center justify-between mb-3">
-              <View className="flex-row items-center flex-1">
-                <Image
-                  source={{ uri: request.authorPhoto }}
-                  className="w-10 h-10 rounded-full"
-                  resizeMode="cover"
-                />
-                <View className="ml-3 flex-1">
-                  <Text
-                    className="text-black"
-                    style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                  >
-                    {request.author}
-                  </Text>
-                  <Text
-                    className="text-gray-500 text-sm"
-                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                  >
-                    {request.location}
-                  </Text>
-                </View>
-              </View>
-              {request.urgent && (
-                <View className="bg-red-100 px-2 py-1 rounded-full">
-                  <Text
-                    className="text-red-600 text-xs"
-                    style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                  >
-                    urgent
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <Text
-              className="text-black text-lg mb-2"
-              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+            no requests yet
+          </Text>
+          <Text
+            className="text-gray-500 text-center"
+            style={{ fontFamily: 'InstrumentSans_400Regular' }}
+          >
+            be the first to post a help request{'\n'}or check back later
+          </Text>
+        </View>
+      ) : (
+        // Request list
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fd6b03" />
+          }
+        >
+          {requests.map((request) => (
+            <TouchableOpacity
+              key={request._id}
+              onPress={() => handleRequestPress(request._id)}
+              className="mx-6 mb-4 p-4 bg-gray-50 rounded-2xl"
+              activeOpacity={0.7}
             >
-              {request.title}
-            </Text>
-            <Text
-              className="text-gray-600 mb-3"
-              style={{ fontFamily: 'InstrumentSans_400Regular' }}
-              numberOfLines={2}
-            >
-              {request.description}
-            </Text>
-
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center">
-                <View className="bg-green-100 px-3 py-1 rounded-full mr-2">
-                  <Text
-                    className="text-green-700"
-                    style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                  >
-                    {request.budget}
-                  </Text>
+              {/* Author Row */}
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center flex-1">
+                  <Image
+                    source={{ uri: request.author?.photos?.[0] || 'https://via.placeholder.com/40' }}
+                    className="w-10 h-10 rounded-full"
+                    resizeMode="cover"
+                  />
+                  <View className="ml-3 flex-1">
+                    <Text
+                      className="text-black"
+                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                    >
+                      {request.author?.name || 'Unknown'}
+                    </Text>
+                    <Text
+                      className="text-gray-500 text-sm"
+                      style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                    >
+                      {request.location}
+                    </Text>
+                  </View>
                 </View>
-                <View className="flex-row items-center">
-                  <MaterialCommunityIcons name="hand-wave-outline" size={16} color="#9CA3AF" />
-                  <Text
-                    className="text-gray-500 text-sm ml-1"
-                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                  >
-                    {request.responses} offers
-                  </Text>
-                </View>
+                {request.isUrgent && (
+                  <View className="bg-red-100 px-2 py-1 rounded-full">
+                    <Text
+                      className="text-red-600 text-xs"
+                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                    >
+                      urgent
+                    </Text>
+                  </View>
+                )}
               </View>
+
+              {/* Title */}
               <Text
-                className="text-gray-400 text-sm"
-                style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                className="text-black text-lg mb-2"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
               >
-                {request.time}
+                {request.title}
               </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+
+              {/* Description */}
+              <Text
+                className="text-gray-600 mb-3"
+                style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                numberOfLines={2}
+              >
+                {request.description}
+              </Text>
+
+              {/* Footer */}
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center">
+                  <View className="bg-gray-200 px-3 py-1 rounded-full mr-2">
+                    <Text
+                      className="text-gray-700"
+                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                    >
+                      {request.category}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center">
+                    <MaterialCommunityIcons name="hand-wave-outline" size={16} color="#9CA3AF" />
+                    <Text
+                      className="text-gray-500 text-sm ml-1"
+                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                    >
+                      {request.offerCount} {request.offerCount === 1 ? 'offer' : 'offers'}
+                    </Text>
+                  </View>
+                </View>
+                <Text
+                  className="text-gray-400 text-sm"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  {formatTime(request.createdAt)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        onPress={handlePostPress}
+        className="absolute bottom-6 right-6 w-14 h-14 rounded-full items-center justify-center"
+        style={{ backgroundColor: '#fd6b03' }}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }

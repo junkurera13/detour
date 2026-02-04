@@ -174,7 +174,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       <View className="px-6 pt-4 pb-6 flex-row items-center justify-between">
         <Text
           className="text-5xl text-black"
@@ -316,6 +316,68 @@ export default function ProfileScreen() {
                 lifestyles
               </Text>
             </View>
+          </View>
+        </View>
+
+        {/* Help Activity Section */}
+        <View className="px-6 mb-6">
+          <Text
+            className="text-lg text-black mb-3"
+            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+          >
+            help activity
+          </Text>
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              onPress={() => router.push('/help/my-requests' as any)}
+              className="flex-1 bg-gray-50 rounded-2xl p-4 flex-row items-center"
+              activeOpacity={0.7}
+            >
+              <View className="w-10 h-10 bg-orange-100 rounded-full items-center justify-center">
+                <Ionicons name="document-text-outline" size={20} color="#fd6b03" />
+              </View>
+              <View className="ml-3 flex-1">
+                <Text
+                  className="text-black"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  my requests
+                </Text>
+                <Text
+                  className="text-gray-500 text-xs"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  help you&apos;ve asked for
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+          <View className="flex-row gap-3 mt-3">
+            <TouchableOpacity
+              onPress={() => router.push('/help/my-offers' as any)}
+              className="flex-1 bg-gray-50 rounded-2xl p-4 flex-row items-center"
+              activeOpacity={0.7}
+            >
+              <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center">
+                <Ionicons name="hand-right-outline" size={20} color="#16a34a" />
+              </View>
+              <View className="ml-3 flex-1">
+                <Text
+                  className="text-black"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  my offers
+                </Text>
+                <Text
+                  className="text-gray-500 text-xs"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  help you&apos;ve offered
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
           </View>
         </View>
 

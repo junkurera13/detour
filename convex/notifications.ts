@@ -146,3 +146,143 @@ export const sendMessageNotification = internalAction({
     );
   },
 });
+
+// Send notification when a new offer is received on a help request
+export const sendNewOfferNotification = internalAction({
+  args: {
+    recipientId: v.id("users"),
+    offererName: v.string(),
+    requestTitle: v.string(),
+    requestId: v.id("helpRequests"),
+  },
+  handler: async (ctx, args): Promise<PushResult> => {
+    const recipient = await ctx.runQuery(internal.users.getByIdInternal, {
+      id: args.recipientId,
+    });
+
+    if (!recipient?.expoPushToken) {
+      return { success: false, error: "No push token" };
+    }
+
+    return sendExpoPushNotification(
+      recipient.expoPushToken,
+      "New offer received",
+      `${args.offererName} made an offer on "${args.requestTitle}"`,
+      {
+        type: "help_offer",
+        requestId: args.requestId,
+      }
+    );
+  },
+});
+
+// Send notification when an offer is accepted
+export const sendOfferAcceptedNotification = internalAction({
+  args: {
+    recipientId: v.id("users"),
+    requestTitle: v.string(),
+    requestId: v.id("helpRequests"),
+  },
+  handler: async (ctx, args): Promise<PushResult> => {
+    const recipient = await ctx.runQuery(internal.users.getByIdInternal, {
+      id: args.recipientId,
+    });
+
+    if (!recipient?.expoPushToken) {
+      return { success: false, error: "No push token" };
+    }
+
+    return sendExpoPushNotification(
+      recipient.expoPushToken,
+      "Offer accepted! 🎉",
+      `Your offer for "${args.requestTitle}" was accepted!`,
+      {
+        type: "help_offer_accepted",
+        requestId: args.requestId,
+      }
+    );
+  },
+});
+
+// Send notification when an offer is rejected (another offer was selected)
+export const sendOfferRejectedNotification = internalAction({
+  args: {
+    recipientId: v.id("users"),
+    requestTitle: v.string(),
+    requestId: v.id("helpRequests"),
+  },
+  handler: async (ctx, args): Promise<PushResult> => {
+    const recipient = await ctx.runQuery(internal.users.getByIdInternal, {
+      id: args.recipientId,
+    });
+
+    if (!recipient?.expoPushToken) {
+      return { success: false, error: "No push token" };
+    }
+
+    return sendExpoPushNotification(
+      recipient.expoPushToken,
+      "Offer not selected",
+      `Another offer was selected for "${args.requestTitle}"`,
+      {
+        type: "help_offer_rejected",
+        requestId: args.requestId,
+      }
+    );
+  },
+});
+
+// Send notification when a help request is cancelled
+export const sendRequestCancelledNotification = internalAction({
+  args: {
+    recipientId: v.id("users"),
+    requestTitle: v.string(),
+  },
+  handler: async (ctx, args): Promise<PushResult> => {
+    const recipient = await ctx.runQuery(internal.users.getByIdInternal, {
+      id: args.recipientId,
+    });
+
+    if (!recipient?.expoPushToken) {
+      return { success: false, error: "No push token" };
+    }
+
+    return sendExpoPushNotification(
+      recipient.expoPushToken,
+      "Request cancelled",
+      `The help request "${args.requestTitle}" was cancelled`,
+      {
+        type: "help_request_cancelled",
+      }
+    );
+  },
+});
+
+// Send notification when an offer is updated
+export const sendOfferUpdatedNotification = internalAction({
+  args: {
+    recipientId: v.id("users"),
+    offererName: v.string(),
+    requestTitle: v.string(),
+    requestId: v.id("helpRequests"),
+  },
+  handler: async (ctx, args): Promise<PushResult> => {
+    const recipient = await ctx.runQuery(internal.users.getByIdInternal, {
+      id: args.recipientId,
+    });
+
+    if (!recipient?.expoPushToken) {
+      return { success: false, error: "No push token" };
+    }
+
+    return sendExpoPushNotification(
+      recipient.expoPushToken,
+      "Offer updated",
+      `${args.offererName} updated their offer on "${args.requestTitle}"`,
+      {
+        type: "help_offer_updated",
+        requestId: args.requestId,
+      }
+    );
+  },
+});

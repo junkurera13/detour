@@ -836,3 +836,173 @@ export const getDiscoverUsers = (excludeIds: string[] = [], limit: number = 20):
     .filter(user => !excludeIds.includes(user.id))
     .slice(0, limit);
 };
+
+// Mock Help Requests
+export interface MockHelpRequest {
+  _id: string;
+  title: string;
+  description: string;
+  category: string;
+  location: string;
+  isUrgent: boolean;
+  status: string;
+  offerCount: number;
+  createdAt: number;
+  author: {
+    name: string;
+    photos: string[];
+  };
+}
+
+export const mockHelpRequests: MockHelpRequest[] = [
+  {
+    _id: 'help_1',
+    title: 'van solar panel not charging',
+    description: 'My 200W solar panel stopped charging the battery bank yesterday. The controller shows 0 amps even in direct sunlight. Could be a loose connection or the charge controller itself. Anyone with electrical experience in the Bali area?',
+    category: 'electrical',
+    location: 'canggu, bali',
+    isUrgent: true,
+    status: 'open',
+    offerCount: 3,
+    createdAt: Date.now() - 1800000, // 30 min ago
+    author: {
+      name: 'Alex',
+      photos: [malePhotos[3]],
+    },
+  },
+  {
+    _id: 'help_2',
+    title: 'need help mounting roof rack',
+    description: 'Just bought a Thule roof rack for my van but need an extra pair of hands to install it. Should take about 2 hours. I have all the tools, just need someone who knows what they\'re doing.',
+    category: 'build',
+    location: 'ubud, bali',
+    isUrgent: false,
+    status: 'open',
+    offerCount: 1,
+    createdAt: Date.now() - 7200000, // 2 hours ago
+    author: {
+      name: 'Ryan',
+      photos: [malePhotos[6]],
+    },
+  },
+  {
+    _id: 'help_3',
+    title: 'water pump making weird noise',
+    description: 'My 12V water pump started making a grinding noise and the pressure is lower than usual. Still works but I\'m worried it\'ll die soon. Looking for someone who can diagnose and maybe replace it.',
+    category: 'plumbing',
+    location: 'seminyak, bali',
+    isUrgent: false,
+    status: 'open',
+    offerCount: 2,
+    createdAt: Date.now() - 14400000, // 4 hours ago
+    author: {
+      name: 'Isla',
+      photos: [femalePhotos[3]],
+    },
+  },
+  {
+    _id: 'help_4',
+    title: 'sliding door won\'t close properly',
+    description: 'The sliding door on my Sprinter van is misaligned and won\'t latch securely anymore. Happened after a bumpy road. Need someone who can adjust the door mechanism or knows a good local mechanic.',
+    category: 'repairs',
+    location: 'canggu, bali',
+    isUrgent: true,
+    status: 'open',
+    offerCount: 4,
+    createdAt: Date.now() - 21600000, // 6 hours ago
+    author: {
+      name: 'Sofia',
+      photos: [femalePhotos[0]],
+    },
+  },
+  {
+    _id: 'help_5',
+    title: 'help setting up starlink',
+    description: 'Just got my Starlink kit but having trouble with the mounting and cable routing through the van roof. Don\'t want to drill the wrong spot. Anyone done this before?',
+    category: 'electrical',
+    location: 'ubud, bali',
+    isUrgent: false,
+    status: 'open',
+    offerCount: 5,
+    createdAt: Date.now() - 43200000, // 12 hours ago
+    author: {
+      name: 'Marcus',
+      photos: [malePhotos[0]],
+    },
+  },
+  {
+    _id: 'help_6',
+    title: 'ac unit leaking inside van',
+    description: 'My rooftop AC unit is dripping water inside when running. Tried cleaning the filter but still leaking. Need someone who understands these units to take a look.',
+    category: 'repairs',
+    location: 'sanur, bali',
+    isUrgent: true,
+    status: 'open',
+    offerCount: 0,
+    createdAt: Date.now() - 3600000, // 1 hour ago
+    author: {
+      name: 'Emma',
+      photos: [femalePhotos[2]],
+    },
+  },
+  {
+    _id: 'help_7',
+    title: 'building a fold-down bed frame',
+    description: 'Want to build a murphy-style bed for my van conversion. Have the lumber and hardware but need guidance on the hinge mechanism. Looking for someone with carpentry skills to help or advise.',
+    category: 'build',
+    location: 'denpasar, bali',
+    isUrgent: false,
+    status: 'open',
+    offerCount: 2,
+    createdAt: Date.now() - 86400000, // 1 day ago
+    author: {
+      name: 'Jake',
+      photos: [malePhotos[1]],
+    },
+  },
+  {
+    _id: 'help_8',
+    title: 'propane system check needed',
+    description: 'Smell gas occasionally near my propane setup but can\'t find the leak. Need someone experienced with propane systems to do a proper check. Safety first!',
+    category: 'plumbing',
+    location: 'canggu, bali',
+    isUrgent: true,
+    status: 'open',
+    offerCount: 1,
+    createdAt: Date.now() - 5400000, // 1.5 hours ago
+    author: {
+      name: 'Tom',
+      photos: [malePhotos[4]],
+    },
+  },
+  {
+    _id: 'help_9',
+    title: 'fridge not cooling properly',
+    description: 'My 12V compressor fridge isn\'t getting cold enough anymore. Runs constantly but only reaches about 50°F. Could be low refrigerant or a failing compressor. Anyone know these systems?',
+    category: 'electrical',
+    location: 'ubud, bali',
+    isUrgent: false,
+    status: 'open',
+    offerCount: 3,
+    createdAt: Date.now() - 172800000, // 2 days ago
+    author: {
+      name: 'Luna',
+      photos: [femalePhotos[5]],
+    },
+  },
+  {
+    _id: 'help_10',
+    title: 'looking for welder for custom rack',
+    description: 'Need a custom bike rack welded for the back of my van. Have a design sketched out. Looking for someone with welding equipment or knows a local shop that does custom work.',
+    category: 'other',
+    location: 'seminyak, bali',
+    isUrgent: false,
+    status: 'open',
+    offerCount: 1,
+    createdAt: Date.now() - 259200000, // 3 days ago
+    author: {
+      name: 'Noah',
+      photos: [malePhotos[2]],
+    },
+  },
+];

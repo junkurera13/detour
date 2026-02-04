@@ -9,6 +9,8 @@
  */
 
 import type * as files from "../files.js";
+import type * as helpOffers from "../helpOffers.js";
+import type * as helpRequests from "../helpRequests.js";
 import type * as inviteCodes from "../inviteCodes.js";
 import type * as matches from "../matches.js";
 import type * as messages from "../messages.js";
@@ -25,6 +27,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   files: typeof files;
+  helpOffers: typeof helpOffers;
+  helpRequests: typeof helpRequests;
   inviteCodes: typeof inviteCodes;
   matches: typeof matches;
   messages: typeof messages;
