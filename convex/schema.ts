@@ -153,17 +153,6 @@ export default defineSchema({
     .index("by_conversation", ["conversationId"])
     .index("by_sender", ["senderId"]),
 
-  // Typing indicators
-  typingStatus: defineTable({
-    matchId: v.id("matches"),
-    userId: v.id("users"),
-    isTyping: v.boolean(),
-    updatedAt: v.number(),
-  })
-    .index("by_match", ["matchId"])
-    .index("by_user", ["userId"])
-    .index("by_match_and_user", ["matchId", "userId"]),
-
   // Blocked users
   blockedUsers: defineTable({
     blockerId: v.id("users"), // user who blocked

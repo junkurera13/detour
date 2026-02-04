@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -64,7 +64,6 @@ export default function ChatScreen() {
   const [showMenu, setShowMenu] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { uploadPhotos, isUploading } = usePhotoUpload();
 
@@ -82,14 +81,6 @@ export default function ChatScreen() {
     matchId ? { matchId: matchId as Id<'matches'> } : 'skip'
   );
 
-  // Fetch typing status
-  const typingStatus = useQuery(
-    api.typing.getTypingStatus,
-    matchId && userId
-      ? { matchId: matchId as Id<'matches'>, currentUserId: userId }
-      : 'skip'
-  );
-
   // Check if blocked
   const blockStatus = useQuery(
     api.blocks.isBlocked,
@@ -104,8 +95,6 @@ export default function ChatScreen() {
   // Mutations
   const sendMessage = useMutation(api.messages.send);
   const markAsRead = useMutation(api.messages.markAsRead);
-  const setTyping = useMutation(api.typing.setTyping);
-  const clearTyping = useMutation(api.typing.clearTyping);
   const blockUser = useMutation(api.blocks.blockUser);
 
   // Determine the other user
@@ -136,18 +125,6 @@ export default function ChatScreen() {
     }
   }, [matchId, userId, messages, markAsRead]);
 
-  // Clear typing status when leaving screen
-  useEffect(() => {
-    return () => {
-      if (userId) {
-        clearTyping({ userId });
-      }
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-    };
-  }, [userId, clearTyping]);
-
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     if (messages && messages.length > 0) {
@@ -156,46 +133,6 @@ export default function ChatScreen() {
       }, 100);
     }
   }, [messages]);
-
-  // Handle typing indicator
-  const handleTyping = useCallback(
-    (text: string) => {
-      setMessageText(text);
-
-      if (!matchId || !userId) return;
-
-      // Set typing to true
-      if (text.length > 0) {
-        setTyping({
-          matchId: matchId as Id<'matches'>,
-          userId,
-          isTyping: true,
-        });
-
-        // Clear existing timeout
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
-        }
-
-        // Set timeout to clear typing after 3 seconds of inactivity
-        typingTimeoutRef.current = setTimeout(() => {
-          setTyping({
-            matchId: matchId as Id<'matches'>,
-            userId,
-            isTyping: false,
-          });
-        }, 3000);
-      } else {
-        // Clear typing immediately when text is empty
-        setTyping({
-          matchId: matchId as Id<'matches'>,
-          userId,
-          isTyping: false,
-        });
-      }
-    },
-    [matchId, userId, setTyping]
-  );
 
   const handleSend = async () => {
     if (!messageText.trim() || !matchId || !userId || isSending) return;
@@ -207,13 +144,6 @@ export default function ChatScreen() {
     const text = messageText.trim();
     setMessageText('');
     setIsSending(true);
-
-    // Clear typing status
-    setTyping({
-      matchId: matchId as Id<'matches'>,
-      userId,
-      isTyping: false,
-    });
 
     try {
       await sendMessage({
@@ -424,15 +354,6 @@ export default function ChatScreen() {
             >
               {otherUser?.name?.toLowerCase() || 'unknown'}
             </Text>
-            {/* Typing indicator in header */}
-            {typingStatus?.isTyping && (
-              <Text
-                className="text-orange-500 text-xs"
-                style={{ fontFamily: 'InstrumentSans_400Regular' }}
-              >
-                typing...
-              </Text>
-            )}
           </View>
         </TouchableOpacity>
 
@@ -470,19 +391,6 @@ export default function ChatScreen() {
               </Text>
             </View>
           }
-          ListFooterComponent={
-            typingStatus?.isTyping ? (
-              <View className="flex-row justify-start mb-2 px-4">
-                <View className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
-                  <View className="flex-row items-center gap-1">
-                    <View className="w-2 h-2 rounded-full bg-gray-400" />
-                    <View className="w-2 h-2 rounded-full bg-gray-400" />
-                    <View className="w-2 h-2 rounded-full bg-gray-400" />
-                  </View>
-                </View>
-              </View>
-            ) : null
-          }
           onContentSizeChange={() => {
             if (messages && messages.length > 0) {
               flatListRef.current?.scrollToEnd({ animated: false });
@@ -504,7 +412,7 @@ export default function ChatScreen() {
           <View className="flex-1 flex-row items-end bg-gray-100 rounded-3xl px-4 py-2 mr-3">
             <TextInput
               value={messageText}
-              onChangeText={handleTyping}
+              onChangeText={setMessageText}
               placeholder="message..."
               placeholderTextColor="#9CA3AF"
               multiline

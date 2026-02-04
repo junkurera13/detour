@@ -31,7 +31,6 @@
 |------|-------------|--------|
 | Swipe gestures | Gesture-based swipe with Reanimated | ✅ |
 | Compatibility % badge | Show match % on profile cards | ⬜ |
-| Typing indicators | Show when match is typing | ✅ |
 | Image sharing | Send photos in chat | ✅ |
 | Block users | Block from chat/profile | ✅ |
 
