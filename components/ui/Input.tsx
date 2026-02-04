@@ -49,7 +49,7 @@ export function Input({
         {prefix && (
           <Text
             style={{
-              fontSize: 18,
+              fontSize: 16,
               color: '#9CA3AF',
               fontFamily: 'InstrumentSans_400Regular',
               marginRight: 4,
@@ -70,7 +70,7 @@ export function Input({
           numberOfLines={numberOfLines}
           style={{
             flex: 1,
-            fontSize: 18,
+            fontSize: 16,
             color: '#000',
             fontFamily: 'InstrumentSans_400Regular',
             textAlignVertical: multiline ? 'top' : 'center',

@@ -141,7 +141,8 @@ export const create = mutation({
     title: v.string(),
     description: v.string(),
     category: v.string(),
-    location: v.string(),
+    location: v.optional(v.string()),
+    photos: v.optional(v.array(v.string())),
     isUrgent: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -171,6 +172,7 @@ export const create = mutation({
       description: args.description,
       category: args.category,
       location: args.location,
+      photos: args.photos,
       isUrgent: args.isUrgent,
       status: "open",
       createdAt: now,

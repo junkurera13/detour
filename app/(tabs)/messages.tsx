@@ -170,12 +170,14 @@ export default function HelpScreen() {
                     >
                       {request.author?.name || 'Unknown'}
                     </Text>
-                    <Text
-                      className="text-gray-500 text-sm"
-                      style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                    >
-                      {request.location}
-                    </Text>
+                    {request.location && (
+                      <Text
+                        className="text-gray-500 text-sm"
+                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                      >
+                        {request.location}
+                      </Text>
+                    )}
                   </View>
                 </View>
                 {request.isUrgent && (
@@ -243,11 +245,11 @@ export default function HelpScreen() {
       {/* Floating Action Button */}
       <TouchableOpacity
         onPress={handlePostPress}
-        className="absolute bottom-6 right-6 w-14 h-14 rounded-full items-center justify-center"
+        className="absolute bottom-6 right-6 w-16 h-16 rounded-full items-center justify-center"
         style={{ backgroundColor: '#fd6b03' }}
         activeOpacity={0.8}
       >
-        <Ionicons name="add" size={28} color="#fff" />
+        <Ionicons name="add" size={32} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>
   );

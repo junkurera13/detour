@@ -103,7 +103,8 @@ export default defineSchema({
     title: v.string(),
     description: v.string(),
     category: v.string(), // "repairs", "electrical", "build", "plumbing", "other"
-    location: v.string(),
+    location: v.optional(v.string()),
+    photos: v.optional(v.array(v.string())),
     isUrgent: v.boolean(),
     status: v.string(), // "open", "in_progress", "completed", "cancelled"
     acceptedOfferId: v.optional(v.id("helpOffers")),

@@ -1,12 +1,13 @@
 import { View, Text, TouchableOpacity, ScrollView, Image, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/Button';
+import { mockHelpRequests } from '@/data/mockData';
 
 const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
@@ -21,20 +22,65 @@ const formatTime = (timestamp: number) => {
   return `${days}d ago`;
 };
 
+// Mock offers for demo purposes
+const mockOffers = [
+  {
+    _id: 'offer_1',
+    price: 7500,
+    message: 'I have 5 years experience with solar setups on vans. I can diagnose the issue and fix it same day. Have all the tools needed.',
+    status: 'pending',
+    createdAt: Date.now() - 3600000,
+    offerer: {
+      name: 'Mike',
+      photos: ['https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face'],
+      currentLocation: 'canggu, bali',
+    },
+  },
+  {
+    _id: 'offer_2',
+    price: 5000,
+    message: 'Electrician by trade, been working on van conversions for 2 years. Can come check it out tomorrow morning.',
+    status: 'pending',
+    createdAt: Date.now() - 7200000,
+    offerer: {
+      name: 'Sarah',
+      photos: ['https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=500&fit=crop&crop=face'],
+      currentLocation: 'seminyak, bali',
+    },
+  },
+];
+
 export default function HelpRequestDetailScreen() {
   const router = useRouter();
   const { requestId } = useLocalSearchParams<{ requestId: string }>();
 
-  const request = useQuery(api.helpRequests.getById, {
-    id: requestId as Id<"helpRequests">,
-  });
-  const offers = useQuery(api.helpOffers.getByRequest, {
-    requestId: requestId as Id<"helpRequests">,
-  });
-  const userOffer = useQuery(api.helpOffers.getUserOfferForRequest, {
-    requestId: requestId as Id<"helpRequests">,
-  });
+  // Check if this is a mock request
+  const isMockRequest = requestId?.startsWith('help_');
+
+  // Find mock request if applicable
+  const mockRequest = useMemo(() => {
+    if (!isMockRequest) return null;
+    return mockHelpRequests.find(r => r._id === requestId) || null;
+  }, [requestId, isMockRequest]);
+
+  // Only query Convex if it's not a mock request
+  const convexRequest = useQuery(
+    api.helpRequests.getById,
+    !isMockRequest ? { id: requestId as Id<"helpRequests"> } : "skip"
+  );
+  const convexOffers = useQuery(
+    api.helpOffers.getByRequest,
+    !isMockRequest ? { requestId: requestId as Id<"helpRequests"> } : "skip"
+  );
+  const userOffer = useQuery(
+    api.helpOffers.getUserOfferForRequest,
+    !isMockRequest ? { requestId: requestId as Id<"helpRequests"> } : "skip"
+  );
   const currentUser = useQuery(api.users.getCurrentUser);
+
+  // Use mock or real data
+  const request = isMockRequest ? mockRequest : convexRequest;
+  const offers = isMockRequest ? mockOffers : convexOffers;
 
   const createOffer = useMutation(api.helpOffers.create);
   const acceptOffer = useMutation(api.helpRequests.acceptOffer);
@@ -47,8 +93,9 @@ export default function HelpRequestDetailScreen() {
   const [offerMessage, setOfferMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isAuthor = currentUser?._id === request?.authorId;
-  const hasExistingOffer = !!userOffer;
+  // For mock data, user is never the author (so they can see the "make offer" flow)
+  const isAuthor = isMockRequest ? false : currentUser?._id === (request as any)?.authorId;
+  const hasExistingOffer = isMockRequest ? false : !!userOffer;
 
   const handleSubmitOffer = async () => {
     if (!offerPrice || !offerMessage.trim() || isSubmitting) return;
@@ -61,11 +108,17 @@ export default function HelpRequestDetailScreen() {
 
     setIsSubmitting(true);
     try {
-      await createOffer({
-        requestId: requestId as Id<"helpRequests">,
-        price: priceInCents,
-        message: offerMessage.trim(),
-      });
+      if (isMockRequest) {
+        // Simulate success for mock data
+        await new Promise(resolve => setTimeout(resolve, 500));
+        Alert.alert('Offer submitted!', 'Your offer has been sent to the requester.');
+      } else {
+        await createOffer({
+          requestId: requestId as Id<"helpRequests">,
+          price: priceInCents,
+          message: offerMessage.trim(),
+        });
+      }
       setShowOfferModal(false);
       setOfferPrice('');
       setOfferMessage('');
@@ -213,7 +266,7 @@ export default function HelpRequestDetailScreen() {
               className="text-gray-500 text-sm"
               style={{ fontFamily: 'InstrumentSans_400Regular' }}
             >
-              {request.location} · {formatTime(request.createdAt)}
+              {request.location ? `${request.location} · ` : ''}{formatTime(request.createdAt)}
             </Text>
           </View>
           <View className="bg-gray-100 px-3 py-1 rounded-full">
@@ -235,6 +288,26 @@ export default function HelpRequestDetailScreen() {
             {request.description}
           </Text>
         </View>
+
+        {/* Photos */}
+        {request.photos && request.photos.length > 0 && (
+          <View className="px-6 pb-4">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8 }}
+            >
+              {request.photos.map((photo: string, index: number) => (
+                <Image
+                  key={index}
+                  source={{ uri: photo }}
+                  className="w-48 h-36 rounded-xl"
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Status Banner */}
         {request.status !== 'open' && (
@@ -292,7 +365,7 @@ export default function HelpRequestDetailScreen() {
                     {offer.message}
                   </Text>
                   <TouchableOpacity
-                    onPress={() => handleAcceptOffer(offer._id)}
+                    onPress={() => handleAcceptOffer(offer._id as Id<"helpOffers">)}
                     className="bg-orange-500 py-3 rounded-xl items-center"
                     style={{ backgroundColor: '#fd6b03' }}
                   >

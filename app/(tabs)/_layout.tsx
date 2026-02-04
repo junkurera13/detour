@@ -25,7 +25,7 @@ export default function TabLayout() {
           paddingTop: 10,
         },
         tabBarIconStyle: {
-          marginTop: 2,
+          marginTop: 6,
         },
         tabBarShowLabel: false,
       }}

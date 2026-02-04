@@ -1,9 +1,10 @@
-import { View, Text, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Switch, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from 'convex/react';
+import * as ImagePicker from 'expo-image-picker';
 import { api } from '@/convex/_generated/api';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -25,10 +26,44 @@ export default function CreateHelpRequestScreen() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [location, setLocation] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
   const [isUrgent, setIsUrgent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isValid = title.trim().length >= 5 && description.trim().length >= 10 && category && location.trim().length >= 2;
+  // Location is now optional
+  const isValid = title.trim().length >= 5 && description.trim().length >= 10 && category;
+
+  const pickImage = async () => {
+    if (photos.length >= 4) {
+      Alert.alert('Limit reached', 'You can add up to 4 photos.');
+      return;
+    }
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission needed',
+        'Please allow access to your photo library to add photos.'
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setPhotos([...photos, result.assets[0].uri]);
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos(photos.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async () => {
     if (!isValid || isSubmitting) return;
@@ -39,7 +74,8 @@ export default function CreateHelpRequestScreen() {
         title: title.trim(),
         description: description.trim(),
         category,
-        location: location.trim().toLowerCase(),
+        location: location.trim() ? location.trim().toLowerCase() : undefined,
+        photos: photos.length > 0 ? photos : undefined,
         isUrgent,
       });
 
@@ -78,7 +114,7 @@ export default function CreateHelpRequestScreen() {
         {/* Title */}
         <View className="mt-6">
           <Text
-            className="text-sm text-gray-500 mb-2"
+            className="text-base text-gray-500 mb-2"
             style={{ fontFamily: 'InstrumentSans_500Medium' }}
           >
             what do you need help with?
@@ -94,7 +130,7 @@ export default function CreateHelpRequestScreen() {
         {/* Description */}
         <View className="mt-6">
           <Text
-            className="text-sm text-gray-500 mb-2"
+            className="text-base text-gray-500 mb-2"
             style={{ fontFamily: 'InstrumentSans_500Medium' }}
           >
             describe the issue
@@ -112,7 +148,7 @@ export default function CreateHelpRequestScreen() {
         {/* Category */}
         <View className="mt-6">
           <Text
-            className="text-sm text-gray-500 mb-3"
+            className="text-base text-gray-500 mb-3"
             style={{ fontFamily: 'InstrumentSans_500Medium' }}
           >
             category
@@ -130,13 +166,49 @@ export default function CreateHelpRequestScreen() {
           </View>
         </View>
 
+        {/* Photos */}
+        <View className="mt-6">
+          <Text
+            className="text-base text-gray-500 mb-2"
+            style={{ fontFamily: 'InstrumentSans_500Medium' }}
+          >
+            photos (optional)
+          </Text>
+          <View className="flex-row flex-wrap" style={{ gap: 10 }}>
+            {photos.map((photo, index) => (
+              <View key={index} className="relative">
+                <Image
+                  source={{ uri: photo }}
+                  className="w-28 h-28 rounded-xl"
+                  resizeMode="cover"
+                />
+                <TouchableOpacity
+                  onPress={() => removePhoto(index)}
+                  className="absolute -top-2 -right-2 w-7 h-7 bg-black rounded-full items-center justify-center"
+                >
+                  <Ionicons name="close" size={16} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ))}
+            {photos.length < 4 && (
+              <TouchableOpacity
+                onPress={pickImage}
+                className="w-28 h-28 rounded-xl bg-gray-100 items-center justify-center"
+                style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: '#D1D5DB' }}
+              >
+                <Ionicons name="camera-outline" size={28} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
         {/* Location */}
         <View className="mt-6">
           <Text
-            className="text-sm text-gray-500 mb-2"
+            className="text-base text-gray-500 mb-2"
             style={{ fontFamily: 'InstrumentSans_500Medium' }}
           >
-            where do you need help?
+            location (optional)
           </Text>
           <Input
             value={location}

@@ -843,7 +843,8 @@ export interface MockHelpRequest {
   title: string;
   description: string;
   category: string;
-  location: string;
+  location?: string;
+  photos?: string[];
   isUrgent: boolean;
   status: string;
   offerCount: number;
@@ -861,6 +862,10 @@ export const mockHelpRequests: MockHelpRequest[] = [
     description: 'My 200W solar panel stopped charging the battery bank yesterday. The controller shows 0 amps even in direct sunlight. Could be a loose connection or the charge controller itself. Anyone with electrical experience in the Bali area?',
     category: 'electrical',
     location: 'canggu, bali',
+    photos: [
+      'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&h=400&fit=crop',
+      'https://images.unsplash.com/photo-1558449028-b53a39d100fc?w=600&h=400&fit=crop',
+    ],
     isUrgent: true,
     status: 'open',
     offerCount: 3,
@@ -906,6 +911,9 @@ export const mockHelpRequests: MockHelpRequest[] = [
     description: 'The sliding door on my Sprinter van is misaligned and won\'t latch securely anymore. Happened after a bumpy road. Need someone who can adjust the door mechanism or knows a good local mechanic.',
     category: 'repairs',
     location: 'canggu, bali',
+    photos: [
+      'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=600&h=400&fit=crop',
+    ],
     isUrgent: true,
     status: 'open',
     offerCount: 4,
