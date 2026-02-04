@@ -64,7 +64,7 @@ export default function ChatScreen() {
   const [showMenu, setShowMenu] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { uploadPhotos, isUploading } = usePhotoUpload();
 
