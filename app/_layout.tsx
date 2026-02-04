@@ -89,6 +89,12 @@ export default function RootLayout() {
                           gestureEnabled: false,
                         }}
                       />
+                      <Stack.Screen
+                        name="paywall"
+                        options={{
+                          gestureEnabled: false,
+                        }}
+                      />
                     </Stack>
                     <StatusBar style="dark" />
                   </ErrorBoundary>

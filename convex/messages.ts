@@ -100,6 +100,21 @@ export const getLastMessage = query({
 export const getConversationPreviews = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
+    // Get blocked users (both directions)
+    const blockedByMe = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_blocker", (q) => q.eq("blockerId", args.userId))
+      .collect();
+    const blockedMe = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_blocked", (q) => q.eq("blockedId", args.userId))
+      .collect();
+
+    const blockedUserIds = new Set([
+      ...blockedByMe.map((b) => b.blockedId),
+      ...blockedMe.map((b) => b.blockerId),
+    ]);
+
     // Get all matches for this user
     const matchesAsUser1 = await ctx.db
       .query("matches")
@@ -115,9 +130,15 @@ export const getConversationPreviews = query({
 
     const allMatches = [...matchesAsUser1, ...matchesAsUser2];
 
+    // Filter out matches with blocked users
+    const filteredMatches = allMatches.filter((match) => {
+      const otherUserId = match.user1Id === args.userId ? match.user2Id : match.user1Id;
+      return !blockedUserIds.has(otherUserId);
+    });
+
     // Get conversation preview for each match
     const previews = await Promise.all(
-      allMatches.map(async (match) => {
+      filteredMatches.map(async (match) => {
         const otherUserId =
           match.user1Id === args.userId ? match.user2Id : match.user1Id;
         const otherUser = await ctx.db.get(otherUserId);

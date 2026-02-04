@@ -9,6 +9,7 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as blocks from "../blocks.js";
 import type * as files from "../files.js";
 import type * as helpMessages from "../helpMessages.js";
 import type * as helpOffers from "../helpOffers.js";
@@ -20,6 +21,7 @@ import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
 import type * as seed from "../seed.js";
 import type * as swipes from "../swipes.js";
+import type * as typing from "../typing.js";
 import type * as users from "../users.js";
 
 import type {
@@ -30,6 +32,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  blocks: typeof blocks;
   files: typeof files;
   helpMessages: typeof helpMessages;
   helpOffers: typeof helpOffers;
@@ -41,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   seed: typeof seed;
   swipes: typeof swipes;
+  typing: typeof typing;
   users: typeof users;
 }>;
 

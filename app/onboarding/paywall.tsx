@@ -231,29 +231,16 @@ export default function PaywallScreen() {
     }
   };
 
-  const handleClose = async () => {
-    if (isProcessing || isUploading) return;
-    setIsProcessing(true);
-    try {
-      await createUserInternal();
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
-      <View className="flex-row items-center justify-between px-6 py-4">
+      <View className="flex-row items-center justify-center px-6 py-4">
         <Text
           className="text-2xl text-black"
           style={{ fontFamily: 'InstrumentSerif_400Regular' }}
         >
           detour
         </Text>
-        <TouchableOpacity onPress={handleClose}>
-          <Ionicons name="close" size={28} color="#000" />
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -267,7 +254,7 @@ export default function PaywallScreen() {
           className="text-3xl text-black mb-8"
           style={{ fontFamily: 'InstrumentSans_700Bold' }}
         >
-          make unlimited nomad friends with detour max
+          make unlimited nomad friends with detour plus
         </Text>
 
         {/* Timeline Progress */}
@@ -313,13 +300,13 @@ export default function PaywallScreen() {
           ))}
         </View>
 
-        {/* Included with detour max */}
+        {/* Included with detour plus */}
         <View className="border border-gray-200 rounded-2xl p-4">
           <Text
             className="text-lg text-black mb-4"
             style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
           >
-            included with detour max
+            included with detour plus
           </Text>
 
           {maxFeatures.map((feature, index) => (

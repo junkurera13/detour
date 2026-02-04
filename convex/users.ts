@@ -200,13 +200,28 @@ export const getDiscoverUsers = query({
 
     const swipedUserIds = new Set(swipes.map((s) => s.swipedId));
 
+    // Get blocked users (both directions)
+    const blockedByMe = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_blocker", (q) => q.eq("blockerId", args.currentUserId))
+      .collect();
+    const blockedMe = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_blocked", (q) => q.eq("blockedId", args.currentUserId))
+      .collect();
+
+    const blockedUserIds = new Set([
+      ...blockedByMe.map((b) => b.blockedId),
+      ...blockedMe.map((b) => b.blockerId),
+    ]);
+
     const users = await ctx.db
       .query("users")
       .filter((q) => q.neq(q.field("_id"), args.currentUserId))
       .filter((q) => q.eq(q.field("userStatus"), "approved"))
       .take(args.limit ?? 50);
 
-    return users.filter((u) => !swipedUserIds.has(u._id));
+    return users.filter((u) => !swipedUserIds.has(u._id) && !blockedUserIds.has(u._id));
   },
 });
 

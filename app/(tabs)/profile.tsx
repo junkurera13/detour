@@ -127,6 +127,8 @@ export default function ProfileScreen() {
       await openCustomerCenter();
     } else if (id === 'settings') {
       router.push('/settings' as any);
+    } else if (id === 'edit') {
+      router.push('/edit-profile' as any);
     }
   };
 
