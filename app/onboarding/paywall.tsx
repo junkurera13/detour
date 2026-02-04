@@ -9,7 +9,6 @@ import { useAuth } from '@clerk/clerk-expo';
 import { api } from '@/convex/_generated/api';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { DETOUR_PLUS_ENTITLEMENT, useRevenueCat } from '@/context/RevenueCatContext';
-import { PAYWALL_RESULT } from 'react-native-purchases-ui';
 
 const timelineSteps = [
   {
@@ -18,14 +17,14 @@ const timelineSteps = [
     description: 'get instant access to all nearby nomads & unlimited messages',
   },
   {
-    day: 'day 3',
+    day: 'day 5',
     title: 'keep exploring but with a reminder!',
     description: 'get a reminder your trial is about to end',
   },
   {
     day: 'day 7',
     title: 'trial ends',
-    description: "you'll be charged for max. you can cancel anytime before.",
+    description: "you'll be charged $99.99/year. cancel anytime before.",
   },
 ];
 
@@ -54,13 +53,11 @@ export default function PaywallScreen() {
   const { isAuthenticated, isLoading: isConvexLoading } = useConvexAuth();
   const { isSignedIn, isLoaded: isClerkLoaded } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'yearly' | 'monthly'>('yearly');
 
   const {
     offerings,
     purchasePackage,
     restorePurchases,
-    presentPaywall,
     isLoading: isRevenueCatLoading,
   } = useRevenueCat();
 
@@ -76,9 +73,6 @@ export default function PaywallScreen() {
       isAuthenticated,
     });
   }, [isClerkLoaded, isSignedIn, isConvexLoading, isAuthenticated]);
-
-  // Show loading while auth is being established
-  const isAuthLoading = !isClerkLoaded || isConvexLoading;
 
   const createUserInternal = async () => {
     console.log('handleCreateUser called', { isProcessing, isAuthenticated, isSignedIn });
@@ -165,26 +159,20 @@ export default function PaywallScreen() {
   const currentOffering = offerings?.current;
   const packageById = (id: string) =>
     currentOffering?.availablePackages?.find((pkg) => pkg.identifier === id);
-  const monthlyPackage = currentOffering?.monthly ?? packageById('monthly');
-  const yearlyPackage = currentOffering?.annual ?? packageById('yearly');
-  const selectedPackage = selectedPlan === 'monthly' ? monthlyPackage : yearlyPackage;
+  const yearlyPackage = currentOffering?.annual ?? packageById('yearly') ?? packageById('detour_plus_yearly');
 
-  const priceLabel = selectedPackage?.product?.priceString
-    ? `${selectedPackage.product.priceString}/${selectedPlan === 'monthly' ? 'month' : 'year'}`
-    : selectedPlan === 'monthly'
-      ? '$?/month'
-      : '$?/year';
+  const priceLabel = yearlyPackage?.product?.priceString ?? '$99.99/year';
 
   const handleStartTrial = async () => {
     if (isProcessing) return;
-    if (!selectedPackage) {
+    if (!yearlyPackage) {
       Alert.alert('Plans not ready', 'Pricing is still loading. Please try again.');
       return;
     }
 
     setIsProcessing(true);
     try {
-      const info = await purchasePackage(selectedPackage);
+      const info = await purchasePackage(yearlyPackage);
       if (!info) return;
 
       if (!hasDetourPlus(info)) {
@@ -196,19 +184,6 @@ export default function PaywallScreen() {
     } catch (error) {
       console.error('Purchase error:', error);
       Alert.alert('Purchase failed', 'Please try again.');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleShowRevenueCatPaywall = async () => {
-    if (isProcessing) return;
-    setIsProcessing(true);
-    try {
-      const result = await presentPaywall();
-      if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
-        await createUserInternal();
-      }
     } finally {
       setIsProcessing(false);
     }
@@ -344,69 +319,16 @@ export default function PaywallScreen() {
 
       {/* Footer */}
         <View className="px-6 pb-6 pt-4 border-t border-gray-100">
-          <View className="mb-4">
-            <Text
-              className="text-sm text-gray-400 uppercase mb-3"
-              style={{ fontFamily: 'InstrumentSans_500Medium' }}
-            >
-              choose your plan
-            </Text>
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={() => setSelectedPlan('yearly')}
-                className={`flex-1 rounded-2xl border px-4 py-3 ${
-                  selectedPlan === 'yearly' ? 'border-black' : 'border-gray-200'
-                }`}
-                activeOpacity={0.8}
-                disabled={isRevenueCatLoading}
-              >
-                <Text
-                  className="text-sm text-gray-500"
-                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                >
-                  yearly
-                </Text>
-                <Text
-                  className="text-lg text-black"
-                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                >
-                  {yearlyPackage?.product?.priceString ?? '$?/year'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setSelectedPlan('monthly')}
-                className={`flex-1 rounded-2xl border px-4 py-3 ${
-                  selectedPlan === 'monthly' ? 'border-black' : 'border-gray-200'
-                }`}
-                activeOpacity={0.8}
-                disabled={isRevenueCatLoading}
-              >
-                <Text
-                  className="text-sm text-gray-500"
-                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                >
-                  monthly
-                </Text>
-                <Text
-                  className="text-lg text-black"
-                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                >
-                  {monthlyPackage?.product?.priceString ?? '$?/month'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
         <Text
           className="text-center text-gray-500 mb-3"
           style={{ fontFamily: 'InstrumentSans_400Regular' }}
         >
-          free for 3 days, then {priceLabel}
+          free for 7 days, then {priceLabel}
         </Text>
 
         <TouchableOpacity
           onPress={handleStartTrial}
-          disabled={isProcessing || isRevenueCatLoading || !selectedPackage}
+          disabled={isProcessing || isRevenueCatLoading || !yearlyPackage}
           style={{
             backgroundColor: isProcessing ? '#fca560' : '#fd6b03',
             paddingVertical: 16,
@@ -423,19 +345,6 @@ export default function PaywallScreen() {
             style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
           >
             {isProcessing ? 'processing...' : 'try for $0.00'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={handleShowRevenueCatPaywall}
-          className="mt-3"
-          disabled={isProcessing}
-        >
-          <Text
-            className="text-center text-gray-400 text-sm"
-            style={{ fontFamily: 'InstrumentSans_400Regular' }}
-          >
-            view all plans
           </Text>
         </TouchableOpacity>
 
