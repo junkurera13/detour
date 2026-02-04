@@ -8,10 +8,12 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as files from "../files.js";
 import type * as helpMessages from "../helpMessages.js";
 import type * as helpOffers from "../helpOffers.js";
 import type * as helpRequests from "../helpRequests.js";
+import type * as http from "../http.js";
 import type * as inviteCodes from "../inviteCodes.js";
 import type * as matches from "../matches.js";
 import type * as messages from "../messages.js";
@@ -27,10 +29,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   files: typeof files;
   helpMessages: typeof helpMessages;
   helpOffers: typeof helpOffers;
   helpRequests: typeof helpRequests;
+  http: typeof http;
   inviteCodes: typeof inviteCodes;
   matches: typeof matches;
   messages: typeof messages;

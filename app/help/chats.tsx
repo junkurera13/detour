@@ -16,8 +16,8 @@ export default function HelpChatsScreen() {
   const router = useRouter();
   const [selectedFilter, setSelectedFilter] = useState('all');
 
-  // Test with just currentUser query
-  const currentUser = useQuery(api.users.getCurrentUser);
+  // Test helpMessages query
+  const conversations = useQuery(api.helpMessages.getMyConversations);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -60,7 +60,7 @@ export default function HelpChatsScreen() {
       </View>
 
       {/* Content */}
-      {currentUser === undefined ? (
+      {conversations === undefined ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#fd6b03" />
         </View>
@@ -73,15 +73,13 @@ export default function HelpChatsScreen() {
             className="text-xl text-black text-center mb-2"
             style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
           >
-            no chats yet
+            {conversations.length === 0 ? 'no chats yet' : `${conversations.length} chats`}
           </Text>
           <Text
             className="text-gray-500 text-center"
             style={{ fontFamily: 'InstrumentSans_400Regular' }}
           >
-            {currentUser
-              ? "chats will appear here when you have active help requests"
-              : "please sign in to view your chats"}
+            chats will appear here when you have active help requests
           </Text>
         </View>
       )}

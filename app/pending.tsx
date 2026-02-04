@@ -39,6 +39,9 @@ export default function PendingScreen() {
     debouncedCode.length >= 4 ? { code: debouncedCode } : "skip"
   );
 
+  // Queries
+  const waitlistPosition = useQuery(api.users.getWaitlistPosition);
+
   // Mutations
   const consumeInviteCode = useMutation(api.inviteCodes.use);
   const updateUser = useMutation(api.users.update);
@@ -119,17 +122,28 @@ export default function PendingScreen() {
             notify you when you&apos;re approved.
           </Text>
 
-          {/* Position indicator (mock) */}
+          {/* Position indicator */}
           <View
             className="mt-8 px-6 py-4 rounded-2xl"
             style={{ backgroundColor: '#F9FAFB' }}
           >
-            <Text
-              className="text-center text-gray-500"
-              style={{ fontFamily: 'InstrumentSans_500Medium' }}
-            >
-              your position: <Text style={{ color: '#fd6b03' }}>#247</Text>
-            </Text>
+            {waitlistPosition === undefined ? (
+              <ActivityIndicator size="small" color="#fd6b03" />
+            ) : waitlistPosition ? (
+              <Text
+                className="text-center text-gray-500"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                your position: <Text style={{ color: '#fd6b03' }}>#{waitlistPosition.position}</Text>
+              </Text>
+            ) : (
+              <Text
+                className="text-center text-gray-500"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                checking your position...
+              </Text>
+            )}
           </View>
 
           {/* Invite Code Input Section */}

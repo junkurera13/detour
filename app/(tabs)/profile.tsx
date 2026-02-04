@@ -1,9 +1,8 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
-import { useClerk } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { mockProfileViewers } from '@/data/mockData';
@@ -70,13 +69,11 @@ const recentViewers = mockProfileViewers.slice(0, 4).map(user => ({
 }));
 
 export default function ProfileScreen() {
-  const { data: onboardingData, resetData } = useOnboarding();
+  const { data: onboardingData } = useOnboarding();
   const { convexUser: user } = useAuthenticatedUser();
-  const { signOut } = useClerk();
   const { openCustomerCenter } = useRevenueCat();
   const router = useRouter();
   const [menuVisible, setMenuVisible] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const slideAnim = useRef(new Animated.Value(400)).current;
 
   // Use Convex user data if available, fallback to onboarding data
@@ -124,46 +121,14 @@ export default function ProfileScreen() {
     }).start(() => setMenuVisible(false));
   };
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    closeMenu();
-    // Small delay to let the menu close animation complete
-    setTimeout(async () => {
-      try {
-        await signOut(); // Sign out from Clerk first
-        resetData(); // Then clear onboarding data
-        // Use replace with the full path to break out of tabs
-        router.replace('/onboarding');
-      } catch (error) {
-        console.error('Logout error:', error);
-        // Force navigation even if signOut fails
-        resetData();
-        router.replace('/onboarding');
-      }
-    }, 300);
-  };
-
   const handleSettingsAction = async (id: string) => {
     closeMenu();
     if (id === 'subscription') {
       await openCustomerCenter();
+    } else if (id === 'settings') {
+      router.push('/settings' as any);
     }
   };
-
-  // Show loading screen while logging out
-  if (isLoggingOut) {
-    return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#fd6b03" />
-        <Text
-          className="mt-4 text-gray-500"
-          style={{ fontFamily: 'InstrumentSans_400Regular' }}
-        >
-          logging out...
-        </Text>
-      </View>
-    );
-  }
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
@@ -442,18 +407,6 @@ export default function ProfileScreen() {
               ))}
             </View>
 
-            <TouchableOpacity
-              onPress={handleLogout}
-              className="mt-4 py-4 items-center"
-              activeOpacity={0.7}
-            >
-              <Text
-                className="text-red-500"
-                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-              >
-                log out
-              </Text>
-            </TouchableOpacity>
           </Animated.View>
         </View>
       </Modal>
