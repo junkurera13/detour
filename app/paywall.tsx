@@ -69,10 +69,40 @@ export default function PaywallScreen() {
   const hasDetourPlus = (info: any) =>
     Boolean(info?.entitlements?.active?.[DETOUR_PLUS_ENTITLEMENT]);
 
+  // TODO: Set to false once App Store Connect Paid Apps Agreement is complete (waiting for Korean BRN)
+  const ALLOW_PAYWALL_BYPASS = true;
+
   const handleSubscribe = async () => {
     if (isProcessing) return;
 
     if (!yearlyPackage) {
+      // Allow bypass for testing since App Store Connect isn't fully configured
+      if (ALLOW_PAYWALL_BYPASS) {
+        Alert.alert(
+          'Development Mode',
+          'RevenueCat products not available. Skip paywall for testing?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Skip & Continue',
+              onPress: async () => {
+                // If user has an invite code, process it
+                if (hasInviteCode && convexUser?._id) {
+                  try {
+                    await consumeInviteCode({ code: data.inviteCode, userId: convexUser._id });
+                    await updateUser({ id: convexUser._id, userStatus: 'approved' });
+                    updateData({ userStatus: 'approved' });
+                  } catch (err) {
+                    console.error('Failed to process invite code:', err);
+                  }
+                }
+                router.replace('/(tabs)');
+              },
+            },
+          ]
+        );
+        return;
+      }
       Alert.alert('Plans not ready', 'Pricing is still loading. Please try again.');
       return;
     }

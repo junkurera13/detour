@@ -9,6 +9,7 @@ import { api } from '@/convex/_generated/api';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { DETOUR_PLUS_ENTITLEMENT, useRevenueCat } from '@/context/RevenueCatContext';
 import { usePhotoUpload } from '@/hooks/usePhotoUpload';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 
 const timelineSteps = [
   {
@@ -68,7 +69,9 @@ export default function PaywallScreen() {
   } = usePhotoUpload();
 
   const createUser = useMutation(api.users.create);
+  const updateUser = useMutation(api.users.update);
   const consumeInviteCode = useMutation(api.inviteCodes.use);
+  const { convexUser } = useAuthenticatedUser();
 
   // Debug logging
   useEffect(() => {
@@ -110,9 +113,28 @@ export default function PaywallScreen() {
     }
 
     try {
+      // If user has invite code, they're approved; otherwise pending (for new users only)
       const userStatus = data.joinPath === 'invite' ? 'approved' : 'pending';
 
-      // Upload photos to Convex storage first
+      // Check if user already exists (pending user who got invite code)
+      if (convexUser) {
+        // Existing user - just update their status and consume invite code
+        if (data.joinPath === 'invite' && data.inviteCode) {
+          await consumeInviteCode({ code: data.inviteCode, userId: convexUser._id });
+          await updateUser({ id: convexUser._id, userStatus: 'approved' });
+        }
+
+        // Update local onboarding state
+        updateData({
+          hasCompletedOnboarding: true,
+          userStatus: 'approved',
+        });
+
+        router.replace('/onboarding/done');
+        return;
+      }
+
+      // New user - upload photos and create account
       let photoUrls = data.photos;
       if (data.photos.length > 0) {
         const hasLocalPhotos = data.photos.some(
@@ -190,10 +212,35 @@ export default function PaywallScreen() {
 
   const priceLabel = yearlyPackage?.product?.priceString ?? '$99.99/year';
 
+  // TODO: Set to false once App Store Connect Paid Apps Agreement is complete (waiting for Korean BRN)
+  const ALLOW_PAYWALL_BYPASS = true;
+
   const handleStartTrial = async () => {
     if (isProcessing) return;
+
+    // If offerings aren't available (App Store Connect not fully set up), allow bypass
     if (!yearlyPackage) {
-      Alert.alert('Plans not ready', 'Pricing is still loading. Please try again.');
+      console.log('[Paywall] No yearlyPackage, ALLOW_PAYWALL_BYPASS =', ALLOW_PAYWALL_BYPASS);
+
+      // Always allow bypass for now since App Store Connect isn't fully configured
+      Alert.alert(
+        'Development Mode',
+        'RevenueCat products not available. Skip paywall for testing?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Skip & Continue',
+            onPress: async () => {
+              setIsProcessing(true);
+              try {
+                await createUserInternal();
+              } finally {
+                setIsProcessing(false);
+              }
+            },
+          },
+        ]
+      );
       return;
     }
 
@@ -342,7 +389,7 @@ export default function PaywallScreen() {
 
         <TouchableOpacity
           onPress={handleStartTrial}
-          disabled={isProcessing || isRevenueCatLoading || isUploading || !yearlyPackage}
+          disabled={isProcessing || isRevenueCatLoading || isUploading}
           style={{
             backgroundColor: isProcessing || isUploading ? '#fca560' : '#fd6b03',
             paddingVertical: 16,
@@ -358,7 +405,7 @@ export default function PaywallScreen() {
             className="text-white text-lg"
             style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
           >
-            {isProcessing ? 'processing...' : 'try for $0.00'}
+            {isProcessing ? 'processing...' : 'start free trial'}
           </Text>
         </TouchableOpacity>
 

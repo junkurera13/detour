@@ -62,8 +62,8 @@ export default function PendingScreen() {
         inviteCode: code.trim().toUpperCase(),
       });
 
-      // Navigate to the paywall (paywall will handle code consumption and user status update)
-      router.replace('/paywall');
+      // Navigate to the onboarding paywall (for new subscriptions)
+      router.replace('/onboarding/paywall');
     } catch (err) {
       console.error('Failed to apply invite code:', err);
       setError('Failed to apply code. Please try again.');

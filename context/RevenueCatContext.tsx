@@ -100,8 +100,12 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
       const latestOfferings = await Purchases.getOfferings();
       setOfferings(latestOfferings);
       return latestOfferings;
-    } catch (error) {
-      console.warn('Failed to fetch RevenueCat offerings', error);
+    } catch (error: any) {
+      // Silently handle configuration errors (e.g., products not yet set up in App Store Connect)
+      // This allows the app to function during development without a complete RevenueCat setup
+      if (__DEV__) {
+        console.log('[RevenueCat] Offerings unavailable - App Store Connect setup may be incomplete');
+      }
       return null;
     }
   }, []);
