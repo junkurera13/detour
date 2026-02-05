@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.detour.app"
+      "bundleIdentifier": "com.detourapp.ios"
     },
     "android": {
       "package": "com.detour.app",

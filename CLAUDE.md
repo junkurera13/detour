@@ -33,15 +33,19 @@ npm run lint       # Run ESLint
 ### Directory Structure
 
 - `app/` - File-based routes (expo-router)
-  - `onboarding/` - 13-step onboarding flow (auth, profile setup, paywall)
+  - `onboarding/` - 18-step onboarding flow (auth, profile setup, paywall)
   - `(tabs)/` - Main app with 5 tabs (Nearby, Explore, Matches, Messages, Profile)
   - `chat/` - Chat screens for messaging
+  - `help/` - Help request and offer screens
+  - `settings.tsx` - App settings
+  - `edit-profile.tsx` - Profile editing
+  - `pending.tsx` - Pending approval screen
 - `convex/` - Convex backend (schema, mutations, queries)
   - `schema.ts` - Database schema (users, matches, messages, swipes, inviteCodes)
   - `files.ts` - File storage mutations for photo uploads
 - `components/` - Reusable components
   - `ui/` - UI primitives (Button, Input, SelectionChip, OnboardingLayout, ProgressBar)
-- `context/` - React Context providers (OnboardingContext, RevenueCatContext)
+- `context/` - React Context providers (OnboardingContext, RevenueCatContext, NotificationsContext)
 - `hooks/` - Custom React hooks (usePhotoUpload, useCurrentUser, etc.)
 - `constants/` - Theme colors and fonts
 - `assets/images/` - Icons and brand assets
@@ -62,10 +66,13 @@ Global onboarding state managed via `OnboardingContext`:
 ```typescript
 interface OnboardingData {
   name: string;
+  username: string;
   birthday: Date | null;
   gender: string;
-  lookingFor: 'friends' | 'dating' | 'both' | null;
+  lookingFor: string[];
+  friendsPreference: string[];
   datingPreference: string[];
+  datingGoals: string[];
   lifestyle: string[];
   timeNomadic: string;
   interests: string[];
@@ -74,6 +81,9 @@ interface OnboardingData {
   currentLocation: string;
   futureTrip: string;
   hasCompletedOnboarding: boolean;
+  joinPath: 'apply' | 'invite' | null;
+  userStatus: 'none' | 'pending' | 'approved';
+  inviteCode: string;
 }
 ```
 
@@ -90,15 +100,15 @@ Use Tailwind classes via the `className` prop:
 
 Custom colors defined in `tailwind.config.js`:
 - `orange-primary`: #fd6b03 (main brand color)
-- `orange-secondary`: #fca560
+- `orange-secondary`: #fd9003
 
 ### UI Component Patterns
 
 Onboarding screens use the `OnboardingLayout` wrapper:
 ```tsx
 <OnboardingLayout
-  step={3}
-  totalSteps={13}
+  currentStep={3}
+  totalSteps={14}
   title="Screen Title"
   subtitle="Description text"
 >
@@ -106,7 +116,7 @@ Onboarding screens use the `OnboardingLayout` wrapper:
 </OnboardingLayout>
 ```
 
-Button variants: `primary`, `secondary`, `outline`, `ghost`
+Button variants: `primary`, `secondary`, `outline`, `ghost`, `accent`
 
 ### Platform-Specific Code
 
@@ -123,9 +133,10 @@ Functional MVP (7/10) with backend fully integrated. See `ROADMAP.md` for full d
 - Photo cloud upload (Convex File Storage)
 - Real-time messaging
 - Discovery and swiping
+- Push notifications (Expo Notifications)
+- Edit profile screen
 
 **Remaining for production:**
-- Push notifications
 - App Store / Play Store products for RevenueCat
 - Error monitoring (Sentry)
 - Testing suite

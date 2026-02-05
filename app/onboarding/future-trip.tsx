@@ -21,6 +21,16 @@ export default function FutureTripScreen() {
   const handleFinish = async (tripValue: string) => {
     if (isSubmitting) return;
 
+    // Update future trip in local state
+    updateData({ futureTrip: tripValue });
+
+    // Invite users go to paywall (which handles user creation)
+    if (data.joinPath === 'invite') {
+      router.push('/onboarding/paywall');
+      return;
+    }
+
+    // Apply users: create account and go to pending
     if (!isAuthenticated) {
       Alert.alert('Error', 'Authentication error. Please restart the app.');
       return;
@@ -50,7 +60,6 @@ export default function FutureTripScreen() {
 
       // Update local state
       updateData({
-        futureTrip: tripValue,
         hasCompletedOnboarding: true,
         userStatus: 'pending',
       });

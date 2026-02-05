@@ -68,7 +68,7 @@
 |---------|---------|
 | Authentication | Clerk (phone, Google, Apple) |
 | Backend | Convex (users, matches, messages, swipes) |
-| Onboarding | 15-step flow with custom paywall |
+| Onboarding | 18-step flow with custom paywall |
 | Discovery & Swiping | Like/pass with match detection |
 | Messaging | Real-time chat |
 | Photo Upload | Convex File Storage with progress |
@@ -108,4 +108,4 @@
 
 ---
 
-*Last updated: February 4, 2026*
+*Last updated: February 5, 2026*
