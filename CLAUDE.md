@@ -40,6 +40,7 @@ npm run lint       # Run ESLint
   - `settings.tsx` - App settings
   - `edit-profile.tsx` - Profile editing
   - `pending.tsx` - Pending approval screen
+  - `paywall.tsx` - Trial expired paywall (see Paywall Architecture below)
 - `convex/` - Convex backend (schema, mutations, queries)
   - `schema.ts` - Database schema (users, matches, messages, swipes, inviteCodes)
   - `files.ts` - File storage mutations for photo uploads
@@ -122,6 +123,25 @@ Button variants: `primary`, `secondary`, `outline`, `ghost`, `accent`
 
 Files with extensions `.ios.ts`, `.android.ts`, `.web.ts` are loaded based on platform.
 
+### Paywall Architecture
+
+The app has two separate paywall screens for different user scenarios:
+
+1. **Onboarding Paywall** (`app/onboarding/paywall.tsx`)
+   - Shown to new users completing onboarding
+   - Shown to pending users who later obtain an invite code
+   - Creates user account and uploads photos after subscription
+   - Routes to `/onboarding/done` (approved) or `/pending` (applied without invite)
+
+2. **Trial Expired Paywall** (`app/paywall.tsx`)
+   - Shown to existing users whose trial has ended
+   - Displays "your trial has ended" messaging
+   - Routes directly to `/(tabs)` after subscription
+   - Includes logout option in header
+
+**Paywall Bypass (Temporary):**
+Both paywall files have `ALLOW_PAYWALL_BYPASS = true` which allows skipping the paywall during development. This is temporary while waiting for Korean Business Registration Number (BRN) to complete the App Store Connect Paid Apps Agreement. Set to `false` once the agreement is signed and RevenueCat products are fully configured.
+
 ## Current State
 
 Functional MVP (7/10) with backend fully integrated. See `ROADMAP.md` for full details.
@@ -137,6 +157,7 @@ Functional MVP (7/10) with backend fully integrated. See `ROADMAP.md` for full d
 - Edit profile screen
 
 **Remaining for production:**
+- App Store Connect Paid Apps Agreement (waiting for Korean BRN) - then set `ALLOW_PAYWALL_BYPASS = false` in both paywall files
 - App Store / Play Store products for RevenueCat
 - Error monitoring (Sentry)
 - Testing suite
