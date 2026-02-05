@@ -104,7 +104,7 @@ interface MatchingRouteUser {
   name: string;
   age: number;
   photo: string;
-  futureTrip?: string;
+  futureTrips?: Array<{ location: string; date?: string }>;
   arrivalDate: string;
   lifestyle: string[];
   currentLocation: string;
@@ -133,7 +133,7 @@ const mockMatchingUsers: MatchingRouteUser[] = mockUsers.slice(0, 15).map((user,
   name: user.name,
   age: user.age,
   photo: user.photos[0],
-  futureTrip: user.futureTrip,
+  futureTrips: user.futureTrip ? [{ location: user.futureTrip }] : undefined,
   arrivalDate: arrivalDates[index % arrivalDates.length],
   lifestyle: user.lifestyle,
   currentLocation: user.location,
@@ -173,8 +173,9 @@ export default function ExploreScreen() {
     return mockActivities.filter(activity => activity.category === selectedInterest);
   }, [selectedInterest, userInterests]);
 
-  // Check if user has a future trip set
-  const hasFutureTrip = data.futureTrip && data.futureTrip.trim() !== '';
+  // Check if user has future trips set
+  const hasFutureTrip = data.futureTrips && data.futureTrips.length > 0;
+  const firstTrip = data.futureTrips?.[0]?.location;
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
@@ -233,7 +234,7 @@ export default function ExploreScreen() {
                     className="text-sm text-blue-600"
                     style={{ fontFamily: 'InstrumentSans_500Medium' }}
                   >
-                    {data.futureTrip}
+                    {firstTrip}
                   </Text>
                 </View>
               </View>
@@ -293,7 +294,7 @@ export default function ExploreScreen() {
                     className="text-gray-500 text-center py-8"
                     style={{ fontFamily: 'InstrumentSans_400Regular' }}
                   >
-                    no one else is heading to {data.futureTrip} yet
+                    no one else is heading to {firstTrip} yet
                   </Text>
                 </View>
               )}

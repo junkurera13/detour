@@ -76,6 +76,7 @@ export function Input({
             textAlignVertical: multiline ? 'top' : 'center',
             minHeight: multiline ? 100 : undefined,
             padding: 0,
+            letterSpacing: 0,
           }}
         />
       </View>

@@ -147,7 +147,7 @@ export default function PaywallScreen() {
         photos: photoUrls,
         instagram: data.instagram || undefined,
         currentLocation: data.currentLocation,
-        futureTrip: data.futureTrip || undefined,
+        futureTrips: data.futureTrips.length > 0 ? data.futureTrips : undefined,
         joinPath: data.joinPath ?? 'apply',
         inviteCode: data.inviteCode || undefined,
         userStatus,

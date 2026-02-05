@@ -4,7 +4,11 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useAuth } from '@clerk/clerk-expo';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { DETOUR_PLUS_ENTITLEMENT, useRevenueCat } from '@/context/RevenueCatContext';
+import { useOnboarding } from '@/context/OnboardingContext';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 
 const features = [
   {
@@ -33,6 +37,11 @@ export default function PaywallScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
+  const { data, updateData } = useOnboarding();
+  const { convexUser } = useAuthenticatedUser();
+
+  const consumeInviteCode = useMutation(api.inviteCodes.use);
+  const updateUser = useMutation(api.users.update);
 
   const {
     offerings,
@@ -41,12 +50,21 @@ export default function PaywallScreen() {
     isLoading: isRevenueCatLoading,
   } = useRevenueCat();
 
+  // Check if user came from pending screen with an invite code
+  const hasInviteCode = data.joinPath === 'invite' && data.inviteCode;
+
   const currentOffering = offerings?.current;
   const packageById = (id: string) =>
     currentOffering?.availablePackages?.find((pkg: { identifier: string }) => pkg.identifier === id);
 
-  const yearlyPackage = currentOffering?.annual ?? packageById('yearly') ?? packageById('detour_plus_yearly');
-  const yearlyPrice = yearlyPackage?.product?.priceString ?? '$99.99/year';
+  // Debug logging
+  console.log('RevenueCat offerings:', JSON.stringify(offerings, null, 2));
+  console.log('Current offering:', JSON.stringify(currentOffering, null, 2));
+  console.log('Available packages:', currentOffering?.availablePackages?.map((p: any) => p.identifier));
+
+  // Try annual first, fall back to any available package for testing
+  const yearlyPackage = currentOffering?.annual ?? packageById('$rc_annual') ?? packageById('yearly') ?? packageById('detour_plus_yearly') ?? currentOffering?.availablePackages?.[0];
+  const yearlyPrice = yearlyPackage?.product?.pricePerYearString ?? yearlyPackage?.product?.priceString ?? '$99.99/year';
 
   const hasDetourPlus = (info: any) =>
     Boolean(info?.entitlements?.active?.[DETOUR_PLUS_ENTITLEMENT]);
@@ -68,6 +86,17 @@ export default function PaywallScreen() {
       }
 
       if (hasDetourPlus(info)) {
+        // If user has an invite code, consume it and update their status
+        if (hasInviteCode && convexUser?._id) {
+          try {
+            await consumeInviteCode({ code: data.inviteCode, userId: convexUser._id });
+            await updateUser({ id: convexUser._id, userStatus: 'approved' });
+            updateData({ userStatus: 'approved' });
+          } catch (err) {
+            console.error('Failed to process invite code:', err);
+            // Continue anyway - they have a subscription
+          }
+        }
         router.replace('/(tabs)');
       } else {
         Alert.alert('Subscription inactive', 'Purchase did not activate your subscription.');
@@ -86,6 +115,16 @@ export default function PaywallScreen() {
     try {
       const info = await restorePurchases();
       if (info && hasDetourPlus(info)) {
+        // If user has an invite code, consume it and update their status
+        if (hasInviteCode && convexUser?._id) {
+          try {
+            await consumeInviteCode({ code: data.inviteCode, userId: convexUser._id });
+            await updateUser({ id: convexUser._id, userStatus: 'approved' });
+            updateData({ userStatus: 'approved' });
+          } catch (err) {
+            console.error('Failed to process invite code:', err);
+          }
+        }
         router.replace('/(tabs)');
         return;
       }
@@ -143,13 +182,15 @@ export default function PaywallScreen() {
           className="text-3xl text-black mb-2"
           style={{ fontFamily: 'InstrumentSans_700Bold' }}
         >
-          your trial has ended
+          {hasInviteCode ? 'start your free trial' : 'your trial has ended'}
         </Text>
         <Text
           className="text-base text-gray-500 mb-8"
           style={{ fontFamily: 'InstrumentSans_400Regular' }}
         >
-          subscribe to keep connecting with nomads worldwide
+          {hasInviteCode
+            ? 'get 7 days free, then subscribe to keep connecting'
+            : 'subscribe to keep connecting with nomads worldwide'}
         </Text>
 
         {/* Features */}
@@ -189,13 +230,13 @@ export default function PaywallScreen() {
             className="text-3xl text-black mb-1"
             style={{ fontFamily: 'InstrumentSans_700Bold' }}
           >
-            {yearlyPrice}
+            {hasInviteCode ? '7 days free' : yearlyPrice}
           </Text>
           <Text
             className="text-sm text-gray-500"
             style={{ fontFamily: 'InstrumentSans_400Regular' }}
           >
-            billed annually • cancel anytime
+            {hasInviteCode ? `then ${yearlyPrice} • cancel anytime` : 'billed annually • cancel anytime'}
           </Text>
         </View>
       </ScrollView>
@@ -220,7 +261,7 @@ export default function PaywallScreen() {
             className="text-white text-lg"
             style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
           >
-            {isProcessing ? 'processing...' : 'subscribe now'}
+            {isProcessing ? 'processing...' : hasInviteCode ? 'try for $0.00' : 'subscribe now'}
           </Text>
         </TouchableOpacity>
 

@@ -1,4 +1,5 @@
-import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, View, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 
 interface ButtonProps {
   title: string;
@@ -21,6 +22,13 @@ export function Button({
   icon,
   fullWidth = true,
 }: ButtonProps) {
+  const handlePress = () => {
+    if (Platform.OS === 'ios') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onPress();
+  };
+
   const sizeStyles = {
     sm: { paddingVertical: 8, paddingHorizontal: 16 },
     md: { paddingVertical: 12, paddingHorizontal: 24 },
@@ -36,7 +44,7 @@ export function Button({
   if (variant === 'accent') {
     return (
       <TouchableOpacity
-        onPress={onPress}
+        onPress={handlePress}
         disabled={disabled || loading}
         activeOpacity={0.8}
         style={{
@@ -73,7 +81,7 @@ export function Button({
   if (variant === 'primary') {
     return (
       <TouchableOpacity
-        onPress={onPress}
+        onPress={handlePress}
         disabled={disabled || loading}
         activeOpacity={0.8}
         style={{
@@ -120,7 +128,7 @@ export function Button({
 
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled || loading}
       activeOpacity={0.8}
       style={{

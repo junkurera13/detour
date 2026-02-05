@@ -81,7 +81,10 @@ export const create = mutation({
     photos: v.array(v.string()),
     instagram: v.optional(v.string()),
     currentLocation: v.string(),
-    futureTrip: v.optional(v.string()),
+    futureTrips: v.optional(v.array(v.object({
+      location: v.string(),
+      date: v.optional(v.string()),
+    }))),
     joinPath: v.string(),
     inviteCode: v.optional(v.string()),
     userStatus: v.string(),
@@ -118,7 +121,10 @@ export const update = mutation({
     photos: v.optional(v.array(v.string())),
     instagram: v.optional(v.string()),
     currentLocation: v.optional(v.string()),
-    futureTrip: v.optional(v.string()),
+    futureTrips: v.optional(v.array(v.object({
+      location: v.string(),
+      date: v.optional(v.string()),
+    }))),
     userStatus: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...updates }) => {

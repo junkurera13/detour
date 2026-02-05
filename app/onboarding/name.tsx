@@ -18,7 +18,7 @@ export default function NameScreen() {
 
   return (
     <OnboardingLayout
-      title="what's your first name?"
+      title="what's your name?"
       subtitle="this is how you'll appear to others"
       currentStep={1}
       showBack={false}
@@ -27,7 +27,7 @@ export default function NameScreen() {
         <Input
           value={name}
           onChangeText={setName}
-          placeholder="your first name"
+          placeholder="your name"
           autoCapitalize="none"
           maxLength={30}
         />

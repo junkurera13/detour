@@ -176,7 +176,7 @@ export default function EditProfileScreen() {
   const [username, setUsername] = useState('');
   const [instagram, setInstagram] = useState('');
   const [currentLocation, setCurrentLocation] = useState('');
-  const [futureTrip, setFutureTrip] = useState('');
+  const [futureTrips, setFutureTrips] = useState<Array<{ location: string; date?: string }>>([]);
   const [lifestyle, setLifestyle] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -200,7 +200,7 @@ export default function EditProfileScreen() {
       setUsername(user.username || '');
       setInstagram(user.instagram || '');
       setCurrentLocation(user.currentLocation || '');
-      setFutureTrip(user.futureTrip || '');
+      setFutureTrips(user.futureTrips || []);
       setLifestyle(user.lifestyle || []);
       setInterests(user.interests || []);
       setPhotos(user.photos || []);
@@ -215,12 +215,12 @@ export default function EditProfileScreen() {
       username !== user.username ||
       instagram !== (user.instagram || '') ||
       currentLocation !== user.currentLocation ||
-      futureTrip !== (user.futureTrip || '') ||
+      JSON.stringify(futureTrips) !== JSON.stringify(user.futureTrips || []) ||
       JSON.stringify(lifestyle) !== JSON.stringify(user.lifestyle) ||
       JSON.stringify(interests) !== JSON.stringify(user.interests) ||
       JSON.stringify(photos) !== JSON.stringify(user.photos);
     setHasChanges(changed);
-  }, [name, username, instagram, currentLocation, futureTrip, lifestyle, interests, photos, user]);
+  }, [name, username, instagram, currentLocation, futureTrips, lifestyle, interests, photos, user]);
 
   // Username validation
   useEffect(() => {
@@ -333,7 +333,7 @@ export default function EditProfileScreen() {
         username: username.trim(),
         instagram: instagram.trim() || undefined,
         currentLocation: currentLocation.trim(),
-        futureTrip: futureTrip.trim() || undefined,
+        futureTrips: futureTrips.length > 0 ? futureTrips : undefined,
         lifestyle,
         interests,
         photos: uploadedPhotos,
@@ -563,8 +563,14 @@ export default function EditProfileScreen() {
               />
               <Input
                 label="next destination"
-                value={futureTrip}
-                onChangeText={setFutureTrip}
+                value={futureTrips[0]?.location || ''}
+                onChangeText={(text) => {
+                  if (text) {
+                    setFutureTrips([{ location: text }]);
+                  } else {
+                    setFutureTrips([]);
+                  }
+                }}
                 placeholder="where are you heading? (optional)"
               />
             </View>

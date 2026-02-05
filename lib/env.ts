@@ -21,4 +21,5 @@ export const env = {
   revenueCatIosKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? '',
   revenueCatAndroidKey: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY ?? '',
   revenueCatKey: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '',
+  mapboxToken: process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? '',
 };

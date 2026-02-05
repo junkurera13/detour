@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import * as Location from 'expo-location';
 import { OnboardingLayout } from '@/components/ui/OnboardingLayout';
-import { Input } from '@/components/ui/Input';
+import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 import { Button } from '@/components/ui/Button';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,8 +52,16 @@ export default function LocationScreen() {
       title="where are you now?"
       subtitle="help nearby nomads find you"
       currentStep={11}
+      scrollable
+      footer={
+        <Button
+          title="continue"
+          onPress={handleContinue}
+          disabled={location.trim().length < 2}
+        />
+      }
     >
-      <View className="flex-1 pt-8">
+      <View className="pt-8 pb-4">
         <TouchableOpacity
           onPress={getCurrentLocation}
           disabled={loading}
@@ -95,20 +103,14 @@ export default function LocationScreen() {
           <View className="flex-1 h-px bg-gray-200" />
         </View>
 
-        <Input
+        <LocationAutocomplete
           value={location}
-          onChangeText={setLocation}
+          onSelect={(loc) => setLocation(loc.fullName)}
           placeholder="e.g. lisbon, portugal"
-          autoCapitalize="none"
         />
-      </View>
 
-      <View className="pb-8">
-        <Button
-          title="continue"
-          onPress={handleContinue}
-          disabled={location.trim().length < 2}
-        />
+        {/* Spacer to allow scrolling past results */}
+        <View style={{ height: 80 }} />
       </View>
     </OnboardingLayout>
   );

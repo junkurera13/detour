@@ -56,21 +56,14 @@ export default function PendingScreen() {
     setError('');
 
     try {
-      // Use the invite code
-      await consumeInviteCode({ code: code.trim().toUpperCase(), userId });
-
-      // Update user status to approved
-      await updateUser({ id: userId, userStatus: 'approved' });
-
-      // Update local state
+      // Update local state with invite info (don't consume code yet - paywall will handle user creation)
       updateData({
-        userStatus: 'approved',
         joinPath: 'invite',
         inviteCode: code.trim().toUpperCase(),
       });
 
-      // Navigate to the done screen
-      router.replace('/onboarding/done');
+      // Navigate to the paywall (paywall will handle code consumption and user status update)
+      router.replace('/paywall');
     } catch (err) {
       console.error('Failed to apply invite code:', err);
       setError('Failed to apply code. Please try again.');

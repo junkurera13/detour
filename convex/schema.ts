@@ -30,7 +30,11 @@ export default defineSchema({
 
     // Location
     currentLocation: v.string(),
-    futureTrip: v.optional(v.string()),
+    futureTrip: v.optional(v.string()), // Legacy field for backward compatibility
+    futureTrips: v.optional(v.array(v.object({
+      location: v.string(),
+      date: v.optional(v.string()),
+    }))),
 
     // Status
     joinPath: v.string(), // "invite" or "apply"

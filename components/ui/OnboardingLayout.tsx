@@ -14,6 +14,7 @@ interface OnboardingLayoutProps {
   showSkip?: boolean;
   onSkip?: () => void;
   scrollable?: boolean;
+  footer?: React.ReactNode;
 }
 
 export function OnboardingLayout({
@@ -26,6 +27,7 @@ export function OnboardingLayout({
   showSkip = false,
   onSkip,
   scrollable = false,
+  footer,
 }: OnboardingLayoutProps) {
   const router = useRouter();
 
@@ -85,11 +87,18 @@ export function OnboardingLayout({
           className="flex-1 px-6"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
+          keyboardShouldPersistTaps="handled"
         >
           {children}
         </ScrollView>
       ) : (
         <View className="flex-1 px-6">{children}</View>
+      )}
+
+      {footer && (
+        <View className="px-6 pb-8">
+          {footer}
+        </View>
       )}
     </>
   );

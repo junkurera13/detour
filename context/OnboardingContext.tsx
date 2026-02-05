@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
+export interface TripStop {
+  location: string;
+  date?: string; // ISO date string
+}
+
 export interface OnboardingData {
   name: string;
   username: string;
@@ -15,7 +20,7 @@ export interface OnboardingData {
   photos: string[];
   instagram: string;
   currentLocation: string;
-  futureTrip: string;
+  futureTrips: TripStop[];
   hasCompletedOnboarding: boolean;
   joinPath: 'apply' | 'invite' | null;
   userStatus: 'none' | 'pending' | 'approved';
@@ -43,7 +48,7 @@ const defaultData: OnboardingData = {
   photos: [],
   instagram: '',
   currentLocation: '',
-  futureTrip: '',
+  futureTrips: [],
   hasCompletedOnboarding: false,
   joinPath: null,
   userStatus: 'none',
