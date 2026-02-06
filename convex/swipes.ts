@@ -9,6 +9,17 @@ export const create = mutation({
     action: v.string(), // "like", "pass", "superlike"
   },
   handler: async (ctx, args) => {
+    // Verify the authenticated user is the swiper
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const authUser = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .first();
+    if (!authUser || authUser._id !== args.swiperId) {
+      throw new Error("Not authorized");
+    }
+
     // Check if swipe already exists
     const existingSwipe = await ctx.db
       .query("swipes")

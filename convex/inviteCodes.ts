@@ -48,6 +48,18 @@ export const use = mutation({
       return { success: false, error: "invalid invite code" };
     }
 
+    if (!inviteCode.isActive) {
+      return { success: false, error: "this code is no longer active" };
+    }
+
+    if (inviteCode.expiresAt && inviteCode.expiresAt < Date.now()) {
+      return { success: false, error: "this code has expired" };
+    }
+
+    if (inviteCode.currentUses >= inviteCode.maxUses) {
+      return { success: false, error: "this code has reached its usage limit" };
+    }
+
     await ctx.db.patch(inviteCode._id, {
       currentUses: inviteCode.currentUses + 1,
       usedBy: args.userId,

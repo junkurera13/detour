@@ -159,7 +159,7 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
       console.warn('RevenueCat paywall error', error);
       return PAYWALL_RESULT.ERROR;
     }
-  }, [offerings?.current]);
+  }, [offerings]);
 
   const presentPaywallIfNeeded = useCallback(async () => {
     try {

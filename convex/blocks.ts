@@ -8,6 +8,17 @@ export const blockUser = mutation({
     blockedId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    // Verify the authenticated user is the blocker
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .first();
+    if (!user || user._id !== args.blockerId) {
+      throw new Error("Not authorized");
+    }
+
     // Check if already blocked
     const existing = await ctx.db
       .query("blockedUsers")
@@ -38,6 +49,17 @@ export const unblockUser = mutation({
     blockedId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    // Verify the authenticated user is the blocker
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .first();
+    if (!user || user._id !== args.blockerId) {
+      throw new Error("Not authorized");
+    }
+
     const block = await ctx.db
       .query("blockedUsers")
       .withIndex("by_pair", (q) =>

@@ -128,6 +128,17 @@ export const update = mutation({
     userStatus: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...updates }) => {
+    // Verify the authenticated user is updating their own profile
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const authUser = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .first();
+    if (!authUser || authUser._id !== id) {
+      throw new Error("Not authorized");
+    }
+
     const filteredUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, value]) => value !== undefined)
     );

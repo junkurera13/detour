@@ -10,6 +10,23 @@ export const send = mutation({
     messageType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Verify the authenticated user is the sender
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const authUser = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .first();
+    if (!authUser || authUser._id !== args.senderId) {
+      throw new Error("Not authorized");
+    }
+
+    // Verify the sender is part of this match
+    const match = await ctx.db.get(args.matchId);
+    if (!match || (match.user1Id !== args.senderId && match.user2Id !== args.senderId)) {
+      throw new Error("Not authorized to send messages in this match");
+    }
+
     const messageId = await ctx.db.insert("messages", {
       matchId: args.matchId,
       senderId: args.senderId,

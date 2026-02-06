@@ -1,4 +1,4 @@
-import { useMutation } from 'convex/react';
+import { useMutation, useConvex } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useState, useCallback } from 'react';
 import { Id } from '@/convex/_generated/dataModel';
@@ -19,7 +19,8 @@ interface UsePhotoUploadReturn {
 
 export function usePhotoUpload(): UsePhotoUploadReturn {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
-  const getUrl = useMutation(api.files.getUrl);
+  const convex = useConvex();
+
 
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
@@ -60,7 +61,7 @@ export function usePhotoUpload(): UsePhotoUploadReturn {
         const { storageId } = await uploadResponse.json();
 
         // 5. Convert to public URL
-        const publicUrl = await getUrl({ storageId: storageId as Id<"_storage"> });
+        const publicUrl = await convex.query(api.files.getUrl, { storageId: storageId as Id<"_storage"> });
 
         return publicUrl;
       } catch (err) {
@@ -119,7 +120,7 @@ export function usePhotoUpload(): UsePhotoUploadReturn {
         setIsUploading(false);
       }
     },
-    [generateUploadUrl, getUrl]
+    [generateUploadUrl, convex]
   );
 
   return {
