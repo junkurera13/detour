@@ -11,19 +11,19 @@
 
 ---
 
-## Phase 1: Hard Paywall + Free Trial 🟡
+## Phase 1: Hard Paywall + Free Trial ✅
 **Goal:** Full features behind paywall with 7-day free trial
 
 | Task | Description | Status |
 |------|-------------|--------|
 | Hard paywall gate | Block app access without active subscription/trial | ✅ |
-| 7-day free trial | Configure trial period in RevenueCat | ⬜ (dashboard) |
+| 7-day free trial | Configure trial period in RevenueCat | ✅ |
 | Trial expiration handling | Show paywall when trial ends | ✅ |
 | Subscription check on launch | Verify entitlement status on app open | ✅ |
-| RevenueCat dashboard | Create entitlement + offerings with trial | ⬜ (needs App Store Connect) |
-| **Complete App Store Connect setup** | Sign Paid Apps Agreement (waiting for Korean BRN), then test sandbox purchases | ⬜ **IMPORTANT** |
+| RevenueCat dashboard | Create entitlement + offerings with trial | ✅ |
+| **Complete App Store Connect setup** | Sign Paid Apps Agreement — user info pending in App Store Connect | 🟡 **IN PROGRESS** |
 
-> ⚠️ **NOTE:** Both paywalls have a bypass (`ALLOW_PAYWALL_BYPASS = true`) because App Store Connect Paid Apps Agreement is pending Korean BRN. Set to `false` in **both files** after BRN received and agreement signed:
+> ⚠️ **NOTE:** Both paywalls have a bypass (`ALLOW_PAYWALL_BYPASS = true`) because App Store Connect Paid Apps Agreement status is "Pending User Info". Set to `false` in **both files** after agreement is active:
 > - `app/onboarding/paywall.tsx` (new accounts)
 > - `app/paywall.tsx` (trial expired)
 
@@ -41,8 +41,10 @@
 
 ---
 
-## Phase 3: TestFlight Submission 🟡
-**Goal:** Get app on TestFlight for hackathon eligibility
+## Phase 3: Store Submission 🟡
+**Goal:** Get app on Google Play Internal Testing (priority) + TestFlight
+
+**Strategy:** Prioritizing Android (Google Play Internal Testing) for guaranteed submission by Feb 12 deadline. TestFlight in parallel if Apple timeline allows.
 
 | Task | Description | Status |
 |------|-------------|--------|
@@ -50,11 +52,14 @@
 | App Store Connect | Create app record | ✅ |
 | Subscription product | Create yearly subscription in App Store Connect | ✅ (Ready to Submit) |
 | RevenueCat product | Link product in RevenueCat dashboard | ✅ |
-| **Paid Apps Agreement** | Complete tax forms (waiting for Korean BRN) | ⬜ **BLOCKING** |
-| EAS Build setup | Configure eas.json for production | ⬜ |
-| Privacy policy | Host privacy policy URL | ⬜ |
-| App icons & splash | Finalize assets | ⬜ |
-| Build & upload | EAS build + submit to TestFlight | ⬜ |
+| **Paid Apps Agreement** | Complete user info in App Store Connect | 🟡 **IN PROGRESS** |
+| EAS Build setup | Configure eas.json for builds | ✅ |
+| Privacy policy | Create privacy policy | ✅ (needs hosting) |
+| App icons & splash | Finalize assets | ✅ (existing assets in place) |
+| **Google Play Developer account** | Register for Google Play Console ($25) | 🟡 **IN PROGRESS** (user) |
+| **Android build & upload** | EAS build + upload to Google Play Internal Testing | ⬜ |
+| **Android internal testing** | Verify app works on internal testing | ⬜ |
+| iOS build & upload | EAS build + submit to TestFlight | ⬜ (after Paid Apps Agreement) |
 | TestFlight testing | Verify app works on TestFlight | ⬜ |
 
 ---
@@ -118,7 +123,7 @@
 
 ---
 
-*Last updated: February 5, 2026*
+*Last updated: February 7, 2026*
 
 ---
 
