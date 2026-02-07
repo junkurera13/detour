@@ -14,6 +14,11 @@ npm run ios        # Run on iOS simulator
 npm run android    # Run on Android emulator
 npm run web        # Run web version
 npm run lint       # Run ESLint
+
+# EAS Build
+eas build --platform android --profile preview     # Build Android APK
+eas build --platform ios --profile preview          # Build iOS (internal)
+eas build --platform android --profile production   # Production Android build
 ```
 
 ## Tech Stack
@@ -149,7 +154,7 @@ Functional MVP (7/10) with backend fully integrated. See `ROADMAP.md` for full d
 **Implemented:**
 - Convex backend (users, matches, messages, swipes, inviteCodes)
 - Clerk authentication (phone, Google, Apple sign-in)
-- RevenueCat subscriptions (SDK integrated, needs store products)
+- RevenueCat subscriptions (SDK integrated, dashboard configured with entitlements, offerings, and 7-day free trial)
 - Photo cloud upload (Convex File Storage)
 - Real-time messaging
 - Discovery and swiping
@@ -157,7 +162,13 @@ Functional MVP (7/10) with backend fully integrated. See `ROADMAP.md` for full d
 - Edit profile screen
 
 **Remaining for production:**
-- App Store Connect Paid Apps Agreement (waiting for Korean BRN) - then set `ALLOW_PAYWALL_BYPASS = false` in both paywall files
-- App Store / Play Store products for RevenueCat
+- App Store Connect Paid Apps Agreement (submitted, status "Pending User Info" in App Store Connect) - then set `ALLOW_PAYWALL_BYPASS = false` in both paywall files
+- Google Play Developer account registered (identity verification pending)
+- Android build in progress on EAS
 - Error monitoring (Sentry)
 - Testing suite
+
+**Recently completed:**
+- RevenueCat dashboard configured with entitlements, offerings, and 7-day free trial
+- EAS Build configured (eas.json created, EAS CLI ready)
+- Privacy policy hosted at https://junkurera13.github.io/detour/privacy-policy.html

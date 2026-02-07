@@ -2,6 +2,7 @@
   "name": "nomad-app",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "packageManager": "npm@10.9.2",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -15,7 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@clerk/clerk-expo": "^2.19.21",
+    "@clerk/clerk-expo": "2.19.21",
     "@expo-google-fonts/instrument-sans": "^0.4.2",
     "@expo-google-fonts/instrument-serif": "^0.4.1",
     "@expo/vector-icons": "^15.0.3",

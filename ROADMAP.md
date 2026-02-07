@@ -21,7 +21,7 @@
 | Trial expiration handling | Show paywall when trial ends | ✅ |
 | Subscription check on launch | Verify entitlement status on app open | ✅ |
 | RevenueCat dashboard | Create entitlement + offerings with trial | ✅ |
-| **Complete App Store Connect setup** | Sign Paid Apps Agreement — user info pending in App Store Connect | 🟡 **IN PROGRESS** |
+| **Complete App Store Connect setup** | Sign Paid Apps Agreement — Paid Apps Agreement shows "Pending User Info" in App Store Connect (info filled in, waiting for Apple to process) | 🟡 **IN PROGRESS** |
 
 > ⚠️ **NOTE:** Both paywalls have a bypass (`ALLOW_PAYWALL_BYPASS = true`) because App Store Connect Paid Apps Agreement status is "Pending User Info". Set to `false` in **both files** after agreement is active:
 > - `app/onboarding/paywall.tsx` (new accounts)
@@ -53,14 +53,16 @@
 | Subscription product | Create yearly subscription in App Store Connect | ✅ (Ready to Submit) |
 | RevenueCat product | Link product in RevenueCat dashboard | ✅ |
 | **Paid Apps Agreement** | Complete user info in App Store Connect | 🟡 **IN PROGRESS** |
-| EAS Build setup | Configure eas.json for builds | ✅ |
-| Privacy policy | Create privacy policy | ✅ (needs hosting) |
-| App icons & splash | Finalize assets | ✅ (existing assets in place) |
-| **Google Play Developer account** | Register for Google Play Console ($25) | 🟡 **IN PROGRESS** (user) |
-| **Android build & upload** | EAS build + upload to Google Play Internal Testing | ⬜ |
+| EAS Build setup | Configure eas.json for builds | ✅ (eas.json created, EAS CLI installed, project linked) |
+| Privacy policy | Create and host privacy policy | ✅ (hosted at https://junkurera13.github.io/detour/privacy-policy.html) |
+| App icons & splash | Finalize assets | ✅ (assets exist in assets/images/) |
+| **Google Play Developer account** | Register for Google Play Console ($25) | 🟡 **IN PROGRESS** (registered, identity verification pending) |
+| **Android build & upload** | EAS build + upload to Google Play Internal Testing | 🟡 **IN PROGRESS** (build running on EAS, fixing dependency issues) |
 | **Android internal testing** | Verify app works on internal testing | ⬜ |
 | iOS build & upload | EAS build + submit to TestFlight | ⬜ (after Paid Apps Agreement) |
 | TestFlight testing | Verify app works on TestFlight | ⬜ |
+
+> **NOTE:** `expo-auth-session` was added as a required peer dependency for `@clerk/clerk-expo`.
 
 ---
 
