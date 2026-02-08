@@ -10,8 +10,8 @@ const friendsIcon = require('@/assets/images/friends-icon.jpeg');
 const coupleIcon = require('@/assets/images/couple-icon.jpeg');
 
 const lookingForOptions = [
-  { id: 'friends', label: 'friends', icon: friendsIcon, description: 'travel buddies and connections' },
   { id: 'dating', label: 'dating', icon: coupleIcon, description: 'romantic connections' },
+  { id: 'friends', label: 'friends', icon: friendsIcon, description: 'travel buddies and connections' },
 ];
 
 const preferenceOptions = [
@@ -51,7 +51,7 @@ export default function LookingForScreen() {
     if (lookingFor.includes('dating')) {
       router.push('/onboarding/dating-goals');
     } else {
-      router.push('/onboarding/lifestyle');
+      router.push('/onboarding/interests');
     }
   };
 

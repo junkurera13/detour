@@ -163,7 +163,7 @@ const interestCategories = [
   },
 ];
 
-type Section = 'basic' | 'photos' | 'lifestyle' | 'interests';
+type Section = 'basic' | 'photos' | 'lifestyle' | 'interests' | 'builder';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -175,11 +175,10 @@ export default function EditProfileScreen() {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [instagram, setInstagram] = useState('');
-  const [currentLocation, setCurrentLocation] = useState('');
-  const [futureTrips, setFutureTrips] = useState<Array<{ location: string; date?: string }>>([]);
   const [lifestyle, setLifestyle] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [builderBio, setBuilderBio] = useState('');
 
   // UI state
   const [activeSection, setActiveSection] = useState<Section>('basic');
@@ -199,11 +198,10 @@ export default function EditProfileScreen() {
       setName(user.name || '');
       setUsername(user.username || '');
       setInstagram(user.instagram || '');
-      setCurrentLocation(user.currentLocation || '');
-      setFutureTrips(user.futureTrips || []);
       setLifestyle(user.lifestyle || []);
       setInterests(user.interests || []);
       setPhotos(user.photos || []);
+      setBuilderBio(user.builderBio || '');
     }
   }, [user]);
 
@@ -214,13 +212,12 @@ export default function EditProfileScreen() {
       name !== user.name ||
       username !== user.username ||
       instagram !== (user.instagram || '') ||
-      currentLocation !== user.currentLocation ||
-      JSON.stringify(futureTrips) !== JSON.stringify(user.futureTrips || []) ||
       JSON.stringify(lifestyle) !== JSON.stringify(user.lifestyle) ||
       JSON.stringify(interests) !== JSON.stringify(user.interests) ||
-      JSON.stringify(photos) !== JSON.stringify(user.photos);
+      JSON.stringify(photos) !== JSON.stringify(user.photos) ||
+      builderBio !== (user.builderBio || '');
     setHasChanges(changed);
-  }, [name, username, instagram, currentLocation, futureTrips, lifestyle, interests, photos, user]);
+  }, [name, username, instagram, lifestyle, interests, photos, builderBio, user]);
 
   // Username validation
   useEffect(() => {
@@ -332,11 +329,10 @@ export default function EditProfileScreen() {
         name: name.trim(),
         username: username.trim(),
         instagram: instagram.trim() || undefined,
-        currentLocation: currentLocation.trim(),
-        futureTrips: futureTrips.length > 0 ? futureTrips : undefined,
         lifestyle,
         interests,
         photos: uploadedPhotos,
+        builderBio: builderBio.trim() || undefined,
       });
 
       router.back();
@@ -440,6 +436,7 @@ export default function EditProfileScreen() {
     { id: 'photos', label: 'photos' },
     { id: 'lifestyle', label: 'lifestyle' },
     { id: 'interests', label: 'interests' },
+    { id: 'builder', label: 'builder' },
   ];
 
   if (!user) {
@@ -555,24 +552,6 @@ export default function EditProfileScreen() {
                 autoCapitalize="none"
                 prefix="@"
               />
-              <Input
-                label="current location"
-                value={currentLocation}
-                onChangeText={setCurrentLocation}
-                placeholder="where are you now?"
-              />
-              <Input
-                label="next destination"
-                value={futureTrips[0]?.location || ''}
-                onChangeText={(text) => {
-                  if (text) {
-                    setFutureTrips([{ location: text }]);
-                  } else {
-                    setFutureTrips([]);
-                  }
-                }}
-                placeholder="where are you heading? (optional)"
-              />
             </View>
           )}
 
@@ -651,6 +630,32 @@ export default function EditProfileScreen() {
                   </View>
                 </View>
               ))}
+            </View>
+          )}
+
+          {activeSection === 'builder' && (
+            <View className="px-6 pt-6 gap-5">
+              <Text
+                className="text-gray-500"
+                style={{ fontFamily: 'InstrumentSans_400Regular' }}
+              >
+                your builder profile helps others trust you when you offer help
+              </Text>
+              <View>
+                <Input
+                  label="bio"
+                  value={builderBio}
+                  onChangeText={(text) => setBuilderBio(text.slice(0, 80))}
+                  placeholder="e.g. electrician by trade, happy to help"
+                  multiline
+                />
+                <Text
+                  className="text-gray-400 text-xs mt-1 text-right"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  {builderBio.length}/80
+                </Text>
+              </View>
             </View>
           )}
         </ScrollView>

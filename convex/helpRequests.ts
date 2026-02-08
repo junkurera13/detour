@@ -445,3 +445,80 @@ export const complete = mutation({
     return { success: true };
   },
 });
+
+// Get builder profile stats for the current user
+export const getBuilderStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .first();
+
+    if (!user) return null;
+
+    // Get all requests by this user
+    const myRequests = await ctx.db
+      .query("helpRequests")
+      .withIndex("by_author", (q) => q.eq("authorId", user._id))
+      .collect();
+
+    // Get all offers by this user
+    const myOffers = await ctx.db
+      .query("helpOffers")
+      .withIndex("by_offerer", (q) => q.eq("offererId", user._id))
+      .collect();
+
+    // Count by status
+    const openRequests = myRequests.filter((r) => r.status === "open");
+    const completedRequests = myRequests.filter((r) => r.status === "completed");
+    const inProgressRequests = myRequests.filter((r) => r.status === "in_progress");
+    const acceptedOffers = myOffers.filter((o) => o.status === "accepted");
+
+    // Derive specialties from categories the user has offered help in
+    const offeredRequestIds = myOffers.map((o) => o.requestId);
+    const offeredRequests = await Promise.all(
+      [...new Set(offeredRequestIds)].map((id) => ctx.db.get(id))
+    );
+    const offerCategories = offeredRequests
+      .filter(Boolean)
+      .map((r) => r!.category);
+
+    // Also include categories from their own requests
+    const requestCategories = myRequests.map((r) => r.category);
+    const allCategories = [...offerCategories, ...requestCategories];
+
+    // Count category frequency and sort by most active
+    const categoryCounts: Record<string, number> = {};
+    for (const cat of allCategories) {
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    }
+    const specialties = Object.entries(categoryCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat]) => cat);
+
+    return {
+      totalRequests: myRequests.length,
+      openRequests: openRequests.length,
+      inProgressRequests: inProgressRequests.length,
+      completedRequests: completedRequests.length,
+      totalOffers: myOffers.length,
+      acceptedOffers: acceptedOffers.length,
+      specialties,
+      // Current active requests (open or in progress) for display
+      activeRequests: [...openRequests, ...inProgressRequests]
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, 3)
+        .map((r) => ({
+          _id: r._id,
+          title: r.title,
+          category: r.category,
+          status: r.status,
+          isUrgent: r.isUrgent,
+        })),
+    };
+  },
+});

@@ -32,7 +32,7 @@ export default function DatingGoalsScreen() {
 
   const handleContinue = () => {
     updateData({ datingGoals: selected });
-    router.push('/onboarding/lifestyle');
+    router.push('/onboarding/interests');
   };
 
   return (

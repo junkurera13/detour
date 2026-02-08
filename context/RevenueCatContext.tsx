@@ -61,12 +61,16 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
       if (__DEV__) {
         Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
       }
-      Purchases.configure({
-        apiKey,
-        appUserID: userId ?? undefined,
-      });
-      lastUserIdRef.current = userId ?? null;
-      setIsConfigured(true);
+      try {
+        Purchases.configure({
+          apiKey,
+          appUserID: userId ?? undefined,
+        });
+        lastUserIdRef.current = userId ?? null;
+        setIsConfigured(true);
+      } catch (error) {
+        console.warn('[RevenueCat] Configure failed (expected in Expo Go):', error);
+      }
       return;
     }
 

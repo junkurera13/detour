@@ -36,6 +36,9 @@ export default defineSchema({
       date: v.optional(v.string()),
     }))),
 
+    // Builder profile
+    builderBio: v.optional(v.string()),
+
     // Status
     joinPath: v.string(), // "invite" or "apply"
     inviteCode: v.optional(v.string()),

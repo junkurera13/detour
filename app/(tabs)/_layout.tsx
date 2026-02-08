@@ -47,7 +47,7 @@ export default function TabLayout() {
         name="explore"
         options={{
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="compass-outline" size={28} color={color} />
+            <MaterialCommunityIcons name="lightning-bolt-outline" size={28} color={color} />
           ),
         }}
       />

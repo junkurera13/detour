@@ -1,10 +1,11 @@
-import { View, Text, TouchableOpacity, Image, Alert, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Alert, Dimensions, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { OnboardingLayout } from '@/components/ui/OnboardingLayout';
 import { Button } from '@/components/ui/Button';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { usePhotoUpload } from '@/hooks/usePhotoUpload';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -19,6 +20,7 @@ export default function PhotosScreen() {
   const router = useRouter();
   const { data, updateData } = useOnboarding();
   const [photos, setPhotos] = useState<string[]>(data.photos);
+  const { uploadPhotos, isUploading, progress: uploadProgress } = usePhotoUpload();
 
   const pickImage = async (index: number) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -53,8 +55,27 @@ export default function PhotosScreen() {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleContinue = () => {
-    updateData({ photos });
+  const handleContinue = async () => {
+    // Check if there are local photos that need uploading
+    const hasLocalPhotos = photos.some(
+      (p) => p.startsWith('file://') || p.startsWith('ph://')
+    );
+
+    if (hasLocalPhotos) {
+      try {
+        const cloudUrls = await uploadPhotos(photos);
+        updateData({ photos: cloudUrls });
+      } catch (err) {
+        Alert.alert(
+          'upload failed',
+          'failed to upload your photos. please try again.'
+        );
+        return;
+      }
+    } else {
+      updateData({ photos });
+    }
+
     router.push('/onboarding/instagram');
   };
 
@@ -180,11 +201,84 @@ export default function PhotosScreen() {
 
       <View className="pb-8">
         <Button
-          title="continue"
+          title={isUploading ? 'uploading...' : 'continue'}
           onPress={handleContinue}
-          disabled={photos.length < 1}
+          disabled={photos.length < 1 || isUploading}
         />
       </View>
+
+      {/* Upload Progress Overlay */}
+      {isUploading && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: 'white',
+              borderRadius: 16,
+              padding: 24,
+              marginHorizontal: 24,
+              width: '80%',
+              alignItems: 'center',
+            }}
+          >
+            <ActivityIndicator size="large" color="#fd6b03" />
+            <Text
+              style={{
+                fontFamily: 'InstrumentSans_600SemiBold',
+                fontSize: 18,
+                color: '#000',
+                marginTop: 16,
+                textAlign: 'center',
+              }}
+            >
+              uploading photos...
+            </Text>
+            {uploadProgress && (
+              <>
+                <Text
+                  style={{
+                    fontFamily: 'InstrumentSans_400Regular',
+                    fontSize: 14,
+                    color: '#6B7280',
+                    marginTop: 8,
+                    textAlign: 'center',
+                  }}
+                >
+                  {uploadProgress.current} of {uploadProgress.total}
+                </Text>
+                <View
+                  style={{
+                    marginTop: 16,
+                    height: 8,
+                    backgroundColor: '#E5E7EB',
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                    width: '100%',
+                  }}
+                >
+                  <View
+                    style={{
+                      height: '100%',
+                      backgroundColor: '#fd6b03',
+                      width: `${uploadProgress.percentage}%`,
+                    }}
+                  />
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      )}
     </OnboardingLayout>
   );
 }

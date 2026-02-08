@@ -1,10 +1,12 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useRouter } from 'expo-router';
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { mockProfileViewers } from '@/data/mockData';
 import { useRevenueCat } from '@/context/RevenueCatContext';
 
@@ -50,8 +52,13 @@ const interestLabels: Record<string, { label: string; emoji: string }> = {
   'food': { label: 'food', emoji: '🍜' },
 };
 
-const builderSkillChips = ['repairs', 'electrical', 'build', 'plumbing'];
-const builderFocusTags = ['van systems', 'solar', 'water', 'woodwork'];
+const helpCategoryLabels: Record<string, { label: string; emoji: string }> = {
+  'repairs': { label: 'repairs', emoji: '🔧' },
+  'electrical': { label: 'electrical', emoji: '⚡' },
+  'build': { label: 'build', emoji: '🪚' },
+  'plumbing': { label: 'plumbing', emoji: '🚿' },
+  'other': { label: 'other', emoji: '📦' },
+};
 
 const settingsItems = [
   { id: 'edit', label: 'edit profile', icon: 'create-outline' },
@@ -70,10 +77,15 @@ const recentViewers = mockProfileViewers.slice(0, 4).map(user => ({
 
 export default function ProfileScreen() {
   const { data: onboardingData } = useOnboarding();
-  const { convexUser: user } = useAuthenticatedUser();
+  const { convexUser: user, convexAuthenticated } = useAuthenticatedUser();
   const { openCustomerCenter } = useRevenueCat();
   const router = useRouter();
+  const builderStats = useQuery(api.helpRequests.getBuilderStats, convexAuthenticated ? {} : "skip");
+  const updateUser = useMutation(api.users.update);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<'about' | 'builder'>('about');
+  const [editingStopIndex, setEditingStopIndex] = useState<number | null>(null);
+  const [editingStopText, setEditingStopText] = useState('');
   const slideAnim = useRef(new Animated.Value(400)).current;
 
   // Use Convex user data if available, fallback to onboarding data
@@ -87,6 +99,7 @@ export default function ProfileScreen() {
         instagram: user.instagram,
         lifestyle: user.lifestyle,
         interests: user.interests,
+        futureTrips: user.futureTrips || [],
       };
     }
     return {
@@ -97,6 +110,7 @@ export default function ProfileScreen() {
       instagram: onboardingData.instagram,
       lifestyle: onboardingData.lifestyle,
       interests: onboardingData.interests,
+      futureTrips: onboardingData.futureTrips || [],
     };
   }, [user, onboardingData]);
 
@@ -129,6 +143,45 @@ export default function ProfileScreen() {
       router.push('/settings' as any);
     } else if (id === 'edit') {
       router.push('/edit-profile' as any);
+    }
+  };
+
+  const handleSaveStop = async (index: number) => {
+    if (!user) return;
+    const text = editingStopText.trim();
+    const currentTrips = [...profileData.futureTrips];
+    if (text) {
+      if (index < currentTrips.length) {
+        currentTrips[index] = { ...currentTrips[index], location: text };
+      } else {
+        currentTrips.push({ location: text });
+      }
+    } else if (index < currentTrips.length) {
+      currentTrips.splice(index, 1);
+    }
+    try {
+      await updateUser({
+        id: user._id,
+        futureTrips: currentTrips.length > 0 ? currentTrips : undefined,
+      });
+    } catch {
+      Alert.alert('error', 'failed to update trip');
+    }
+    setEditingStopIndex(null);
+    setEditingStopText('');
+  };
+
+  const handleRemoveStop = async (index: number) => {
+    if (!user) return;
+    const currentTrips = [...profileData.futureTrips];
+    currentTrips.splice(index, 1);
+    try {
+      await updateUser({
+        id: user._id,
+        futureTrips: currentTrips.length > 0 ? currentTrips : undefined,
+      });
+    } catch {
+      Alert.alert('error', 'failed to remove trip');
     }
   };
 
@@ -229,140 +282,432 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Builder Profile Bento (Public) */}
+        {/* Tab Toggle */}
         <View className="px-6 mb-6">
-          <Text
-            className="text-lg text-black mb-3"
-            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-          >
-            builder profile
-          </Text>
-          <View className="bg-gray-50 rounded-3xl p-5">
-            <View className="flex-row items-center justify-between">
-              <View>
-                <Text
-                  className="text-sm text-gray-500"
-                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                >
-                  reputation
-                </Text>
-                <View className="flex-row items-end mt-1">
-                  <Text
-                    className="text-3xl text-black"
-                    style={{ fontFamily: 'InstrumentSans_700Bold' }}
-                  >
-                    4.9
-                  </Text>
-                  <Text
-                    className="text-gray-400 ml-1 mb-1"
-                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                  >
-                    /5
-                  </Text>
-                </View>
-              </View>
-              <View className="items-end">
-                <Text
-                  className="text-sm text-gray-500"
-                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                >
-                  response time
-                </Text>
-                <Text
-                  className="text-2xl text-black mt-1"
-                  style={{ fontFamily: 'InstrumentSans_700Bold' }}
-                >
-                  ~2h
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-row flex-wrap gap-2 mt-4">
-              {builderSkillChips.map((skill) => (
-                <View key={skill} className="bg-white px-3 py-2 rounded-full">
-                  <Text
-                    className="text-gray-700 text-xs"
-                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                  >
-                    {skill}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            <View className="flex-row flex-wrap gap-2 mt-3">
-              {builderFocusTags.map((tag) => (
-                <View key={tag} className="bg-white px-3 py-2 rounded-full">
-                  <Text
-                    className="text-gray-500 text-xs"
-                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                  >
-                    {tag}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            <View className="flex-row items-center mt-4">
-              <Ionicons name="shield-checkmark" size={18} color="#16a34a" />
+          <View className="flex-row bg-gray-100 rounded-full p-1">
+            <TouchableOpacity
+              onPress={() => setActiveTab('about')}
+              className="flex-1 py-2.5 rounded-full items-center"
+              style={{ backgroundColor: activeTab === 'about' ? '#fff' : 'transparent' }}
+            >
               <Text
-                className="text-gray-500 text-xs ml-2"
-                style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                className={activeTab === 'about' ? 'text-black' : 'text-gray-400'}
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
               >
-                verified helper • based on help feedback
+                about
               </Text>
-            </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setActiveTab('builder')}
+              className="flex-1 py-2.5 rounded-full items-center"
+              style={{ backgroundColor: activeTab === 'builder' ? '#fff' : 'transparent' }}
+            >
+              <Text
+                className={activeTab === 'builder' ? 'text-black' : 'text-gray-400'}
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                builder profile
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {profileData.lifestyle.length > 0 && (
-          <View className="px-6 mb-6">
-            <Text
-              className="text-lg text-black mb-3"
-              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-            >
-              lifestyle
-            </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {profileData.lifestyle.map((style) => (
-                <View key={style} className="bg-gray-100 px-3 py-2 rounded-full">
+        {activeTab === 'about' ? (
+          <>
+            {/* Journey Route */}
+            <View className="px-6 mb-6">
+              <View
+                className="rounded-3xl overflow-hidden"
+                style={{ backgroundColor: '#F9FAFB' }}
+              >
+                <View className="p-5">
+                  <View className="flex-row items-center mb-1">
+                    <View className="items-center" style={{ width: 32 }}>
+                      <View
+                        className="w-8 h-8 rounded-full items-center justify-center"
+                        style={{ backgroundColor: '#111827' }}
+                      >
+                        <Ionicons name="navigate" size={16} color="#fff" />
+                      </View>
+                    </View>
+                    <View className="ml-3 flex-1">
+                      <Text
+                        className="text-xs text-gray-400 uppercase"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        now
+                      </Text>
+                      <Text
+                        className="text-black text-base"
+                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                        numberOfLines={1}
+                      >
+                        {profileData.currentLocation || 'location not set'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View className="items-center" style={{ width: 32, paddingVertical: 2 }}>
+                    {[0, 1, 2].map((i) => (
+                      <View
+                        key={i}
+                        className="w-1 rounded-full my-0.5"
+                        style={{ height: 4, backgroundColor: '#FDBA74' }}
+                      />
+                    ))}
+                  </View>
+                  {profileData.futureTrips.map((trip, index) => (
+                    <View key={index}>
+                      <View className="flex-row items-center">
+                        <View className="items-center" style={{ width: 32 }}>
+                          <View
+                            className="w-8 h-8 rounded-full items-center justify-center"
+                            style={{ backgroundColor: '#FED7AA' }}
+                          >
+                            <Ionicons name="airplane" size={14} color="#EA580C" />
+                          </View>
+                        </View>
+                        {editingStopIndex === index ? (
+                          <View className="ml-3 flex-1 flex-row items-center">
+                            <TextInput
+                              value={editingStopText}
+                              onChangeText={setEditingStopText}
+                              placeholder="city or region"
+                              autoFocus
+                              onSubmitEditing={() => handleSaveStop(index)}
+                              onBlur={() => handleSaveStop(index)}
+                              className="flex-1 text-base text-black py-1"
+                              style={{
+                                fontFamily: 'InstrumentSans_500Medium',
+                                borderBottomWidth: 1,
+                                borderBottomColor: '#374151',
+                              }}
+                            />
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            className="ml-3 flex-1 flex-row items-center justify-between"
+                            onPress={() => {
+                              setEditingStopIndex(index);
+                              setEditingStopText(trip.location);
+                            }}
+                            onLongPress={() => {
+                              Alert.alert('remove stop?', trip.location, [
+                                { text: 'cancel', style: 'cancel' },
+                                { text: 'remove', style: 'destructive', onPress: () => handleRemoveStop(index) },
+                              ]);
+                            }}
+                          >
+                            <View className="flex-1">
+                              <Text
+                                className="text-xs text-gray-400 uppercase"
+                                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                              >
+                                next{index > 0 ? ` +${index}` : ''}
+                              </Text>
+                              <Text
+                                className="text-black text-base"
+                                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                                numberOfLines={1}
+                              >
+                                {trip.location.split(',')[0]}
+                              </Text>
+                            </View>
+                            <Ionicons name="pencil" size={14} color="#D1D5DB" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      {index < profileData.futureTrips.length - 1 && (
+                        <View className="items-center" style={{ width: 32, paddingVertical: 2 }}>
+                          {[0, 1, 2].map((i) => (
+                            <View
+                              key={i}
+                              className="w-1 rounded-full my-0.5"
+                              style={{ height: 4, backgroundColor: '#FDBA74' }}
+                            />
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  ))}
+                  {profileData.futureTrips.length < 5 && (
+                    <>
+                      <View className="items-center" style={{ width: 32, paddingVertical: 2 }}>
+                        {[0, 1, 2].map((i) => (
+                          <View
+                            key={i}
+                            className="w-1 rounded-full my-0.5"
+                            style={{ height: 4, backgroundColor: '#FDBA74' }}
+                          />
+                        ))}
+                      </View>
+                      {editingStopIndex === profileData.futureTrips.length ? (
+                        <View className="flex-row items-center">
+                          <View className="items-center" style={{ width: 32 }}>
+                            <View
+                              className="w-8 h-8 rounded-full items-center justify-center"
+                              style={{ backgroundColor: '#F3F4F6', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' }}
+                            >
+                              <Ionicons name="add" size={16} color="#9CA3AF" />
+                            </View>
+                          </View>
+                          <View className="ml-3 flex-1">
+                            <TextInput
+                              value={editingStopText}
+                              onChangeText={setEditingStopText}
+                              placeholder="city or region"
+                              autoFocus
+                              onSubmitEditing={() => handleSaveStop(profileData.futureTrips.length)}
+                              onBlur={() => {
+                                if (!editingStopText.trim()) {
+                                  setEditingStopIndex(null);
+                                  setEditingStopText('');
+                                } else {
+                                  handleSaveStop(profileData.futureTrips.length);
+                                }
+                              }}
+                              className="text-base text-black py-1"
+                              style={{
+                                fontFamily: 'InstrumentSans_500Medium',
+                                borderBottomWidth: 1,
+                                borderBottomColor: '#374151',
+                              }}
+                            />
+                          </View>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          className="flex-row items-center"
+                          onPress={() => {
+                            setEditingStopIndex(profileData.futureTrips.length);
+                            setEditingStopText('');
+                          }}
+                        >
+                          <View className="items-center" style={{ width: 32 }}>
+                            <View
+                              className="w-8 h-8 rounded-full items-center justify-center"
+                              style={{ backgroundColor: '#F3F4F6', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' }}
+                            >
+                              <Ionicons name="add" size={16} color="#9CA3AF" />
+                            </View>
+                          </View>
+                          <Text
+                            className="ml-3 text-gray-400 text-sm"
+                            style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                          >
+                            add a stop
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            {profileData.lifestyle.length > 0 && (
+              <View className="px-6 mb-6">
+                <Text
+                  className="text-lg text-black mb-3"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  lifestyle
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {profileData.lifestyle.map((style) => (
+                    <View key={style} className="bg-gray-100 px-3 py-2 rounded-full">
+                      <Text
+                        className="text-gray-700"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        {lifestyleLabels[style] || style}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {profileData.interests.length > 0 && (
+              <View className="px-6 mb-6">
+                <Text
+                  className="text-lg text-black mb-3"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  interests
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {profileData.interests.map((interest) => {
+                    const info = interestLabels[interest];
+                    return (
+                      <View key={interest} className="bg-gray-100 px-3 py-2 rounded-full flex-row items-center">
+                        {info && <Text className="mr-1">{info.emoji}</Text>}
+                        <Text
+                          className="text-gray-700"
+                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        >
+                          {info?.label || interest}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Builder Profile - Help Activity */}
+            <View className="px-6 mb-6">
+              {builderStats ? (
+                <View className="bg-gray-50 rounded-3xl p-5">
+                  {/* Bio */}
+                  {user?.builderBio && (
+                    <View className="mb-5">
+                      <Text
+                        className="text-black text-base"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        "{user.builderBio}"
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Specialties */}
+                  {builderStats.specialties.length > 0 && (
+                    <View className="mb-5">
+                      <Text
+                        className="text-sm text-gray-500 mb-2"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        specialties
+                      </Text>
+                      <View className="flex-row flex-wrap gap-2">
+                        {builderStats.specialties.map((cat) => {
+                          const info = helpCategoryLabels[cat];
+                          return (
+                            <View key={cat} className="bg-white px-3 py-2 rounded-full flex-row items-center">
+                              {info && <Text className="mr-1.5">{info.emoji}</Text>}
+                              <Text
+                                className="text-black text-sm"
+                                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                              >
+                                {info?.label || cat}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Stats grid */}
+                  <View className="flex-row mb-5">
+                    <View className="flex-1 items-center py-3 bg-white rounded-2xl mr-2">
+                      <Text
+                        className="text-2xl text-black"
+                        style={{ fontFamily: 'InstrumentSans_700Bold' }}
+                      >
+                        {builderStats.completedRequests}
+                      </Text>
+                      <Text
+                        className="text-xs text-gray-500 mt-1"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        completed
+                      </Text>
+                    </View>
+                    <View className="flex-1 items-center py-3 bg-white rounded-2xl">
+                      <Text
+                        className="text-2xl text-black"
+                        style={{ fontFamily: 'InstrumentSans_700Bold' }}
+                      >
+                        {builderStats.totalRequests}
+                      </Text>
+                      <Text
+                        className="text-xs text-gray-500 mt-1"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        requests
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Current help requests */}
+                  {builderStats.activeRequests.length > 0 && (
+                    <View>
+                      <Text
+                        className="text-sm text-gray-500 mb-2"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        current requests
+                      </Text>
+                      {builderStats.activeRequests.map((req) => {
+                        const catInfo = helpCategoryLabels[req.category];
+                        return (
+                          <View
+                            key={req._id}
+                            className="bg-white rounded-2xl p-3 mb-2 flex-row items-center"
+                          >
+                            <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center mr-3">
+                              <Text>{catInfo?.emoji || '📦'}</Text>
+                            </View>
+                            <View className="flex-1">
+                              <Text
+                                className="text-black text-sm"
+                                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                                numberOfLines={1}
+                              >
+                                {req.title}
+                              </Text>
+                              <Text
+                                className="text-gray-400 text-xs"
+                                style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                              >
+                                {req.status === 'open' ? 'open' : 'in progress'}
+                              </Text>
+                            </View>
+                            {req.isUrgent && (
+                              <View className="bg-red-100 px-2 py-1 rounded-full">
+                                <Text
+                                  className="text-red-600 text-xs"
+                                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                                >
+                                  urgent
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+
+                  {/* Empty state for no active requests */}
+                  {builderStats.activeRequests.length === 0 && builderStats.totalRequests === 0 && (
+                    <View className="items-center py-4">
+                      <Ionicons name="hammer-outline" size={32} color="#D1D5DB" />
+                      <Text
+                        className="text-gray-400 text-sm mt-2 text-center"
+                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                      >
+                        no help activity yet
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <View className="bg-gray-50 rounded-3xl p-5 items-center py-8">
+                  <Ionicons name="hammer-outline" size={32} color="#D1D5DB" />
                   <Text
-                    className="text-gray-700"
-                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                    className="text-gray-400 text-sm mt-2 text-center"
+                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
                   >
-                    {lifestyleLabels[style] || style}
+                    no help activity yet
                   </Text>
                 </View>
-              ))}
+              )}
             </View>
-          </View>
-        )}
-
-        {profileData.interests.length > 0 && (
-          <View className="px-6 mb-6">
-            <Text
-              className="text-lg text-black mb-3"
-              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-            >
-              interests
-            </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {profileData.interests.map((interest) => {
-                const info = interestLabels[interest];
-                return (
-                  <View key={interest} className="bg-gray-100 px-3 py-2 rounded-full flex-row items-center">
-                    {info && <Text className="mr-1">{info.emoji}</Text>}
-                    <Text
-                      className="text-gray-700"
-                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                    >
-                      {info?.label || interest}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
+          </>
         )}
 
       </ScrollView>

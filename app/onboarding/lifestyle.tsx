@@ -47,7 +47,7 @@ export default function LifestyleScreen() {
     <OnboardingLayout
       title="what's your lifestyle?"
       subtitle={`select up to 3 (${selected.length}/3)`}
-      currentStep={6}
+      currentStep={7}
     >
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="pt-4">
