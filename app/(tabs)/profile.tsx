@@ -567,7 +567,7 @@ export default function ProfileScreen() {
                         className="text-black text-base"
                         style={{ fontFamily: 'InstrumentSans_500Medium' }}
                       >
-                        "{user.builderBio}"
+                        {`\u201C${user.builderBio}\u201D`}
                       </Text>
                     </View>
                   )}
