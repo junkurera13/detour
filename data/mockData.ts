@@ -508,7 +508,7 @@ export const mockUsers: MockUser[] = [
 ];
 
 // Users who liked the current user (for "Likes You" section)
-export const mockLikesYou: MockUser[] = mockUsers.slice(0, 6);
+export const mockLikesYou: MockUser[] = mockUsers.slice(0, 12);
 
 // Mock matches with conversation potential
 export const mockMatches: MockMatch[] = [

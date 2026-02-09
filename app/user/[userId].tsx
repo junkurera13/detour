@@ -1,4 +1,4 @@
-import { View, Text, Image, TouchableOpacity, ScrollView, Dimensions, StyleSheet, Platform } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Platform, ActivityIndicator, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -6,8 +6,53 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { mockUsers } from '@/data/mockData';
+import { useMemo } from 'react';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const PHOTO_SIZE = (SCREEN_WIDTH - 48 - 8) / 2; // px-6 padding (48) + gap (8)
+
+const lifestyleLabels: Record<string, string> = {
+  'van-life': 'van life',
+  'backpacker': 'backpacker',
+  'digital-nomad': 'digital nomad',
+  'rv-life': 'rv life',
+  'boat-life': 'boat life',
+  'house-sitting': 'house sitting',
+  'slow-travel': 'slow travel',
+  'perpetual-traveler': 'perpetual traveler',
+  'seasonal-worker': 'seasonal worker',
+  'expat': 'expat',
+  'hostel-hopper': 'hostel hopper',
+  'workaway': 'workaway',
+};
+
+const interestLabels: Record<string, { label: string; emoji: string }> = {
+  'hiking': { label: 'hiking', emoji: '🥾' },
+  'photography': { label: 'photography', emoji: '📸' },
+  'surfing': { label: 'surfing', emoji: '🏄' },
+  'yoga': { label: 'yoga', emoji: '🧘' },
+  'coffee': { label: 'coffee', emoji: '☕' },
+  'cooking': { label: 'cooking', emoji: '👨‍🍳' },
+  'music': { label: 'music', emoji: '🎵' },
+  'reading': { label: 'reading', emoji: '📚' },
+  'diving': { label: 'diving', emoji: '🤿' },
+  'climbing': { label: 'climbing', emoji: '🧗' },
+  'camping': { label: 'camping', emoji: '⛺' },
+  'languages': { label: 'languages', emoji: '🗣️' },
+  'art': { label: 'art', emoji: '🎨' },
+  'writing': { label: 'writing', emoji: '✍️' },
+  'fitness': { label: 'fitness', emoji: '💪' },
+  'gaming': { label: 'gaming', emoji: '🎮' },
+  'wine': { label: 'wine', emoji: '🍷' },
+  'nightlife': { label: 'nightlife', emoji: '🌃' },
+  'sustainability': { label: 'sustainability', emoji: '♻️' },
+  'meditation': { label: 'meditation', emoji: '🧠' },
+  'remote-work': { label: 'remote work', emoji: '💼' },
+  'coworking': { label: 'coworking', emoji: '🏢' },
+  'movies': { label: 'movies', emoji: '🎬' },
+  'food': { label: 'food', emoji: '🍜' },
+  'design': { label: 'design', emoji: '🎨' },
+};
 
 function calculateAge(birthday: string): number {
   const birthDate = new Date(birthday);
@@ -34,284 +79,291 @@ export default function UserProfileScreen() {
   // Find mock user if applicable
   const mockUser = isMockUser ? mockUsers.find((u) => u.id === userId) : null;
 
-  // Normalize data
-  const user = convexUser
-    ? {
+  // Normalize data to match own profile page structure
+  const profileData = useMemo(() => {
+    if (convexUser) {
+      return {
         name: convexUser.name,
         age: calculateAge(convexUser.birthday),
-        location: convexUser.currentLocation,
-        lifestyle: convexUser.lifestyle,
+        username: convexUser.username,
         photos: convexUser.photos,
-        interests: convexUser.interests,
-        bio: '',
-        timeNomadic: convexUser.timeNomadic,
-        lookingFor: convexUser.lookingFor.join(', '),
+        currentLocation: convexUser.currentLocation,
         instagram: convexUser.instagram,
-      }
-    : mockUser
-    ? {
+        lifestyle: convexUser.lifestyle,
+        interests: convexUser.interests,
+        futureTrips: convexUser.futureTrips || (convexUser.futureTrip ? [{ location: convexUser.futureTrip }] : []),
+      };
+    }
+    if (mockUser) {
+      return {
         name: mockUser.name,
         age: mockUser.age,
-        location: mockUser.location,
-        lifestyle: mockUser.lifestyle,
+        username: undefined,
         photos: mockUser.photos,
-        interests: mockUser.interests,
-        bio: mockUser.bio,
-        timeNomadic: mockUser.timeNomadic,
-        lookingFor: mockUser.lookingFor,
+        currentLocation: mockUser.location,
         instagram: mockUser.instagram,
-      }
-    : null;
+        lifestyle: mockUser.lifestyle,
+        interests: mockUser.interests,
+        futureTrips: mockUser.futureTrip ? [{ location: mockUser.futureTrip }] : [],
+      };
+    }
+    return null;
+  }, [convexUser, mockUser]);
 
-  if (!user) {
+  if (!profileData) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+      <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+        <View className="px-6 pt-4 pb-6 flex-row items-center">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+          >
             <Ionicons name="chevron-back" size={24} color="#000" />
           </TouchableOpacity>
         </View>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>loading profile...</Text>
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#fd6b03" />
+          <Text
+            className="text-gray-400 mt-4"
+            style={{ fontFamily: 'InstrumentSans_400Regular' }}
+          >
+            loading profile...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+      {/* Header — back button + name */}
+      <View className="px-6 pt-4 pb-6 flex-row items-center justify-between">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+        >
           <Ionicons name="chevron-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{user.name}</Text>
+        <Text
+          className="text-5xl text-black"
+          style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
+        >
+          profile
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} bounces={true}>
-        {/* Main Photo */}
-        <Image
-          source={{ uri: user.photos[0] }}
-          style={styles.mainPhoto}
-          resizeMode="cover"
-        />
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        {/* Profile Photo + Info (centered, same as own profile) */}
+        <View className="px-6 pb-6 items-center">
+          <View className="relative">
+            {profileData.photos.length > 0 ? (
+              <Image
+                source={{ uri: profileData.photos[0] }}
+                className="w-28 h-28 rounded-full"
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="w-28 h-28 rounded-full bg-gray-200 items-center justify-center">
+                <Ionicons name="person" size={48} color="#9CA3AF" />
+              </View>
+            )}
+          </View>
 
-        {/* Name & Location */}
-        <View style={styles.nameSection}>
-          <Text style={styles.nameText}>{user.name}, {user.age}</Text>
-          <View style={styles.locationRow}>
+          <Text
+            className="text-2xl text-black mt-4"
+            style={{ fontFamily: 'InstrumentSans_700Bold' }}
+          >
+            {profileData.name.toLowerCase()}, {profileData.age}
+          </Text>
+
+          {profileData.username && (
+            <Text
+              className="text-gray-500 mt-1"
+              style={{ fontFamily: 'InstrumentSans_400Regular' }}
+            >
+              @{profileData.username}
+            </Text>
+          )}
+
+          <View className="flex-row items-center mt-1">
             <Ionicons name="location-outline" size={16} color="#9CA3AF" />
-            <Text style={styles.locationText}>{user.location}</Text>
+            <Text
+              className="text-gray-500 ml-1"
+              style={{ fontFamily: 'InstrumentSans_400Regular' }}
+            >
+              {profileData.currentLocation || 'location not set'}
+            </Text>
+          </View>
+
+          {profileData.instagram && (
+            <View className="flex-row items-center mt-2">
+              <Ionicons name="logo-instagram" size={16} color="#E4405F" />
+              <Text
+                className="text-gray-700 ml-1"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                @{profileData.instagram}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Journey Route (read-only, same card style as own profile) */}
+        <View className="px-6 mb-6">
+          <View
+            className="rounded-3xl overflow-hidden"
+            style={{ backgroundColor: '#F9FAFB' }}
+          >
+            <View className="p-5">
+              {/* Current location */}
+              <View className="flex-row items-center mb-1">
+                <View className="items-center" style={{ width: 32 }}>
+                  <View
+                    className="w-8 h-8 rounded-full items-center justify-center"
+                    style={{ backgroundColor: '#111827' }}
+                  >
+                    <Ionicons name="navigate" size={16} color="#fff" />
+                  </View>
+                </View>
+                <View className="ml-3 flex-1">
+                  <Text
+                    className="text-xs text-gray-400 uppercase"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    now
+                  </Text>
+                  <Text
+                    className="text-black text-base"
+                    style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                    numberOfLines={1}
+                  >
+                    {profileData.currentLocation || 'location not set'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Future trips */}
+              {profileData.futureTrips.map((trip, index) => (
+                <View key={index}>
+                  <View className="items-center" style={{ width: 32, paddingVertical: 2 }}>
+                    {[0, 1, 2].map((i) => (
+                      <View
+                        key={i}
+                        className="w-1 rounded-full my-0.5"
+                        style={{ height: 4, backgroundColor: '#FDBA74' }}
+                      />
+                    ))}
+                  </View>
+                  <View className="flex-row items-center">
+                    <View className="items-center" style={{ width: 32 }}>
+                      <View
+                        className="w-8 h-8 rounded-full items-center justify-center"
+                        style={{ backgroundColor: '#FED7AA' }}
+                      >
+                        <Ionicons name="airplane" size={14} color="#EA580C" />
+                      </View>
+                    </View>
+                    <View className="ml-3 flex-1">
+                      <Text
+                        className="text-xs text-gray-400 uppercase"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        next{index > 0 ? ` +${index}` : ''}
+                      </Text>
+                      <Text
+                        className="text-black text-base"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        numberOfLines={1}
+                      >
+                        {trip.location.split(',')[0]}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
           </View>
         </View>
 
-        {/* Bio */}
-        {user.bio ? (
-          <View style={styles.section}>
-            <Text style={styles.bioText}>{user.bio}</Text>
-          </View>
-        ) : null}
-
-        {/* Nomad Info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>nomad life</Text>
-          <View style={styles.infoGrid}>
-            <View style={styles.infoItem}>
-              <Ionicons name="globe-outline" size={20} color="#fd6b03" />
-              <Text style={styles.infoLabel}>lifestyle</Text>
-              <Text style={styles.infoValue}>{user.lifestyle.join(', ')}</Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Ionicons name="time-outline" size={20} color="#fd6b03" />
-              <Text style={styles.infoLabel}>time nomadic</Text>
-              <Text style={styles.infoValue}>{user.timeNomadic}</Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Ionicons name="heart-outline" size={20} color="#fd6b03" />
-              <Text style={styles.infoLabel}>looking for</Text>
-              <Text style={styles.infoValue}>{user.lookingFor}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Interests */}
-        {user.interests.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>interests</Text>
-            <View style={styles.tagsContainer}>
-              {user.interests.map((interest) => (
-                <View key={interest} style={styles.interestTag}>
-                  <Text style={styles.interestTagText}>{interest}</Text>
+        {/* Lifestyle tags (same as own profile) */}
+        {profileData.lifestyle.length > 0 && (
+          <View className="px-6 mb-6">
+            <Text
+              className="text-lg text-black mb-3"
+              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+            >
+              lifestyle
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {profileData.lifestyle.map((style) => (
+                <View key={style} className="bg-gray-100 px-3 py-2 rounded-full">
+                  <Text
+                    className="text-gray-700"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    {lifestyleLabels[style] || style}
+                  </Text>
                 </View>
               ))}
             </View>
           </View>
         )}
 
-        {/* More Photos */}
-        {user.photos.length > 1 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>more photos</Text>
-            <View style={styles.photosGrid}>
-              {user.photos.slice(1).map((photo, index) => (
+        {/* Interests tags with emojis (same as own profile) */}
+        {profileData.interests.length > 0 && (
+          <View className="px-6 mb-6">
+            <Text
+              className="text-lg text-black mb-3"
+              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+            >
+              interests
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {profileData.interests.map((interest) => {
+                const info = interestLabels[interest];
+                return (
+                  <View key={interest} className="bg-gray-100 px-3 py-2 rounded-full flex-row items-center">
+                    {info && <Text className="mr-1">{info.emoji}</Text>}
+                    <Text
+                      className="text-gray-700"
+                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                    >
+                      {info?.label || interest}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Extra photos */}
+        {profileData.photos.length > 1 && (
+          <View className="px-6 mb-6">
+            <Text
+              className="text-lg text-black mb-3"
+              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+            >
+              photos
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {profileData.photos.slice(1).map((photo, index) => (
                 <Image
                   key={index}
                   source={{ uri: photo }}
-                  style={styles.gridPhoto}
+                  style={{ width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 12 }}
                   resizeMode="cover"
                 />
               ))}
             </View>
           </View>
         )}
-
-        {/* Instagram */}
-        {user.instagram ? (
-          <View style={styles.section}>
-            <View style={styles.instagramRow}>
-              <Ionicons name="logo-instagram" size={20} color="#E4405F" />
-              <Text style={styles.instagramText}>@{user.instagram}</Text>
-            </View>
-          </View>
-        ) : null}
-
-        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: 'InstrumentSans_600SemiBold',
-    color: '#000',
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    fontFamily: 'InstrumentSans_400Regular',
-  },
-  mainPhoto: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH * 1.2,
-  },
-  nameSection: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  nameText: {
-    fontSize: 28,
-    color: '#000',
-    fontFamily: 'InstrumentSans_700Bold',
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  locationText: {
-    color: '#9CA3AF',
-    marginLeft: 4,
-    fontFamily: 'InstrumentSans_400Regular',
-    fontSize: 15,
-  },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    color: '#000',
-    fontFamily: 'InstrumentSans_600SemiBold',
-    marginBottom: 12,
-  },
-  bioText: {
-    fontSize: 16,
-    color: '#374151',
-    fontFamily: 'InstrumentSans_400Regular',
-    lineHeight: 24,
-  },
-  infoGrid: {
-    gap: 16,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    fontFamily: 'InstrumentSans_400Regular',
-    width: 90,
-  },
-  infoValue: {
-    fontSize: 14,
-    color: '#000',
-    fontFamily: 'InstrumentSans_500Medium',
-    flex: 1,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  interestTag: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  interestTagText: {
-    fontSize: 14,
-    color: '#374151',
-    fontFamily: 'InstrumentSans_500Medium',
-  },
-  photosGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  gridPhoto: {
-    width: (SCREEN_WIDTH - 40 - 8) / 2,
-    height: (SCREEN_WIDTH - 40 - 8) / 2,
-    borderRadius: 12,
-  },
-  instagramRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  instagramText: {
-    fontSize: 15,
-    color: '#374151',
-    fontFamily: 'InstrumentSans_500Medium',
-  },
-});

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Platform, Modal, Dimensions, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
@@ -7,7 +7,25 @@ import { useRouter } from 'expo-router';
 import { api } from '@/convex/_generated/api';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useRevenueCat } from '@/context/RevenueCatContext';
-import { mockLikesYou, mockMatches, mockConversations } from '@/data/mockData';
+import { mockLikesYou, mockMatches, mockConversations, MockUser } from '@/data/mockData';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  runOnJS,
+  interpolate,
+  Extrapolation,
+  SharedValue,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+
+const { width: SCREEN_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
+const SWIPE_THRESHOLD = 120;
+const SWIPE_VELOCITY_THRESHOLD = 500;
+const CARD_HEIGHT = Platform.OS === 'android' ? WINDOW_HEIGHT * 0.74 : WINDOW_HEIGHT * 0.71;
 
 // Helper to format relative time
 function formatRelativeTime(timestamp: number | undefined): string {
@@ -37,12 +55,258 @@ function calculateAge(birthday: string): number {
   return age;
 }
 
+// Swipeable preview card for Likes You modal
+function LikePreviewCard({
+  user,
+  onDismiss,
+  swipeProgress,
+  swipeDirection,
+}: {
+  user: MockUser;
+  onDismiss: (action: 'like' | 'pass') => void;
+  swipeProgress: SharedValue<number>;
+  swipeDirection: 'left' | 'right' | null;
+}) {
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+
+  const triggerHaptic = (type: 'light' | 'medium') => {
+    Haptics.impactAsync(
+      type === 'light' ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium
+    );
+  };
+
+  const handleSwipeComplete = (direction: 'left' | 'right') => {
+    triggerHaptic('medium');
+    onDismiss(direction === 'right' ? 'like' : 'pass');
+  };
+
+  // Handle programmatic swipe from buttons
+  if (swipeDirection) {
+    const targetX = swipeDirection === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
+    translateX.value = withTiming(targetX, { duration: 300 }, () => {
+      runOnJS(handleSwipeComplete)(swipeDirection);
+    });
+  }
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-15, 15])
+    .failOffsetY([-10, 10])
+    .onStart(() => {
+      runOnJS(triggerHaptic)('light');
+    })
+    .onUpdate((event) => {
+      translateX.value = event.translationX;
+      translateY.value = event.translationY * 0.3;
+      swipeProgress.value = event.translationX;
+    })
+    .onEnd((event) => {
+      const shouldSwipeRight =
+        event.velocityX > SWIPE_VELOCITY_THRESHOLD || translateX.value > SWIPE_THRESHOLD;
+      const shouldSwipeLeft =
+        event.velocityX < -SWIPE_VELOCITY_THRESHOLD || translateX.value < -SWIPE_THRESHOLD;
+
+      if (shouldSwipeRight) {
+        translateX.value = withTiming(SCREEN_WIDTH * 1.5, { duration: 300 }, () => {
+          runOnJS(handleSwipeComplete)('right');
+        });
+        swipeProgress.value = withTiming(0, { duration: 300 });
+      } else if (shouldSwipeLeft) {
+        translateX.value = withTiming(-SCREEN_WIDTH * 1.5, { duration: 300 }, () => {
+          runOnJS(handleSwipeComplete)('left');
+        });
+        swipeProgress.value = withTiming(0, { duration: 300 });
+      } else {
+        translateX.value = withSpring(0, { damping: 15, stiffness: 150 });
+        translateY.value = withSpring(0, { damping: 15, stiffness: 150 });
+        swipeProgress.value = withSpring(0, { damping: 15, stiffness: 150 });
+      }
+    });
+
+  const cardAnimatedStyle = useAnimatedStyle(() => {
+    const rotate = interpolate(
+      translateX.value,
+      [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
+      [-12, 0, 12],
+      Extrapolation.CLAMP
+    );
+    return {
+      transform: [
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+        { rotate: `${rotate}deg` },
+      ],
+    };
+  });
+
+  return (
+    <GestureDetector gesture={panGesture}>
+      <Animated.View style={[cardStyles.card, cardAnimatedStyle]}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          nestedScrollEnabled={true}
+        >
+          {/* Main Photo */}
+          <View style={cardStyles.mainPhotoContainer}>
+            <Image
+              source={{ uri: user.photos[0] }}
+              style={cardStyles.cardImage}
+              resizeMode="cover"
+            />
+            <LinearGradient
+              colors={['rgba(0,0,0,0.6)', 'transparent', 'transparent', 'rgba(0,0,0,0.4)']}
+              locations={[0, 0.3, 0.7, 1]}
+              style={cardStyles.gradient}
+            />
+            <View style={cardStyles.profileInfo}>
+              <View style={cardStyles.nameRow}>
+                <Text style={cardStyles.nameText}>
+                  {user.name}, {user.age}
+                </Text>
+              </View>
+              <View style={cardStyles.locationRow}>
+                <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.8)" />
+                <Text style={cardStyles.distanceText}>{user.location}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Content Sections */}
+          <View style={cardStyles.contentSections}>
+            {user.bio ? (
+              <View style={cardStyles.section}>
+                <Text style={cardStyles.bioText}>{user.bio}</Text>
+              </View>
+            ) : null}
+
+            <View style={cardStyles.section}>
+              <Text style={cardStyles.sectionTitle}>nomad life</Text>
+              <View style={cardStyles.infoGrid}>
+                <View style={cardStyles.infoItem}>
+                  <Ionicons name="globe-outline" size={20} color="#fd6b03" />
+                  <Text style={cardStyles.infoLabel}>lifestyle</Text>
+                  <Text style={cardStyles.infoValue}>{user.lifestyle.join(', ')}</Text>
+                </View>
+                <View style={cardStyles.infoItem}>
+                  <Ionicons name="time-outline" size={20} color="#fd6b03" />
+                  <Text style={cardStyles.infoLabel}>time nomadic</Text>
+                  <Text style={cardStyles.infoValue}>{user.timeNomadic}</Text>
+                </View>
+                <View style={cardStyles.infoItem}>
+                  <Ionicons name="heart-outline" size={20} color="#fd6b03" />
+                  <Text style={cardStyles.infoLabel}>looking for</Text>
+                  <Text style={cardStyles.infoValue}>{user.lookingFor}</Text>
+                </View>
+              </View>
+            </View>
+
+            {user.interests.length > 0 && (
+              <View style={cardStyles.section}>
+                <Text style={cardStyles.sectionTitle}>interests</Text>
+                <View style={cardStyles.tagsContainer}>
+                  {user.interests.map((interest) => (
+                    <View key={interest} style={cardStyles.interestTag}>
+                      <Text style={cardStyles.interestTagText}>{interest}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {user.photos.length > 1 && (
+              <View style={cardStyles.section}>
+                <Text style={cardStyles.sectionTitle}>more photos</Text>
+                <View style={cardStyles.photosGrid}>
+                  {user.photos.slice(1).map((photo, index) => (
+                    <Image
+                      key={index}
+                      source={{ uri: photo }}
+                      style={cardStyles.gridPhoto}
+                      resizeMode="cover"
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {user.instagram && (
+              <View style={cardStyles.section}>
+                <View style={cardStyles.instagramRow}>
+                  <Ionicons name="logo-instagram" size={20} color="#E4405F" />
+                  <Text style={cardStyles.instagramText}>@{user.instagram}</Text>
+                </View>
+              </View>
+            )}
+
+            <View style={{ height: 20 }} />
+          </View>
+        </ScrollView>
+      </Animated.View>
+    </GestureDetector>
+  );
+}
+
 export default function MatchesScreen() {
   const [activeTab, setActiveTab] = useState<'matches' | 'messages'>('matches');
   const { convexUser } = useAuthenticatedUser();
   const { hasDetourPlus } = useRevenueCat();
   const router = useRouter();
   const userId = convexUser?._id;
+  const [previewUser, setPreviewUser] = useState<MockUser | null>(null);
+  const [previewSwipeDir, setPreviewSwipeDir] = useState<'left' | 'right' | null>(null);
+  // Filter out users who are already in matches
+  const [likesYou, setLikesYou] = useState<MockUser[]>(() => {
+    const matchedUserIds = new Set(mockMatches.map((m) => m.user.id));
+    return mockLikesYou.filter((u) => !matchedUserIds.has(u.id));
+  });
+  const [likedBackMatches, setLikedBackMatches] = useState<Array<{ id: string; name: string; age: number; photo: string; matchedAt: string }>>([]);
+  const previewSwipeProgress = useSharedValue(0);
+
+  const passButtonStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      previewSwipeProgress.value,
+      [-SWIPE_THRESHOLD, 0],
+      [1.3, 1],
+      Extrapolation.CLAMP
+    );
+    return { transform: [{ scale }] };
+  });
+
+  const likeButtonStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      previewSwipeProgress.value,
+      [0, SWIPE_THRESHOLD],
+      [1, 1.3],
+      Extrapolation.CLAMP
+    );
+    return { transform: [{ scale }] };
+  });
+
+  const handlePreviewDismiss = (action: 'like' | 'pass') => {
+    if (!previewUser) return;
+    const dismissedUser = previewUser;
+    setPreviewSwipeDir(null);
+    setPreviewUser(null);
+    previewSwipeProgress.value = 0;
+
+    // Remove from likes you
+    setLikesYou((prev) => prev.filter((u) => u.id !== dismissedUser.id));
+
+    // If liked back, add to matches
+    if (action === 'like') {
+      setLikedBackMatches((prev) => [
+        {
+          id: dismissedUser.id,
+          name: dismissedUser.name,
+          age: dismissedUser.age,
+          photo: dismissedUser.photos[0],
+          matchedAt: 'just now',
+        },
+        ...prev,
+      ]);
+    }
+  };
 
   const handleOpenChat = (matchId: string) => {
     // Only navigate to real chats (Convex IDs), not mock data
@@ -93,6 +357,14 @@ export default function MatchesScreen() {
     }));
   }, [matchesData]);
 
+  // Combine real/mock matches with liked-back matches from the Likes You section
+  const allMatches = useMemo(() => {
+    return [
+      ...likedBackMatches.map((m) => ({ ...m, isNew: true })),
+      ...matches,
+    ];
+  }, [matches, likedBackMatches]);
+
   // For messages tab, use real conversation previews or fall back to mock
   const conversations = useMemo(() => {
     // If we have real conversation previews from Convex, use them
@@ -106,7 +378,6 @@ export default function MatchesScreen() {
           time: formatRelativeTime(preview.lastMessage?.createdAt || preview.matchedAt),
           photo: otherUser?.photos?.[0] ?? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
           unread: preview.unreadCount,
-          online: false,
         };
       });
     }
@@ -118,279 +389,498 @@ export default function MatchesScreen() {
       time: convo.lastMessageAt,
       photo: convo.user.photos[0],
       unread: convo.unreadCount,
-      online: convo.user.isOnline || false,
     }));
   }, [conversationPreviews]);
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-      <View className="px-6 pt-4 pb-4">
-        <Text
-          className="text-5xl text-black"
-          style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
-        >
-          connections
-        </Text>
-      </View>
-
-      <View className="flex-row px-6 mb-4">
-        <TouchableOpacity
-          onPress={() => setActiveTab('matches')}
-          className={`flex-1 py-3 rounded-full mr-2 ${activeTab === 'matches' ? 'bg-black' : 'bg-gray-100'}`}
-        >
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+        <View className="px-6 pt-4 pb-4">
           <Text
-            className={`text-center ${activeTab === 'matches' ? 'text-white' : 'text-black'}`}
-            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+            className="text-5xl text-black"
+            style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
           >
-            matches
+            connections
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setActiveTab('messages')}
-          className={`flex-1 py-3 rounded-full ml-2 ${activeTab === 'messages' ? 'bg-black' : 'bg-gray-100'}`}
-        >
-          <Text
-            className={`text-center ${activeTab === 'messages' ? 'text-white' : 'text-black'}`}
-            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+        </View>
+
+        <View className="flex-row px-6 mb-4">
+          <TouchableOpacity
+            onPress={() => setActiveTab('matches')}
+            className={`flex-1 py-3 rounded-full mr-2 ${activeTab === 'matches' ? 'bg-black' : 'bg-gray-100'}`}
           >
-            messages
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {activeTab === 'matches' ? (
-        <ScrollView
-          className="flex-1 px-6"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        >
-          {isLoading ? (
-            <View className="items-center py-20">
-              <ActivityIndicator size="large" color="#fd6b03" />
-              <Text
-                className="text-gray-500 mt-4"
-                style={{ fontFamily: 'InstrumentSans_400Regular' }}
-              >
-                loading your connections...
-              </Text>
-            </View>
-          ) : (
-          <View className="pt-2">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text
-                className="text-lg text-black"
-                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-              >
-                likes you
-              </Text>
-              <View className="px-3 py-1 rounded-full" style={{ backgroundColor: '#fd6b03' }}>
-                <Text
-                  className="text-white text-sm"
-                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                >
-                  {mockLikesYou.length}
-                </Text>
-              </View>
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="mb-6"
-              contentContainerStyle={{ gap: 12 }}
-            >
-              {mockLikesYou.map((user) => (
-                <TouchableOpacity
-                  key={user.id}
-                  className="relative"
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    if (hasDetourPlus) {
-                      router.push({ pathname: '/(tabs)', params: { focusUserId: user.id } });
-                    }
-                  }}
-                >
-                  <Image
-                    source={{ uri: user.photos[0] }}
-                    className="w-24 h-32 rounded-2xl"
-                    resizeMode="cover"
-                    blurRadius={hasDetourPlus ? 0 : 20}
-                  />
-                  {!hasDetourPlus && (
-                    <View className="absolute inset-0 items-center justify-center">
-                      <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
-                        <Ionicons name="lock-closed" size={20} color="#000" />
-                      </View>
-                    </View>
-                  )}
-                  {hasDetourPlus && (
-                    <View className="absolute bottom-2 left-2 right-2">
-                      <Text
-                        className="text-white text-sm"
-                        style={{ fontFamily: 'InstrumentSans_600SemiBold', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}
-                      >
-                        {user.name}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                className="w-24 h-32 bg-gray-100 rounded-2xl items-center justify-center"
-                activeOpacity={0.7}
-              >
-                <Ionicons name="eye" size={24} color="#000" />
-                <Text
-                  className="text-black text-xs mt-2 text-center"
-                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                >
-                  see all
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-
             <Text
-              className="text-lg text-black mb-4"
+              className={`text-center ${activeTab === 'matches' ? 'text-white' : 'text-black'}`}
               style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
             >
-              your matches
+              matches
             </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setActiveTab('messages')}
+            className={`flex-1 py-3 rounded-full ml-2 ${activeTab === 'messages' ? 'bg-black' : 'bg-gray-100'}`}
+          >
+            <Text
+              className={`text-center ${activeTab === 'messages' ? 'text-white' : 'text-black'}`}
+              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+            >
+              messages
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-            {matches.length === 0 ? (
-              <View className="items-center py-12">
-                <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
-                  <Ionicons name="heart-outline" size={32} color="#9CA3AF" />
-                </View>
+        {activeTab === 'matches' ? (
+          <ScrollView
+            className="flex-1 px-6"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
+            {isLoading ? (
+              <View className="items-center py-20">
+                <ActivityIndicator size="large" color="#fd6b03" />
                 <Text
-                  className="text-gray-500 text-center"
-                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  className="text-gray-500 mt-4"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
                 >
-                  no matches yet. keep exploring!
+                  loading your connections...
                 </Text>
               </View>
             ) : (
-              matches.map((match) => (
-                <TouchableOpacity
-                  key={match.id}
-                  className="flex-row items-center p-4 bg-gray-50 rounded-2xl mb-3"
-                  activeOpacity={0.7}
-                  onPress={() => handleOpenChat(match.id)}
+            <View className="pt-2">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text
+                  className="text-lg text-black"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
                 >
-                  <View className="relative">
+                  likes you
+                </Text>
+                <View className="px-3 py-1 rounded-full" style={{ backgroundColor: '#fd6b03' }}>
+                  <Text
+                    className="text-white text-sm"
+                    style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                  >
+                    {likesYou.length}
+                  </Text>
+                </View>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="mb-6"
+                contentContainerStyle={{ gap: 12 }}
+              >
+                {likesYou.slice(0, 7).map((user) => (
+                  <TouchableOpacity
+                    key={user.id}
+                    className="relative"
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      if (hasDetourPlus) {
+                        setPreviewUser(user);
+                      }
+                    }}
+                  >
+                    <Image
+                      source={{ uri: user.photos[0] }}
+                      className="w-24 h-32 rounded-2xl"
+                      resizeMode="cover"
+                      blurRadius={hasDetourPlus ? 0 : 20}
+                    />
+                    {!hasDetourPlus && (
+                      <View className="absolute inset-0 items-center justify-center">
+                        <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
+                          <Ionicons name="lock-closed" size={20} color="#000" />
+                        </View>
+                      </View>
+                    )}
+                    {hasDetourPlus && (
+                      <View className="absolute bottom-2 left-2 right-2">
+                        <Text
+                          className="text-white text-sm"
+                          style={{ fontFamily: 'InstrumentSans_600SemiBold', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}
+                        >
+                          {user.name}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                  className="w-24 h-32 bg-gray-100 rounded-2xl items-center justify-center"
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="eye" size={24} color="#000" />
+                  <Text
+                    className="text-black text-xs mt-2 text-center"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    see all
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+
+              <Text
+                className="text-lg text-black mb-4"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                your matches
+              </Text>
+
+              {allMatches.length === 0 ? (
+                <View className="items-center py-12">
+                  <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
+                    <Ionicons name="heart-outline" size={32} color="#9CA3AF" />
+                  </View>
+                  <Text
+                    className="text-gray-500 text-center"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    no matches yet. keep exploring!
+                  </Text>
+                </View>
+              ) : (
+                allMatches.map((match) => (
+                  <TouchableOpacity
+                    key={match.id}
+                    className="flex-row items-center p-4 bg-gray-50 rounded-2xl mb-3"
+                    activeOpacity={0.7}
+                    onPress={() => handleOpenChat(match.id)}
+                  >
                     <Image
                       source={{ uri: match.photo }}
                       className="w-16 h-16 rounded-full"
                       resizeMode="cover"
                     />
-                    {match.isNew && (
-                      <View className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
-                    )}
+                    <View className="flex-1 ml-4">
+                      <Text
+                        className="text-black text-lg"
+                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                      >
+                        {match.name}, {match.age}
+                      </Text>
+                      <Text
+                        className="text-gray-500 text-sm"
+                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                      >
+                        matched {match.matchedAt}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      className="w-10 h-10 bg-white rounded-full items-center justify-center"
+                      onPress={() => handleOpenChat(match.id)}
+                    >
+                      <Ionicons name="chatbubble" size={20} color="#000" />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+            )}
+          </ScrollView>
+        ) : (
+          <ScrollView
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
+            {conversations.length === 0 ? (
+              <View className="items-center py-20 px-6">
+                <View className="w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-4">
+                  <Ionicons name="chatbubbles-outline" size={40} color="#9CA3AF" />
+                </View>
+                <Text
+                  className="text-xl text-black text-center mb-2"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  no messages yet
+                </Text>
+                <Text
+                  className="text-gray-500 text-center"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  when you match with someone, you can start a conversation here.
+                </Text>
+              </View>
+            ) : (
+              conversations.map((convo) => (
+                <TouchableOpacity
+                  key={convo.id}
+                  className="flex-row px-6 py-4 border-b border-gray-100"
+                  activeOpacity={0.7}
+                  onPress={() => handleOpenChat(convo.id)}
+                >
+                  <View className="relative">
+                    <Image
+                      source={{ uri: convo.photo }}
+                      className="w-14 h-14 rounded-full"
+                      resizeMode="cover"
+                    />
                   </View>
+
                   <View className="flex-1 ml-4">
                     <Text
-                      className="text-black text-lg"
+                      className="text-black text-base"
                       style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
                     >
-                      {match.name}, {match.age}
+                      {convo.name}
                     </Text>
                     <Text
-                      className="text-gray-500 text-sm"
-                      style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                      className={`text-sm mt-0.5 ${convo.unread > 0 ? 'text-black' : 'text-gray-500'}`}
+                      style={{ fontFamily: convo.unread > 0 ? 'InstrumentSans_500Medium' : 'InstrumentSans_400Regular', maxWidth: '92%' }}
+                      numberOfLines={1}
                     >
-                      matched {match.matchedAt}
+                      {convo.lastMessage}
                     </Text>
                   </View>
-                  <TouchableOpacity
-                    className="w-10 h-10 bg-white rounded-full items-center justify-center"
-                    onPress={() => handleOpenChat(match.id)}
-                  >
-                    <Ionicons name="chatbubble" size={20} color="#000" />
-                  </TouchableOpacity>
+
+                  <View className="items-end">
+                    <Text
+                      className="text-sm text-gray-500"
+                      style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                    >
+                      {convo.time}
+                    </Text>
+                    {convo.unread > 0 && (
+                      <View className="w-6 h-6 rounded-full items-center justify-center mt-1" style={{ backgroundColor: '#fd6b03' }}>
+                        <Text
+                          className="text-white text-xs"
+                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                        >
+                          {convo.unread}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 </TouchableOpacity>
               ))
             )}
-          </View>
-          )}
-        </ScrollView>
-      ) : (
-        <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        >
-          {conversations.length === 0 ? (
-            <View className="items-center py-20 px-6">
-              <View className="w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-4">
-                <Ionicons name="chatbubbles-outline" size={40} color="#9CA3AF" />
-              </View>
-              <Text
-                className="text-xl text-black text-center mb-2"
-                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-              >
-                no messages yet
-              </Text>
-              <Text
-                className="text-gray-500 text-center"
-                style={{ fontFamily: 'InstrumentSans_400Regular' }}
-              >
-                when you match with someone, you can start a conversation here.
-              </Text>
+          </ScrollView>
+        )}
+      </SafeAreaView>
+
+      {/* Likes You Preview Modal */}
+      <Modal
+        visible={!!previewUser}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setPreviewUser(null)}
+      >
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} />
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => {
+              setPreviewSwipeDir(null);
+              setPreviewUser(null);
+              previewSwipeProgress.value = 0;
+            }}
+          />
+          <View style={cardStyles.modalOverlay}>
+            <View style={cardStyles.modalCardContainer}>
+              {previewUser && (
+                <LikePreviewCard
+                  user={previewUser}
+                  onDismiss={handlePreviewDismiss}
+                  swipeProgress={previewSwipeProgress}
+                  swipeDirection={previewSwipeDir}
+                />
+              )}
             </View>
-          ) : (
-            conversations.map((convo) => (
-              <TouchableOpacity
-                key={convo.id}
-                className="flex-row px-6 py-4 border-b border-gray-100"
-                activeOpacity={0.7}
-                onPress={() => handleOpenChat(convo.id)}
-              >
-                <View className="relative">
-                  <Image
-                    source={{ uri: convo.photo }}
-                    className="w-14 h-14 rounded-full"
-                    resizeMode="cover"
-                  />
-                </View>
-
-                <View className="flex-1 ml-4">
-                  <Text
-                    className="text-black text-base"
-                    style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                  >
-                    {convo.name}
-                  </Text>
-                  <Text
-                    className={`text-sm mt-0.5 ${convo.unread > 0 ? 'text-black' : 'text-gray-500'}`}
-                    style={{ fontFamily: convo.unread > 0 ? 'InstrumentSans_500Medium' : 'InstrumentSans_400Regular', maxWidth: '92%' }}
-                    numberOfLines={1}
-                  >
-                    {convo.lastMessage}
-                  </Text>
-                </View>
-
-                <View className="items-end">
-                  <Text
-                    className="text-sm text-gray-500"
-                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                  >
-                    {convo.time}
-                  </Text>
-                  {convo.unread > 0 && (
-                    <View className="w-6 h-6 rounded-full items-center justify-center mt-1" style={{ backgroundColor: '#fd6b03' }}>
-                      <Text
-                        className="text-white text-xs"
-                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                      >
-                        {convo.unread}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </ScrollView>
-      )}
-    </SafeAreaView>
+            {/* Action Buttons */}
+            <View style={cardStyles.actionButtons}>
+              <Animated.View style={passButtonStyle}>
+                <TouchableOpacity
+                  style={cardStyles.actionButton}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setPreviewSwipeDir('left');
+                    setTimeout(() => handlePreviewDismiss('pass'), 350);
+                  }}
+                >
+                  <Ionicons name="close" size={32} color="#fd6b03" />
+                </TouchableOpacity>
+              </Animated.View>
+              <Animated.View style={likeButtonStyle}>
+                <TouchableOpacity
+                  style={cardStyles.actionButton}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setPreviewSwipeDir('right');
+                    setTimeout(() => handlePreviewDismiss('like'), 350);
+                  }}
+                >
+                  <Ionicons name="heart" size={32} color="#fd6b03" />
+                </TouchableOpacity>
+              </Animated.View>
+            </View>
+          </View>
+        </GestureHandlerRootView>
+      </Modal>
+    </GestureHandlerRootView>
   );
 }
+
+const cardStyles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCardContainer: {
+    alignItems: 'center',
+  },
+  card: {
+    width: SCREEN_WIDTH - 32,
+    height: CARD_HEIGHT,
+    borderRadius: 32,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  mainPhotoContainer: {
+    width: '100%',
+    height: CARD_HEIGHT,
+    position: 'relative',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  gradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  profileInfo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nameText: {
+    fontSize: 28,
+    color: '#fff',
+    fontFamily: 'InstrumentSans_700Bold',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  distanceText: {
+    color: 'rgba(255,255,255,0.8)',
+    marginLeft: 4,
+    fontFamily: 'InstrumentSans_400Regular',
+    fontSize: 14,
+  },
+  contentSections: {
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    color: '#000',
+    fontFamily: 'InstrumentSans_600SemiBold',
+    marginBottom: 12,
+  },
+  bioText: {
+    fontSize: 16,
+    color: '#374151',
+    fontFamily: 'InstrumentSans_400Regular',
+    lineHeight: 24,
+  },
+  infoGrid: {
+    gap: 16,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontFamily: 'InstrumentSans_400Regular',
+    width: 90,
+  },
+  infoValue: {
+    fontSize: 14,
+    color: '#000',
+    fontFamily: 'InstrumentSans_500Medium',
+    flex: 1,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  interestTag: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  interestTagText: {
+    fontSize: 14,
+    color: '#374151',
+    fontFamily: 'InstrumentSans_500Medium',
+  },
+  photosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  gridPhoto: {
+    width: (SCREEN_WIDTH - 32 - 40 - 8) / 2,
+    height: (SCREEN_WIDTH - 32 - 40 - 8) / 2,
+    borderRadius: 12,
+  },
+  instagramRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  instagramText: {
+    fontSize: 15,
+    color: '#374151',
+    fontFamily: 'InstrumentSans_500Medium',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 24,
+    marginTop: 20,
+  },
+  actionButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+});
