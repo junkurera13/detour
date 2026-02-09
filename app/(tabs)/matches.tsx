@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Platform, Modal, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Platform, Modal, Dimensions, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
@@ -259,9 +259,18 @@ function SwipeableMessageRow({
   const translateX = useSharedValue(0);
   const isOpen = useSharedValue(false);
 
-  const triggerDelete = () => {
+  const confirmDelete = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onDelete();
+    Alert.alert('delete conversation?', 'this cannot be undone.', [
+      { text: 'cancel', style: 'cancel', onPress: () => {
+        translateX.value = withSpring(0, { damping: 20, stiffness: 200 });
+        isOpen.value = false;
+      }},
+      { text: 'delete', style: 'destructive', onPress: () => {
+        translateX.value = withTiming(-SCREEN_WIDTH, { duration: 200 });
+        onDelete();
+      }},
+    ]);
   };
 
   const panGesture = Gesture.Pan()
@@ -269,21 +278,14 @@ function SwipeableMessageRow({
     .failOffsetY([-5, 5])
     .onUpdate((event) => {
       if (isOpen.value) {
-        // Already open — allow dragging further left or back right
         const newX = -DELETE_BUTTON_WIDTH + event.translationX;
         translateX.value = Math.min(0, Math.max(-DELETE_BUTTON_WIDTH * 2, newX));
       } else {
-        // Only allow left swipe
         translateX.value = Math.min(0, event.translationX);
       }
     })
-    .onEnd((event) => {
-      if (translateX.value < -DELETE_BUTTON_WIDTH * 1.5) {
-        // Swiped far enough — auto delete
-        translateX.value = withTiming(-SCREEN_WIDTH, { duration: 200 }, () => {
-          runOnJS(triggerDelete)();
-        });
-      } else if (translateX.value < -DELETE_BUTTON_WIDTH / 2) {
+    .onEnd(() => {
+      if (translateX.value < -DELETE_BUTTON_WIDTH / 2) {
         // Snap open to reveal delete button
         translateX.value = withSpring(-DELETE_BUTTON_WIDTH, { damping: 20, stiffness: 200 });
         isOpen.value = true;
@@ -326,7 +328,7 @@ function SwipeableMessageRow({
         ]}
       >
         <TouchableOpacity
-          onPress={triggerDelete}
+          onPress={confirmDelete}
           style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%' }}
           activeOpacity={0.8}
         >
