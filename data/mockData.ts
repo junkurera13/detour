@@ -511,35 +511,37 @@ export const mockUsers: MockUser[] = [
 export const mockLikesYou: MockUser[] = mockUsers.slice(0, 12);
 
 // Mock matches with conversation potential
+const matchNow = Date.now();
+
 export const mockMatches: MockMatch[] = [
   {
     id: 'match_1',
     user: mockUsers[0], // Hana
-    matchedAt: '2 hours ago',
+    matchedAt: new Date(matchNow - 2 * 3600000).toISOString(), // 2h ago
     hasNewMessage: true,
   },
   {
     id: 'match_2',
     user: mockUsers[3], // Tomas
-    matchedAt: '1 day ago',
+    matchedAt: new Date(matchNow - 24 * 3600000).toISOString(), // 1d ago
     hasNewMessage: false,
   },
   {
     id: 'match_3',
     user: mockUsers[4], // Aisha
-    matchedAt: '3 days ago',
+    matchedAt: new Date(matchNow - 3 * 24 * 3600000).toISOString(), // 3d ago
     hasNewMessage: true,
   },
   {
     id: 'match_4',
     user: mockUsers[8], // Linnea
-    matchedAt: '1 week ago',
+    matchedAt: new Date(matchNow - 7 * 24 * 3600000).toISOString(), // 1w ago
     hasNewMessage: false,
   },
   {
     id: 'match_5',
     user: mockUsers[12], // Thalia
-    matchedAt: '2 weeks ago',
+    matchedAt: new Date(matchNow - 14 * 24 * 3600000).toISOString(), // 2w ago
     hasNewMessage: false,
   },
 ];
@@ -846,3 +848,4 @@ export const getDiscoverUsers = (excludeIds: string[] = [], limit: number = 20):
     .filter(user => !excludeIds.includes(user.id))
     .slice(0, limit);
 };
+

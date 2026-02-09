@@ -326,7 +326,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-gray-100">
         <TouchableOpacity
@@ -400,15 +400,6 @@ export default function ChatScreen() {
 
         {/* Message Input */}
         <View className="flex-row items-end px-4 py-3 border-t border-gray-100 bg-white">
-          {/* Image picker button */}
-          <TouchableOpacity
-            onPress={handlePickImage}
-            className="w-12 h-12 items-center justify-center"
-            disabled={isUploading || isSending}
-          >
-            <Ionicons name="image-outline" size={24} color="#9CA3AF" />
-          </TouchableOpacity>
-
           <View className="flex-1 flex-row items-end bg-gray-100 rounded-3xl px-4 py-2 mr-3">
             <TextInput
               value={messageText}

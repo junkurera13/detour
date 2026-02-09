@@ -253,6 +253,7 @@ export default function MatchesScreen() {
   const { hasDetourPlus } = useRevenueCat();
   const router = useRouter();
   const userId = convexUser?._id;
+  const [showAllLikes, setShowAllLikes] = useState(false);
   const [previewUser, setPreviewUser] = useState<MockUser | null>(null);
   const [previewSwipeDir, setPreviewSwipeDir] = useState<'left' | 'right' | null>(null);
   // Filter out users who are already in matches
@@ -260,7 +261,7 @@ export default function MatchesScreen() {
     const matchedUserIds = new Set(mockMatches.map((m) => m.user.id));
     return mockLikesYou.filter((u) => !matchedUserIds.has(u.id));
   });
-  const [likedBackMatches, setLikedBackMatches] = useState<Array<{ id: string; name: string; age: number; photo: string; matchedAt: string }>>([]);
+  const [likedBackMatches, setLikedBackMatches] = useState<Array<{ id: string; userId: string; name: string; age: number; photo: string; matchedAt: string }>>([]);
   const previewSwipeProgress = useSharedValue(0);
 
   const passButtonStyle = useAnimatedStyle(() => {
@@ -298,6 +299,7 @@ export default function MatchesScreen() {
       setLikedBackMatches((prev) => [
         {
           id: dismissedUser.id,
+          userId: dismissedUser.id,
           name: dismissedUser.name,
           age: dismissedUser.age,
           photo: dismissedUser.photos[0],
@@ -309,10 +311,11 @@ export default function MatchesScreen() {
   };
 
   const handleOpenChat = (matchId: string) => {
-    // Only navigate to real chats (Convex IDs), not mock data
-    if (!matchId.startsWith('match_') && !matchId.startsWith('conv_')) {
-      router.push(`/chat/${matchId}`);
+    // Mock IDs start with 'match_' or are user IDs — skip those to avoid crash
+    if (matchId.startsWith('match_') || matchId.startsWith('user_')) {
+      return;
     }
+    router.push(`/chat/${matchId}` as any);
   };
 
   // Fetch matches from Convex
@@ -338,6 +341,7 @@ export default function MatchesScreen() {
         const isNew = match.matchedAt && (Date.now() - match.matchedAt) < 24 * 60 * 60 * 1000;
         return {
           id: match._id,
+          userId: otherUser?._id,
           name: otherUser?.name ?? 'Unknown',
           age: otherUser?.birthday ? calculateAge(otherUser.birthday) : 0,
           matchedAt: formatRelativeTime(match.matchedAt),
@@ -349,9 +353,10 @@ export default function MatchesScreen() {
     // Fall back to mock matches for testing
     return mockMatches.map((match) => ({
       id: match.id,
+      userId: match.user.id,
       name: match.user.name,
       age: match.user.age,
-      matchedAt: match.matchedAt,
+      matchedAt: formatRelativeTime(new Date(match.matchedAt).getTime()),
       photo: match.user.photos[0],
       isNew: match.hasNewMessage,
     }));
@@ -506,18 +511,21 @@ export default function MatchesScreen() {
                     )}
                   </TouchableOpacity>
                 ))}
-                <TouchableOpacity
-                  className="w-24 h-32 bg-gray-100 rounded-2xl items-center justify-center"
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="eye" size={24} color="#000" />
-                  <Text
-                    className="text-black text-xs mt-2 text-center"
-                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                {likesYou.length > 7 && (
+                  <TouchableOpacity
+                    className="w-24 h-32 bg-gray-100 rounded-2xl items-center justify-center"
+                    activeOpacity={0.7}
+                    onPress={() => setShowAllLikes(true)}
                   >
-                    see all
-                  </Text>
-                </TouchableOpacity>
+                    <Ionicons name="eye" size={24} color="#000" />
+                    <Text
+                      className="text-black text-xs mt-2 text-center"
+                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                    >
+                      see all
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </ScrollView>
 
               <Text
@@ -541,17 +549,24 @@ export default function MatchesScreen() {
                 </View>
               ) : (
                 allMatches.map((match) => (
-                  <TouchableOpacity
+                  <View
                     key={match.id}
                     className="flex-row items-center p-4 bg-gray-50 rounded-2xl mb-3"
-                    activeOpacity={0.7}
-                    onPress={() => handleOpenChat(match.id)}
                   >
-                    <Image
-                      source={{ uri: match.photo }}
-                      className="w-16 h-16 rounded-full"
-                      resizeMode="cover"
-                    />
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        if (match.userId) {
+                          router.push(`/user/${match.userId}` as any);
+                        }
+                      }}
+                    >
+                      <Image
+                        source={{ uri: match.photo }}
+                        className="w-16 h-16 rounded-full"
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
                     <View className="flex-1 ml-4">
                       <Text
                         className="text-black text-lg"
@@ -568,11 +583,12 @@ export default function MatchesScreen() {
                     </View>
                     <TouchableOpacity
                       className="w-10 h-10 bg-white rounded-full items-center justify-center"
+                      activeOpacity={0.7}
                       onPress={() => handleOpenChat(match.id)}
                     >
                       <Ionicons name="chatbubble" size={20} color="#000" />
                     </TouchableOpacity>
-                  </TouchableOpacity>
+                  </View>
                 ))
               )}
             </View>
@@ -719,6 +735,88 @@ export default function MatchesScreen() {
             </View>
           </View>
         </GestureHandlerRootView>
+      </Modal>
+
+      {/* See All Likes Modal */}
+      <Modal
+        visible={showAllLikes}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowAllLikes(false)}
+      >
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+          <View className="px-6 pt-4 pb-4 flex-row items-center justify-between">
+            <TouchableOpacity
+              onPress={() => setShowAllLikes(false)}
+              className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+            >
+              <Ionicons name="chevron-back" size={24} color="#000" />
+            </TouchableOpacity>
+            <Text
+              className="text-2xl text-black"
+              style={{ fontFamily: 'InstrumentSans_700Bold' }}
+            >
+              likes you
+            </Text>
+            <View className="px-3 py-1 rounded-full" style={{ backgroundColor: '#fd6b03' }}>
+              <Text
+                className="text-white text-sm"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                {likesYou.length}
+              </Text>
+            </View>
+          </View>
+          <ScrollView
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}
+          >
+            <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+              {likesYou.map((user) => {
+                const itemWidth = Math.floor((Dimensions.get('window').width - 48 - 16) / 3);
+                return (
+                <TouchableOpacity
+                  key={user.id}
+                  className="relative"
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    if (hasDetourPlus) {
+                      setShowAllLikes(false);
+                      setTimeout(() => setPreviewUser(user), 300);
+                    }
+                  }}
+                  style={{ width: itemWidth, height: itemWidth * 1.33 }}
+                >
+                  <Image
+                    source={{ uri: user.photos[0] }}
+                    style={{ width: '100%', height: '100%', borderRadius: 16 }}
+                    resizeMode="cover"
+                    blurRadius={hasDetourPlus ? 0 : 20}
+                  />
+                  {!hasDetourPlus && (
+                    <View className="absolute inset-0 items-center justify-center">
+                      <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
+                        <Ionicons name="lock-closed" size={20} color="#000" />
+                      </View>
+                    </View>
+                  )}
+                  {hasDetourPlus && (
+                    <View className="absolute bottom-2 left-2 right-2">
+                      <Text
+                        className="text-white text-sm"
+                        style={{ fontFamily: 'InstrumentSans_600SemiBold', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}
+                      >
+                        {user.name}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
     </GestureHandlerRootView>
   );

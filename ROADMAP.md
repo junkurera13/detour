@@ -33,7 +33,9 @@
 |------|-------------|--------|
 | Swipe gestures | Gesture-based swipe with Reanimated | ✅ |
 | Compatibility % badge | Show match % on profile cards | ⬜ |
-| Image sharing | Send photos in chat | ✅ |
+| Likes You modal | Swipeable card modal to accept/reject likes | ✅ |
+| User profile page | View other users' profiles (matches own profile layout) | ✅ |
+| Profile navigation | Tap photo in matches to view profile | ✅ |
 | Block users | Block from chat/profile | ✅ |
 
 ---
@@ -75,9 +77,9 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 
 | Task | Description | Status |
 |------|-------------|--------|
-| Seed demo data | Profiles to swipe, existing matches | ⬜ |
+| Seed demo data | Profiles, matches, messages, help requests, help offers | ✅ |
 | Sandbox purchases | Test purchase flow works | ✅ (verified with Google Play license tester) |
-| Bug fixes | Fix any rough edges | ⬜ |
+| Bug fixes | Fix any rough edges | 🟡 |
 
 ---
 
@@ -98,6 +100,8 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 | Subscription Status | `hasDetourPlus` entitlement check |
 | Customer Center | Manage subscription |
 | Swipe Gestures | Pan gestures with Reanimated + haptics |
+| Help Marketplace | Request/offer help with categories, offers, chat |
+| Seed Data | Users, matches, messages, help requests, help offers in Convex |
 
 ---
 
@@ -127,6 +131,9 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 | `app/(tabs)/matches.tsx` | "Likes You" section |
 | `app/(tabs)/index.tsx` | Swipe screen |
 | `app/chat/[matchId].tsx` | Chat screen |
+| `app/user/[userId].tsx` | User profile page |
+| `app/(tabs)/messages.tsx` | Help marketplace feed |
+| `convex/seed.ts` | Seed data (users, matches, messages, help requests, offers) |
 
 ---
 

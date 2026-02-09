@@ -1,3 +1,4 @@
+import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 
 // Realistic seed profiles for demo
@@ -304,6 +305,336 @@ export const seedUsers = mutation({
     }
 
     return { message: `Seeded ${seededCount} test users`, count: seededCount };
+  },
+});
+
+// Help requests seed data — references seeded users by username
+const testHelpRequests = [
+  {
+    username: "clara.sails",
+    title: "sunroof seal leaking during rain",
+    description: "my van sunroof started leaking after the last big storm. water drips onto the bed area. need someone who knows how to reseal or replace the gasket. i have basic tools.",
+    category: "repairs",
+    location: "Split, Croatia",
+    isUrgent: true,
+    hoursAgo: 0.75,
+  },
+  {
+    username: "ryan.surfs",
+    title: "need help installing solar panel",
+    description: "just got a 200w solar panel for my van but have no clue how to wire it to the battery. looking for someone with electrical experience to help me set it up properly.",
+    category: "electrical",
+    location: "Canggu, Bali",
+    isUrgent: false,
+    hoursAgo: 2,
+  },
+  {
+    username: "emma.explores",
+    title: "building a fold-out desk for my van",
+    description: "want to build a small fold-out desk that mounts to the wall of my sprinter. need someone handy with woodworking or who has done a similar build. happy to pay for time + materials.",
+    category: "build",
+    location: "Barcelona, Spain",
+    isUrgent: false,
+    hoursAgo: 5,
+  },
+  {
+    username: "dan.eth",
+    title: "shower drain clogged in hostel room",
+    description: "the drain in my private hostel bathroom is completely blocked. hostel staff said they cant fix it til next week. anyone have a drain snake or know a quick fix?",
+    category: "plumbing",
+    location: "Bangkok, Thailand",
+    isUrgent: true,
+    hoursAgo: 0.5,
+  },
+  {
+    username: "mia.writes",
+    title: "led strip lights flickering at night",
+    description: "installed led strips in my camper last month and now they flicker randomly. might be a loose connection or a voltage issue. need someone who understands 12v systems.",
+    category: "electrical",
+    location: "Porto, Portugal",
+    isUrgent: false,
+    hoursAgo: 8,
+  },
+  {
+    username: "luna.free",
+    title: "help moving furniture into new apartment",
+    description: "just signed a 3-month lease and need help carrying a couch and desk up 3 flights of stairs. will buy you lunch and beers after!",
+    category: "other",
+    location: "Tulum, Mexico",
+    isUrgent: false,
+    hoursAgo: 1,
+  },
+  {
+    username: "alex.vanlife",
+    title: "van side door won't lock properly",
+    description: "the sliding door on my vw transporter won't latch closed anymore. it slides fine but the lock mechanism seems jammed. worried about security at night.",
+    category: "repairs",
+    location: "Cape Town, South Africa",
+    isUrgent: true,
+    hoursAgo: 3,
+  },
+  {
+    username: "lucas.builds",
+    title: "mounting a monitor on the wall safely",
+    description: "renting an apartment for 2 months and want to mount a small monitor on the wall for work. need to do it without damaging the wall too much. anyone done this before?",
+    category: "build",
+    location: "Medellín, Colombia",
+    isUrgent: false,
+    hoursAgo: 12,
+  },
+  {
+    username: "nina.vibes",
+    title: "water pump making weird noise",
+    description: "the 12v water pump in my van started making a grinding noise when i turn on the tap. water still flows but the sound is concerning. could be air in the line or the pump dying.",
+    category: "plumbing",
+    location: "Berlin, Germany",
+    isUrgent: false,
+    hoursAgo: 6,
+  },
+  {
+    username: "tom.adventures",
+    title: "setting up a starlink dish on my rv",
+    description: "just got starlink and need help figuring out the best mounting position on my rv roof. also not sure about the wiring to run it inside. anyone with starlink experience?",
+    category: "electrical",
+    location: "Melbourne, Australia",
+    isUrgent: false,
+    hoursAgo: 18,
+  },
+  {
+    username: "priya.yoga",
+    title: "ceiling fan making clicking sound",
+    description: "the ceiling fan in my coliving space started making a loud clicking sound at high speed. landlord is away for a week. anyone know how to fix this or at least make it quieter?",
+    category: "repairs",
+    location: "Goa, India",
+    isUrgent: false,
+    hoursAgo: 4,
+  },
+  {
+    username: "seb_writes",
+    title: "need help assembling ikea furniture",
+    description: "just moved into a new place and bought a bunch of ikea stuff. wardrobe, desk, and bookshelf. could really use an extra pair of hands. will provide pizza and beer.",
+    category: "build",
+    location: "Medellin, Colombia",
+    isUrgent: false,
+    hoursAgo: 1.5,
+  },
+];
+
+export const seedHelpRequests = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Check if already seeded
+    const existing = await ctx.db.query("helpRequests").take(1);
+    if (existing.length > 0) {
+      return { message: "Help requests already seeded", count: existing.length };
+    }
+
+    const now = Date.now();
+    let seededCount = 0;
+
+    for (const request of testHelpRequests) {
+      // Look up the author by username
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_username", (q) => q.eq("username", request.username))
+        .first();
+
+      if (!user) continue; // skip if user not found
+
+      await ctx.db.insert("helpRequests", {
+        authorId: user._id,
+        title: request.title,
+        description: request.description,
+        category: request.category,
+        location: request.location,
+        isUrgent: request.isUrgent,
+        status: "open",
+        createdAt: now - request.hoursAgo * 3600000,
+        updatedAt: now - request.hoursAgo * 3600000,
+      });
+      seededCount++;
+    }
+
+    return { message: `Seeded ${seededCount} help requests`, count: seededCount };
+  },
+});
+
+export const seedHelpOffers = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Check if already seeded
+    const existing = await ctx.db.query("helpOffers").take(1);
+    if (existing.length > 0) {
+      return { message: "Help offers already seeded" };
+    }
+
+    const requests = await ctx.db.query("helpRequests").collect();
+    if (requests.length === 0) {
+      return { message: "No help requests found — seed those first" };
+    }
+
+    // Get all users to use as offerers
+    const users = await ctx.db.query("users").collect();
+    if (users.length < 3) {
+      return { message: "Not enough users — seed users first" };
+    }
+
+    const now = Date.now();
+    let seededCount = 0;
+
+    // Offer messages pool
+    const offerMessages = [
+      "i've done this before, happy to help out!",
+      "i can take a look at this for you. free this afternoon.",
+      "this is right up my alley — been doing this kind of work for years.",
+      "hey! i'm nearby and have the tools for this. let me know when works.",
+      "i can help with this. done similar fixes on my own van.",
+      "happy to lend a hand! i'll bring my toolkit.",
+      "i've got experience with this — can swing by tomorrow if that works.",
+      "sounds like a quick fix. i can help today.",
+    ];
+
+    const prices = [1500, 2000, 2500, 3000, 3500, 4000, 5000, 7500, 0];
+
+    for (const request of requests) {
+      // Each request gets 1-4 offers from random users (not the author)
+      const otherUsers = users.filter((u) => u._id !== request.authorId);
+      const numOffers = Math.min(1 + Math.floor(Math.random() * 4), otherUsers.length);
+
+      // Shuffle and pick
+      const shuffled = [...otherUsers].sort(() => Math.random() - 0.5);
+      const offerers = shuffled.slice(0, numOffers);
+
+      for (let i = 0; i < offerers.length; i++) {
+        await ctx.db.insert("helpOffers", {
+          requestId: request._id,
+          offererId: offerers[i]._id,
+          price: prices[Math.floor(Math.random() * prices.length)],
+          message: offerMessages[Math.floor(Math.random() * offerMessages.length)],
+          status: "pending",
+          createdAt: now - Math.random() * 3600000 * 2,
+          updatedAt: now - Math.random() * 3600000 * 2,
+        });
+        seededCount++;
+      }
+    }
+
+    return { message: `Seeded ${seededCount} help offers`, count: seededCount };
+  },
+});
+
+// Seed matches and messages for the current user
+// Pass your username so the function can find your user ID
+export const seedMatches = mutation({
+  args: { myUsername: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    // Check if already seeded
+    const existing = await ctx.db.query("matches").take(1);
+    if (existing.length > 0) {
+      return { message: "Matches already seeded" };
+    }
+
+    // Find the current user
+    const myUsername = args.myUsername || "junz";
+    const me = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", myUsername))
+      .first();
+
+    if (!me) {
+      return { message: `User '${myUsername}' not found. Pass your username as myUsername arg.` };
+    }
+
+    // Pick seed users to match with
+    const matchUsernames = [
+      "clara.sails",
+      "ryan.surfs",
+      "mia.writes",
+      "luna.free",
+      "nina.vibes",
+    ];
+
+    const now = Date.now();
+    let matchCount = 0;
+    const matchIds: any[] = [];
+
+    for (let i = 0; i < matchUsernames.length; i++) {
+      const other = await ctx.db
+        .query("users")
+        .withIndex("by_username", (q) => q.eq("username", matchUsernames[i]))
+        .first();
+
+      if (!other) continue;
+
+      const hoursAgo = [2, 18, 48, 120, 240][i] || 24;
+      const matchId = await ctx.db.insert("matches", {
+        user1Id: me._id,
+        user2Id: other._id,
+        status: "matched",
+        user1Action: "liked",
+        user2Action: "liked",
+        matchedAt: now - hoursAgo * 3600000,
+        createdAt: now - hoursAgo * 3600000,
+      });
+      matchIds.push({ matchId, otherId: other._id, otherName: other.name, hoursAgo });
+      matchCount++;
+    }
+
+    // Seed messages for each match
+    const conversationTemplates = [
+      // clara.sails — casual recent chat
+      [
+        { fromMe: false, text: "hey! saw you're in croatia too 🇭🇷", minsAgo: 90 },
+        { fromMe: true, text: "yess! just got to split a few days ago", minsAgo: 85 },
+        { fromMe: false, text: "nice! how are you liking it so far?", minsAgo: 80 },
+        { fromMe: true, text: "its amazing honestly. the old town is beautiful", minsAgo: 70 },
+        { fromMe: false, text: "right?? have you been to the green market yet?", minsAgo: 65 },
+        { fromMe: true, text: "not yet! is it worth checking out?", minsAgo: 55 },
+        { fromMe: false, text: "100%. freshest produce ever. i go every morning", minsAgo: 50 },
+      ],
+      // ryan.surfs — surf plans
+      [
+        { fromMe: true, text: "hey! your profile says you surf in bali?", minsAgo: 800 },
+        { fromMe: false, text: "yeah! almost every morning at echo beach", minsAgo: 780 },
+        { fromMe: true, text: "thats awesome. im planning to head there next month", minsAgo: 750 },
+        { fromMe: false, text: "you should! the waves are perfect for all levels rn", minsAgo: 720 },
+        { fromMe: true, text: "any board rental spots you'd recommend?", minsAgo: 600 },
+        { fromMe: false, text: "yeah deus has great boards. or hit up the local shops on the beach road, way cheaper", minsAgo: 580 },
+      ],
+      // mia.writes — writing + porto
+      [
+        { fromMe: false, text: "love that you're into writing too! what do you write about?", minsAgo: 2000 },
+        { fromMe: true, text: "mostly travel essays and some fiction. you?", minsAgo: 1900 },
+        { fromMe: false, text: "same-ish! travel memoirs. porto is giving me so much material", minsAgo: 1850 },
+        { fromMe: true, text: "i bet. the city is insanely photogenic", minsAgo: 1800 },
+      ],
+      // luna.free — short exchange
+      [
+        { fromMe: true, text: "hey luna!", minsAgo: 5000 },
+        { fromMe: false, text: "hiii ☀️", minsAgo: 4800 },
+      ],
+      // nina.vibes — no messages yet (empty chat)
+      [],
+    ];
+
+    let messageCount = 0;
+    for (let i = 0; i < matchIds.length; i++) {
+      const { matchId, otherId } = matchIds[i];
+      const messages = conversationTemplates[i] || [];
+
+      for (const msg of messages) {
+        await ctx.db.insert("messages", {
+          matchId,
+          senderId: msg.fromMe ? me._id : otherId,
+          content: msg.text,
+          messageType: "text",
+          createdAt: now - msg.minsAgo * 60000,
+        });
+        messageCount++;
+      }
+    }
+
+    return { message: `Seeded ${matchCount} matches and ${messageCount} messages` };
   },
 });
 
