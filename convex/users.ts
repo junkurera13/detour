@@ -84,6 +84,8 @@ export const create = mutation({
     futureTrips: v.optional(v.array(v.object({
       location: v.string(),
       date: v.optional(v.string()),
+      startDate: v.optional(v.string()),
+      endDate: v.optional(v.string()),
     }))),
     joinPath: v.string(),
     inviteCode: v.optional(v.string()),
@@ -124,6 +126,8 @@ export const update = mutation({
     futureTrips: v.optional(v.array(v.object({
       location: v.string(),
       date: v.optional(v.string()),
+      startDate: v.optional(v.string()),
+      endDate: v.optional(v.string()),
     }))),
     builderBio: v.optional(v.string()),
     userStatus: v.optional(v.string()),

@@ -218,7 +218,7 @@ export default function FutureTripScreen() {
                   <Ionicons
                     name="calendar-outline"
                     size={20}
-                    color={stop.date ? '#fd6b03' : '#9CA3AF'}
+                    color={stop.startDate ? '#fd6b03' : '#9CA3AF'}
                     style={{ marginRight: 12 }}
                   />
                   <Text
@@ -226,16 +226,16 @@ export default function FutureTripScreen() {
                       flex: 1,
                       fontFamily: 'InstrumentSans_400Regular',
                       fontSize: 16,
-                      color: stop.date ? '#000' : '#9CA3AF',
+                      color: stop.startDate ? '#000' : '#9CA3AF',
                     }}
                   >
-                    {formatDate(stop.date) || 'add date (optional)'}
+                    {formatDate(stop.startDate) || 'add date (optional)'}
                   </Text>
-                  {stop.date && (
+                  {stop.startDate && (
                     <TouchableOpacity
                       onPress={(e) => {
                         e.stopPropagation();
-                        updateStop(index, { date: undefined });
+                        updateStop(index, { startDate: undefined, endDate: undefined });
                       }}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
@@ -310,8 +310,8 @@ export default function FutureTripScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
-                  if (showDatePicker !== null && !stops[showDatePicker]?.date) {
-                    updateStop(showDatePicker, { date: new Date().toISOString() });
+                  if (showDatePicker !== null && !stops[showDatePicker]?.startDate) {
+                    updateStop(showDatePicker, { startDate: new Date().toISOString() });
                   }
                   setShowDatePicker(null);
                 }}
@@ -324,7 +324,7 @@ export default function FutureTripScreen() {
             {showDatePicker !== null && (
               <View style={{ height: 200 }}>
                 <DateTimePicker
-                  value={stops[showDatePicker]?.date ? new Date(stops[showDatePicker].date!) : new Date()}
+                  value={stops[showDatePicker]?.startDate ? new Date(stops[showDatePicker].startDate!) : new Date()}
                   mode="date"
                   display="spinner"
                   minimumDate={new Date()}
@@ -333,7 +333,7 @@ export default function FutureTripScreen() {
                   textColor="#000000"
                   onChange={(_, selectedDate) => {
                     if (selectedDate && showDatePicker !== null) {
-                      updateStop(showDatePicker, { date: selectedDate.toISOString() });
+                      updateStop(showDatePicker, { startDate: selectedDate.toISOString() });
                     }
                   }}
                 />
@@ -347,14 +347,14 @@ export default function FutureTripScreen() {
     {/* Date Picker - Android */}
     {showDatePicker !== null && Platform.OS === 'android' && (
       <DateTimePicker
-        value={stops[showDatePicker]?.date ? new Date(stops[showDatePicker].date!) : new Date()}
+        value={stops[showDatePicker]?.startDate ? new Date(stops[showDatePicker].startDate!) : new Date()}
         mode="date"
         display="default"
         minimumDate={new Date()}
         onChange={(event, selectedDate) => {
           setShowDatePicker(null);
           if (event.type === 'set' && selectedDate && showDatePicker !== null) {
-            updateStop(showDatePicker, { date: selectedDate.toISOString() });
+            updateStop(showDatePicker, { startDate: selectedDate.toISOString() });
           }
         }}
       />

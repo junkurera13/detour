@@ -2,7 +2,9 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface TripStop {
   location: string;
-  date?: string; // ISO date string
+  date?: string; // Legacy field kept for backward compatibility with existing records
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface OnboardingData {

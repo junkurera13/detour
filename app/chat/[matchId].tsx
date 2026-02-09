@@ -400,7 +400,7 @@ export default function ChatScreen() {
 
         {/* Message Input */}
         <View className="flex-row items-end px-4 py-3 border-t border-gray-100 bg-white">
-          <View className="flex-1 flex-row items-end bg-gray-100 rounded-3xl px-4 py-2 mr-3">
+          <View className="flex-1 flex-row items-end bg-gray-100 rounded-3xl px-4 mr-3" style={{ minHeight: 44 }}>
             <TextInput
               value={messageText}
               onChangeText={setMessageText}
@@ -412,7 +412,8 @@ export default function ChatScreen() {
               style={{
                 fontFamily: 'InstrumentSans_400Regular',
                 fontSize: 16,
-                paddingVertical: 8,
+                paddingTop: 10,
+                paddingBottom: 10,
               }}
             />
           </View>
@@ -420,8 +421,10 @@ export default function ChatScreen() {
           <TouchableOpacity
             onPress={handleSend}
             disabled={!messageText.trim() || isSending}
-            className="w-12 h-12 rounded-full items-center justify-center"
+            className="rounded-full items-center justify-center"
             style={{
+              width: 44,
+              height: 44,
               backgroundColor: messageText.trim() ? '#fd6b03' : '#E5E7EB',
             }}
           >

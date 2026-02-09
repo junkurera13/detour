@@ -34,6 +34,8 @@ export default defineSchema({
     futureTrips: v.optional(v.array(v.object({
       location: v.string(),
       date: v.optional(v.string()),
+      startDate: v.optional(v.string()),
+      endDate: v.optional(v.string()),
     }))),
 
     // Builder profile

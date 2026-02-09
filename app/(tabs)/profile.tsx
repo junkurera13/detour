@@ -1,6 +1,7 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, TextInput, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useRouter } from 'expo-router';
@@ -11,6 +12,36 @@ import { mockProfileViewers, mockActivities } from '@/data/mockData';
 import { useRevenueCat } from '@/context/RevenueCatContext';
 import { useEvents } from '@/context/EventsContext';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
+
+// Format a Date to a short display string like "Mar 15"
+function formatDateShort(date: Date): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${months[date.getMonth()]} ${date.getDate()}`;
+}
+
+// Parse a short date string like "Mar 15" back to a Date
+function parseDateShort(str: string): Date | null {
+  const months: Record<string, number> = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+  const parts = str.trim().split(/\s+/);
+  if (parts.length !== 2) return null;
+  const month = months[parts[0]];
+  const day = parseInt(parts[1], 10);
+  if (month === undefined || isNaN(day)) return null;
+  const year = new Date().getFullYear();
+  return new Date(year, month, day);
+}
+
+function parseTripDate(str?: string): Date | null {
+  if (!str) return null;
+  const value = str.trim();
+  if (!value) return null;
+
+  const short = parseDateShort(value);
+  if (short) return short;
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
 const lifestyleLabels: Record<string, string> = {
   'van-life': 'van life',
@@ -88,8 +119,9 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<'about' | 'events' | 'builder'>('about');
   const { joinedIds } = useEvents();
   const myEvents = useMemo(() => mockActivities.filter(a => joinedIds.includes(a.id)), [joinedIds]);
-  const [editingStopIndex, setEditingStopIndex] = useState<number | null>(null);
+  const [editingLocationIndex, setEditingLocationIndex] = useState<number | null>(null);
   const [editingStopText, setEditingStopText] = useState('');
+  const [datePickerTarget, setDatePickerTarget] = useState<{ index: number; field: 'start' | 'end' } | null>(null);
   const slideAnim = useRef(new Animated.Value(400)).current;
 
   // Use Convex user data if available, fallback to onboarding data
@@ -150,41 +182,62 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleSaveStop = async (index: number) => {
+  // Build a clean trip array with only schema-valid fields: location, startDate, endDate.
+  // Convex v.object() is strict — extra keys cause validation failures.
+  const buildCleanTrips = () =>
+    profileData.futureTrips.map((t) => {
+      const trip: { location: string; startDate?: string; endDate?: string } = {
+        location: t.location,
+      };
+      if (t.startDate) trip.startDate = t.startDate;
+      if (t.endDate) trip.endDate = t.endDate;
+      return trip;
+    });
+
+  const handleSaveStopLocation = async (index: number, locationText: string) => {
     if (!user) return;
-    const text = editingStopText.trim();
-    const currentTrips = [...profileData.futureTrips];
-    if (text) {
-      if (index < currentTrips.length) {
-        currentTrips[index] = { ...currentTrips[index], location: text };
-      } else {
-        currentTrips.push({ location: text });
-      }
-    } else if (index < currentTrips.length) {
-      currentTrips.splice(index, 1);
+    const text = locationText.trim();
+    if (!text) return;
+    const trips = buildCleanTrips();
+    if (index < trips.length) {
+      trips[index].location = text;
+    } else {
+      trips.push({ location: text });
     }
     try {
-      await updateUser({
-        id: user._id,
-        futureTrips: currentTrips.length > 0 ? currentTrips : undefined,
-      });
-    } catch {
+      await updateUser({ id: user._id, futureTrips: trips });
+    } catch (e) {
+      console.error('handleSaveStopLocation:', e);
       Alert.alert('error', 'failed to update trip');
     }
-    setEditingStopIndex(null);
+    setEditingLocationIndex(null);
     setEditingStopText('');
+  };
+
+  const handleSaveStopDate = async (index: number, field: 'start' | 'end', date: Date) => {
+    if (!user || index >= profileData.futureTrips.length) return;
+    const trips = buildCleanTrips();
+    if (field === 'start') {
+      trips[index].startDate = formatDateShort(date);
+    } else {
+      trips[index].endDate = formatDateShort(date);
+    }
+    try {
+      await updateUser({ id: user._id, futureTrips: trips });
+    } catch (e) {
+      console.error('handleSaveStopDate:', e);
+      Alert.alert('error', 'failed to update date');
+    }
   };
 
   const handleRemoveStop = async (index: number) => {
     if (!user) return;
-    const currentTrips = [...profileData.futureTrips];
-    currentTrips.splice(index, 1);
+    const trips = buildCleanTrips();
+    trips.splice(index, 1);
     try {
-      await updateUser({
-        id: user._id,
-        futureTrips: currentTrips.length > 0 ? currentTrips : undefined,
-      });
-    } catch {
+      await updateUser({ id: user._id, futureTrips: trips });
+    } catch (e) {
+      console.error('handleRemoveStop:', e);
       Alert.alert('error', 'failed to remove trip');
     }
   };
@@ -263,16 +316,6 @@ export default function ProfileScreen() {
             </Text>
           )}
 
-          <View className="flex-row items-center mt-1">
-            <Ionicons name="location-outline" size={16} color="#9CA3AF" />
-            <Text
-              className="text-gray-500 ml-1"
-              style={{ fontFamily: 'InstrumentSans_400Regular' }}
-            >
-              {profileData.currentLocation || 'location not set'}
-            </Text>
-          </View>
-
           {profileData.instagram && (
             <View className="flex-row items-center mt-2">
               <Ionicons name="logo-instagram" size={16} color="#E4405F" />
@@ -280,7 +323,7 @@ export default function ProfileScreen() {
                 className="text-gray-700 ml-1"
                 style={{ fontFamily: 'InstrumentSans_500Medium' }}
               >
-                @{profileData.instagram}
+                {profileData.instagram}
               </Text>
             </View>
           )}
@@ -386,12 +429,12 @@ export default function ProfileScreen() {
               >
                 <View className="p-5">
                   <View className="flex-row items-center mb-1">
-                    <View className="items-center" style={{ width: 32 }}>
+                    <View className="items-center" style={{ width: 40 }}>
                       <View
-                        className="w-8 h-8 rounded-full items-center justify-center"
+                        className="w-10 h-10 rounded-full items-center justify-center"
                         style={{ backgroundColor: '#111827' }}
                       >
-                        <Ionicons name="navigate" size={16} color="#fff" />
+                        <Ionicons name="navigate" size={18} color="#fff" />
                       </View>
                     </View>
                     <View className="ml-3 flex-1">
@@ -402,7 +445,7 @@ export default function ProfileScreen() {
                         now
                       </Text>
                       <Text
-                        className="text-black text-base"
+                        className="text-black text-lg"
                         style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
                         numberOfLines={1}
                       >
@@ -410,85 +453,118 @@ export default function ProfileScreen() {
                       </Text>
                     </View>
                   </View>
-                  <View className="items-center" style={{ width: 32, paddingVertical: 2 }}>
-                    {[0, 1, 2].map((i) => (
-                      <View
-                        key={i}
-                        className="w-1 rounded-full my-0.5"
-                        style={{ height: 4, backgroundColor: '#FDBA74' }}
-                      />
-                    ))}
-                  </View>
+                  {profileData.futureTrips.length > 0 && (
+                    <View className="items-center" style={{ width: 40, paddingVertical: 2 }}>
+                      {[0, 1, 2, 3].map((i) => (
+                        <View
+                          key={i}
+                          className="w-1 rounded-full my-0.5"
+                          style={{ height: 4, backgroundColor: '#FDBA74' }}
+                        />
+                      ))}
+                    </View>
+                  )}
                   {profileData.futureTrips.map((trip, index) => (
                     <View key={index}>
                       <View className="flex-row items-center">
-                        <View className="items-center" style={{ width: 32 }}>
+                        <View className="items-center" style={{ width: 40 }}>
                           <View
-                            className="w-8 h-8 rounded-full items-center justify-center"
+                            className="w-10 h-10 rounded-full items-center justify-center"
                             style={{ backgroundColor: '#FED7AA' }}
                           >
-                            <Ionicons name="airplane" size={14} color="#EA580C" />
+                            <Ionicons name="airplane" size={18} color="#EA580C" />
                           </View>
                         </View>
-                        {editingStopIndex === index ? (
-                          <View className="ml-3 flex-1 flex-row items-center">
-                            <View className="flex-1">
-                              <LocationAutocomplete
-                                value={editingStopText}
-                                placeholder="search for a city..."
-                                onSelect={(location) => {
-                                  setEditingStopText(location.fullName);
-                                  handleSaveStop(index);
+                        {editingLocationIndex === index ? (
+                          <View className="ml-3 flex-1">
+                            <LocationAutocomplete
+                              value={editingStopText}
+                              placeholder="search for a city..."
+                              onSelect={(location) => handleSaveStopLocation(index, location.fullName)}
+                            />
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+                              <TouchableOpacity onPress={() => { setEditingLocationIndex(null); setEditingStopText(''); }} style={{ paddingVertical: 4 }}>
+                                <Text style={{ color: '#9CA3AF', fontSize: 12, fontFamily: 'InstrumentSans_500Medium' }}>cancel</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() => {
+                                  Alert.alert('remove stop?', trip.location, [
+                                    { text: 'cancel', style: 'cancel' },
+                                    { text: 'remove', style: 'destructive', onPress: () => { handleRemoveStop(index); setEditingLocationIndex(null); } },
+                                  ]);
                                 }}
-                              />
+                                style={{ paddingVertical: 4 }}
+                              >
+                                <Text style={{ color: '#EF4444', fontSize: 12, fontFamily: 'InstrumentSans_500Medium' }}>delete</Text>
+                              </TouchableOpacity>
                             </View>
-                            <TouchableOpacity
-                              onPress={() => {
-                                handleRemoveStop(index);
-                                setEditingStopIndex(null);
-                                setEditingStopText('');
-                              }}
-                              className="ml-2 p-1"
-                            >
-                              <Ionicons name="close-circle" size={20} color="#EF4444" />
-                            </TouchableOpacity>
                           </View>
                         ) : (
-                          <TouchableOpacity
-                            className="ml-3 flex-1 flex-row items-center justify-between"
-                            onPress={() => {
-                              setEditingStopIndex(index);
-                              setEditingStopText(trip.location);
-                            }}
-                            onLongPress={() => {
-                              Alert.alert('remove stop?', trip.location, [
-                                { text: 'cancel', style: 'cancel' },
-                                { text: 'remove', style: 'destructive', onPress: () => handleRemoveStop(index) },
-                              ]);
-                            }}
-                          >
-                            <View className="flex-1">
+                          <View className="ml-3 flex-1" style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={{ flex: 1 }}>
                               <Text
                                 className="text-xs text-gray-400 uppercase"
                                 style={{ fontFamily: 'InstrumentSans_500Medium' }}
                               >
                                 next{index > 0 ? ` +${index}` : ''}
                               </Text>
-                              <Text
-                                className="text-black text-base"
-                                style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                                numberOfLines={1}
-                              >
-                                {trip.location.split(',')[0]}
-                              </Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Text
+                                  className="text-black text-lg"
+                                  style={{ fontFamily: 'InstrumentSans_600SemiBold', flexShrink: 1 }}
+                                  numberOfLines={1}
+                                >
+                                  {trip.location.split(',')[0]}
+                                </Text>
+                                <TouchableOpacity
+                                  onPress={() => { setEditingLocationIndex(index); setEditingStopText(trip.location); }}
+                                  style={{ marginLeft: 6, padding: 2 }}
+                                >
+                                  <Ionicons name="pencil" size={12} color="#D1D5DB" />
+                                </TouchableOpacity>
+                              </View>
                             </View>
-                            <Ionicons name="pencil" size={14} color="#D1D5DB" />
-                          </TouchableOpacity>
+                            <View style={{ alignItems: 'flex-end', marginLeft: 12 }}>
+                              <TouchableOpacity onPress={() => setDatePickerTarget({ index, field: 'start' })}>
+                                <Text style={{ fontSize: 12, color: trip.startDate ? '#000' : '#D1D5DB', fontFamily: 'InstrumentSans_400Regular' }}>
+                                  {trip.startDate || 'start'}
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={() => setDatePickerTarget({ index, field: 'end' })} style={{ marginTop: 2 }}>
+                                <Text style={{ fontSize: 12, color: trip.endDate ? '#000' : '#D1D5DB', fontFamily: 'InstrumentSans_400Regular' }}>
+                                  {trip.endDate || 'end'}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
                         )}
                       </View>
+                      {datePickerTarget?.index === index && (
+                        <View style={{ marginLeft: 52, marginTop: 4, marginBottom: 4 }}>
+                          <DateTimePicker
+                            value={
+                              datePickerTarget.field === 'start'
+                                ? parseTripDate(trip.startDate) || new Date()
+                                : parseTripDate(trip.endDate) || parseTripDate(trip.startDate) || new Date()
+                            }
+                            mode="date"
+                            display={Platform.OS === 'ios' ? 'compact' : 'default'}
+                            minimumDate={
+                              datePickerTarget.field === 'end' && trip.startDate
+                                ? parseTripDate(trip.startDate) || new Date()
+                                : new Date()
+                            }
+                            onChange={(_: DateTimePickerEvent, date?: Date) => {
+                              const target = datePickerTarget;
+                              setDatePickerTarget(null);
+                              if (date && target) handleSaveStopDate(target.index, target.field, date);
+                            }}
+                          />
+                        </View>
+                      )}
                       {index < profileData.futureTrips.length - 1 && (
-                        <View className="items-center" style={{ width: 32, paddingVertical: 2 }}>
-                          {[0, 1, 2].map((i) => (
+                        <View className="items-center" style={{ width: 40, paddingVertical: 2 }}>
+                          {[0, 1, 2, 3].map((i) => (
                             <View
                               key={i}
                               className="w-1 rounded-full my-0.5"
@@ -501,8 +577,8 @@ export default function ProfileScreen() {
                   ))}
                   {profileData.futureTrips.length < 5 && (
                     <>
-                      <View className="items-center" style={{ width: 32, paddingVertical: 2 }}>
-                        {[0, 1, 2].map((i) => (
+                      <View className="items-center" style={{ width: 40, paddingVertical: 2 }}>
+                        {[0, 1, 2, 3].map((i) => (
                           <View
                             key={i}
                             className="w-1 rounded-full my-0.5"
@@ -510,38 +586,43 @@ export default function ProfileScreen() {
                           />
                         ))}
                       </View>
-                      {editingStopIndex === profileData.futureTrips.length ? (
-                        <View className="flex-row items-center">
-                          <View className="items-center" style={{ width: 32 }}>
-                            <View
-                              className="w-8 h-8 rounded-full items-center justify-center"
-                              style={{ backgroundColor: '#F3F4F6', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' }}
-                            >
-                              <Ionicons name="add" size={16} color="#9CA3AF" />
+                      {editingLocationIndex === profileData.futureTrips.length ? (
+                        <View>
+                          <View className="flex-row items-center">
+                            <View className="items-center" style={{ width: 40 }}>
+                              <View
+                                className="w-7 h-7 rounded-full items-center justify-center"
+                                style={{ backgroundColor: '#F3F4F6', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' }}
+                              >
+                                <Ionicons name="add" size={16} color="#9CA3AF" />
+                              </View>
                             </View>
+                            <Text
+                              className="ml-3 text-gray-400 text-sm"
+                              style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                            >
+                              add a stop
+                            </Text>
                           </View>
-                          <View className="ml-3 flex-1" style={{ zIndex: 10 }}>
+                          <View style={{ marginTop: 8 }}>
                             <LocationAutocomplete
                               value={editingStopText}
                               placeholder="search for a city..."
-                              onSelect={(location) => {
-                                setEditingStopText(location.fullName);
-                                handleSaveStop(profileData.futureTrips.length);
-                              }}
+                              onSelect={(location) => handleSaveStopLocation(profileData.futureTrips.length, location.fullName)}
                             />
+                            <TouchableOpacity onPress={() => { setEditingLocationIndex(null); setEditingStopText(''); }} style={{ marginTop: 6, paddingVertical: 4 }}>
+                              <Text style={{ color: '#9CA3AF', fontSize: 12, fontFamily: 'InstrumentSans_500Medium' }}>cancel</Text>
+                            </TouchableOpacity>
                           </View>
                         </View>
                       ) : (
                         <TouchableOpacity
                           className="flex-row items-center"
-                          onPress={() => {
-                            setEditingStopIndex(profileData.futureTrips.length);
-                            setEditingStopText('');
-                          }}
+                          onPress={() => { setEditingLocationIndex(profileData.futureTrips.length); setEditingStopText(''); }}
                         >
-                          <View className="items-center" style={{ width: 32 }}>
+                          <View className="items-center" style={{ width: 40 }}>
                             <View
-                              className="w-8 h-8 rounded-full items-center justify-center"
+                              className="w-7 h-7 rounded-full items-center justify-center"
                               style={{ backgroundColor: '#F3F4F6', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' }}
                             >
                               <Ionicons name="add" size={16} color="#9CA3AF" />

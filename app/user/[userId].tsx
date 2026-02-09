@@ -54,6 +54,33 @@ const interestLabels: Record<string, { label: string; emoji: string }> = {
   'design': { label: 'design', emoji: '🎨' },
 };
 
+// Generate deterministic trip dates from user id
+function getMockTripDate(userId: string, index: number): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = ((hash << 5) - hash) + userId.charCodeAt(i);
+    hash |= 0;
+  }
+  const month = ((Math.abs(hash + index * 7) % 4) + 2); // Feb-May
+  const day = (Math.abs(hash + index * 13) % 28) + 1;
+  const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May'];
+  return `${months[month]} ${day}`;
+}
+
+function getMockTripEndDate(userId: string, index: number): string | undefined {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = ((hash << 3) - hash) + userId.charCodeAt(i);
+    hash |= 0;
+  }
+  // ~60% of trips have an end date
+  if (Math.abs(hash + index) % 5 < 2) return undefined;
+  const month = ((Math.abs(hash + index * 11) % 4) + 3); // Mar-Jun
+  const day = (Math.abs(hash + index * 17) % 28) + 1;
+  const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  return `${months[month]} ${day}`;
+}
+
 function calculateAge(birthday: string): number {
   const birthDate = new Date(birthday);
   const today = new Date();
@@ -104,7 +131,7 @@ export default function UserProfileScreen() {
         instagram: mockUser.instagram,
         lifestyle: mockUser.lifestyle,
         interests: mockUser.interests,
-        futureTrips: mockUser.futureTrip ? [{ location: mockUser.futureTrip }] : [],
+        futureTrips: mockUser.futureTrip ? [{ location: mockUser.futureTrip, startDate: getMockTripDate(mockUser.id, 0), endDate: getMockTripEndDate(mockUser.id, 0) }] : [],
       };
     }
     return null;
@@ -216,16 +243,6 @@ export default function UserProfileScreen() {
             </Text>
           )}
 
-          <View className="flex-row items-center mt-1">
-            <Ionicons name="location-outline" size={16} color="#9CA3AF" />
-            <Text
-              className="text-gray-500 ml-1"
-              style={{ fontFamily: 'InstrumentSans_400Regular' }}
-            >
-              {profileData.currentLocation || 'location not set'}
-            </Text>
-          </View>
-
           {profileData.instagram && (
             <View className="flex-row items-center mt-2">
               <Ionicons name="logo-instagram" size={16} color="#E4405F" />
@@ -233,7 +250,7 @@ export default function UserProfileScreen() {
                 className="text-gray-700 ml-1"
                 style={{ fontFamily: 'InstrumentSans_500Medium' }}
               >
-                @{profileData.instagram}
+                {profileData.instagram}
               </Text>
             </View>
           )}
@@ -352,12 +369,12 @@ export default function UserProfileScreen() {
             <View className="p-5">
               {/* Current location */}
               <View className="flex-row items-center mb-1">
-                <View className="items-center" style={{ width: 32 }}>
+                <View className="items-center" style={{ width: 40 }}>
                   <View
-                    className="w-8 h-8 rounded-full items-center justify-center"
+                    className="w-10 h-10 rounded-full items-center justify-center"
                     style={{ backgroundColor: '#111827' }}
                   >
-                    <Ionicons name="navigate" size={16} color="#fff" />
+                    <Ionicons name="navigate" size={18} color="#fff" />
                   </View>
                 </View>
                 <View className="ml-3 flex-1">
@@ -368,7 +385,7 @@ export default function UserProfileScreen() {
                     now
                   </Text>
                   <Text
-                    className="text-black text-base"
+                    className="text-black text-lg"
                     style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
                     numberOfLines={1}
                   >
@@ -380,8 +397,8 @@ export default function UserProfileScreen() {
               {/* Future trips */}
               {profileData.futureTrips.map((trip, index) => (
                 <View key={index}>
-                  <View className="items-center" style={{ width: 32, paddingVertical: 2 }}>
-                    {[0, 1, 2].map((i) => (
+                  <View className="items-center" style={{ width: 40, paddingVertical: 2 }}>
+                    {[0, 1, 2, 3].map((i) => (
                       <View
                         key={i}
                         className="w-1 rounded-full my-0.5"
@@ -390,12 +407,12 @@ export default function UserProfileScreen() {
                     ))}
                   </View>
                   <View className="flex-row items-center">
-                    <View className="items-center" style={{ width: 32 }}>
+                    <View className="items-center" style={{ width: 40 }}>
                       <View
-                        className="w-8 h-8 rounded-full items-center justify-center"
+                        className="w-10 h-10 rounded-full items-center justify-center"
                         style={{ backgroundColor: '#FED7AA' }}
                       >
-                        <Ionicons name="airplane" size={14} color="#EA580C" />
+                        <Ionicons name="airplane" size={18} color="#EA580C" />
                       </View>
                     </View>
                     <View className="ml-3 flex-1">
@@ -406,12 +423,20 @@ export default function UserProfileScreen() {
                         next{index > 0 ? ` +${index}` : ''}
                       </Text>
                       <Text
-                        className="text-black text-base"
-                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        className="text-black text-lg"
+                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
                         numberOfLines={1}
                       >
                         {trip.location.split(',')[0]}
                       </Text>
+                      {trip.startDate && (
+                        <Text
+                          className="text-xs text-gray-400 mt-0.5"
+                          style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                        >
+                          {trip.startDate}{trip.endDate ? ` — ${trip.endDate}` : ''}
+                        </Text>
+                      )}
                     </View>
                   </View>
                 </View>
