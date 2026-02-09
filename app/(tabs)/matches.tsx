@@ -247,6 +247,106 @@ function LikePreviewCard({
   );
 }
 
+const DELETE_BUTTON_WIDTH = 80;
+
+function SwipeableMessageRow({
+  children,
+  onDelete,
+}: {
+  children: React.ReactNode;
+  onDelete: () => void;
+}) {
+  const translateX = useSharedValue(0);
+  const isOpen = useSharedValue(false);
+
+  const triggerDelete = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onDelete();
+  };
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-10, 10])
+    .failOffsetY([-5, 5])
+    .onUpdate((event) => {
+      if (isOpen.value) {
+        // Already open — allow dragging further left or back right
+        const newX = -DELETE_BUTTON_WIDTH + event.translationX;
+        translateX.value = Math.min(0, Math.max(-DELETE_BUTTON_WIDTH * 2, newX));
+      } else {
+        // Only allow left swipe
+        translateX.value = Math.min(0, event.translationX);
+      }
+    })
+    .onEnd((event) => {
+      if (translateX.value < -DELETE_BUTTON_WIDTH * 1.5) {
+        // Swiped far enough — auto delete
+        translateX.value = withTiming(-SCREEN_WIDTH, { duration: 200 }, () => {
+          runOnJS(triggerDelete)();
+        });
+      } else if (translateX.value < -DELETE_BUTTON_WIDTH / 2) {
+        // Snap open to reveal delete button
+        translateX.value = withSpring(-DELETE_BUTTON_WIDTH, { damping: 20, stiffness: 200 });
+        isOpen.value = true;
+      } else {
+        // Snap closed
+        translateX.value = withSpring(0, { damping: 20, stiffness: 200 });
+        isOpen.value = false;
+      }
+    });
+
+  const rowStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  const deleteButtonStyle = useAnimatedStyle(() => {
+    const width = interpolate(
+      translateX.value,
+      [-DELETE_BUTTON_WIDTH * 2, -DELETE_BUTTON_WIDTH, 0],
+      [DELETE_BUTTON_WIDTH * 2, DELETE_BUTTON_WIDTH, 0],
+      Extrapolation.CLAMP
+    );
+    return { width };
+  });
+
+  return (
+    <View style={{ overflow: 'hidden' }}>
+      {/* Delete button behind the row */}
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            backgroundColor: '#EF4444',
+            justifyContent: 'center',
+            alignItems: 'center',
+          },
+          deleteButtonStyle,
+        ]}
+      >
+        <TouchableOpacity
+          onPress={triggerDelete}
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%' }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="trash-outline" size={22} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 12, fontFamily: 'InstrumentSans_500Medium', marginTop: 2 }}>
+            delete
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Swipeable foreground row */}
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[{ backgroundColor: '#fff' }, rowStyle]}>
+          {children}
+        </Animated.View>
+      </GestureDetector>
+    </View>
+  );
+}
+
 export default function MatchesScreen() {
   const [activeTab, setActiveTab] = useState<'matches' | 'messages'>('matches');
   const { convexUser } = useAuthenticatedUser();
@@ -262,6 +362,7 @@ export default function MatchesScreen() {
     return mockLikesYou.filter((u) => !matchedUserIds.has(u.id));
   });
   const [likedBackMatches, setLikedBackMatches] = useState<Array<{ id: string; userId: string; name: string; age: number; photo: string; matchedAt: string }>>([]);
+  const [deletedConvoIds, setDeletedConvoIds] = useState<Set<string>>(new Set());
   const previewSwipeProgress = useSharedValue(0);
 
   const passButtonStyle = useAnimatedStyle(() => {
@@ -600,7 +701,7 @@ export default function MatchesScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 20 }}
           >
-            {conversations.length === 0 ? (
+            {conversations.filter(c => !deletedConvoIds.has(c.id)).length === 0 ? (
               <View className="items-center py-20 px-6">
                 <View className="w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-4">
                   <Ionicons name="chatbubbles-outline" size={40} color="#9CA3AF" />
@@ -619,56 +720,62 @@ export default function MatchesScreen() {
                 </Text>
               </View>
             ) : (
-              conversations.map((convo) => (
-                <TouchableOpacity
+              conversations.filter(c => !deletedConvoIds.has(c.id)).map((convo) => (
+                <SwipeableMessageRow
                   key={convo.id}
-                  className="flex-row px-6 py-4 border-b border-gray-100"
-                  activeOpacity={0.7}
-                  onPress={() => handleOpenChat(convo.id)}
+                  onDelete={() => {
+                    setDeletedConvoIds(prev => new Set(prev).add(convo.id));
+                  }}
                 >
-                  <View className="relative">
-                    <Image
-                      source={{ uri: convo.photo }}
-                      className="w-14 h-14 rounded-full"
-                      resizeMode="cover"
-                    />
-                  </View>
+                  <TouchableOpacity
+                    className="flex-row px-6 py-4 border-b border-gray-100"
+                    activeOpacity={0.7}
+                    onPress={() => handleOpenChat(convo.id)}
+                  >
+                    <View className="relative">
+                      <Image
+                        source={{ uri: convo.photo }}
+                        className="w-14 h-14 rounded-full"
+                        resizeMode="cover"
+                      />
+                    </View>
 
-                  <View className="flex-1 ml-4">
-                    <Text
-                      className="text-black text-base"
-                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                    >
-                      {convo.name}
-                    </Text>
-                    <Text
-                      className={`text-sm mt-0.5 ${convo.unread > 0 ? 'text-black' : 'text-gray-500'}`}
-                      style={{ fontFamily: convo.unread > 0 ? 'InstrumentSans_500Medium' : 'InstrumentSans_400Regular', maxWidth: '92%' }}
-                      numberOfLines={1}
-                    >
-                      {convo.lastMessage}
-                    </Text>
-                  </View>
+                    <View className="flex-1 ml-4">
+                      <Text
+                        className="text-black text-base"
+                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                      >
+                        {convo.name}
+                      </Text>
+                      <Text
+                        className={`text-sm mt-0.5 ${convo.unread > 0 ? 'text-black' : 'text-gray-500'}`}
+                        style={{ fontFamily: convo.unread > 0 ? 'InstrumentSans_500Medium' : 'InstrumentSans_400Regular', maxWidth: '92%' }}
+                        numberOfLines={1}
+                      >
+                        {convo.lastMessage}
+                      </Text>
+                    </View>
 
-                  <View className="items-end">
-                    <Text
-                      className="text-sm text-gray-500"
-                      style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                    >
-                      {convo.time}
-                    </Text>
-                    {convo.unread > 0 && (
-                      <View className="w-6 h-6 rounded-full items-center justify-center mt-1" style={{ backgroundColor: '#fd6b03' }}>
-                        <Text
-                          className="text-white text-xs"
-                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                        >
-                          {convo.unread}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </TouchableOpacity>
+                    <View className="items-end">
+                      <Text
+                        className="text-sm text-gray-500"
+                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                      >
+                        {convo.time}
+                      </Text>
+                      {convo.unread > 0 && (
+                        <View className="w-6 h-6 rounded-full items-center justify-center mt-1" style={{ backgroundColor: '#fd6b03' }}>
+                          <Text
+                            className="text-white text-xs"
+                            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                          >
+                            {convo.unread}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </SwipeableMessageRow>
               ))
             )}
           </ScrollView>
