@@ -1,60 +1,246 @@
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
-import { mockUsers } from '@/data/mockData';
+import { mockUsers, MockUser } from '@/data/mockData';
 
 // Lifestyle ID to label mapping
 const lifestyleLabels: Record<string, string> = {
-  'van-life': 'van life',
+  'van-life': 'van lifer',
   'backpacker': 'backpacker',
   'digital-nomad': 'digital nomad',
-  'rv-life': 'rv life',
-  'boat-life': 'boat life',
-  'house-sitting': 'house sitting',
-  'slow-travel': 'slow travel',
+  'rv-life': 'rv lifer',
+  'boat-life': 'boat lifer',
+  'house-sitting': 'house sitter',
+  'slow-travel': 'slow traveler',
   'perpetual-traveler': 'perpetual traveler',
   'seasonal-worker': 'seasonal worker',
   'expat': 'expat',
   'hostel-hopper': 'hostel hopper',
-  'workaway': 'workaway/volunteer',
+  'workaway': 'workaway volunteer',
+  'yoga-retreat': 'yoga retreater',
+  'wellness': 'wellness nomad',
+  'entrepreneur': 'entrepreneur',
+  'adventure': 'adventurer',
+  'photographer': 'photographer',
+  'language-learner': 'language learner',
 };
 
-// Generate arrival dates dynamically
-const arrivalDates = ['Feb 10', 'Feb 12', 'Feb 15', 'Feb 18', 'Feb 20', 'Feb 22', 'Feb 25', 'Mar 1', 'Mar 5'];
+// Plural forms for section titles
+const lifestylePlurals: Record<string, string> = {
+  'van-life': 'van lifers',
+  'backpacker': 'backpackers',
+  'digital-nomad': 'digital nomads',
+  'rv-life': 'rv lifers',
+  'boat-life': 'boat lifers',
+  'house-sitting': 'house sitters',
+  'slow-travel': 'slow travelers',
+  'perpetual-traveler': 'perpetual travelers',
+  'seasonal-worker': 'seasonal workers',
+  'expat': 'expats',
+  'hostel-hopper': 'hostel hoppers',
+  'workaway': 'workaway volunteers',
+  'yoga-retreat': 'yoga retreaters',
+  'wellness': 'wellness nomads',
+  'entrepreneur': 'entrepreneurs',
+  'adventure': 'adventurers',
+  'photographer': 'photographers',
+  'language-learner': 'language learners',
+};
 
-// Convert mockUsers for explore people list
-const explorePeople = mockUsers.slice(0, 15).map((user, index) => ({
-  id: user.id,
-  name: user.name,
-  age: user.age,
-  photo: user.photos[0],
-  futureTrips: user.futureTrip ? [{ location: user.futureTrip }] : undefined,
-  arrivalDate: arrivalDates[index % arrivalDates.length],
-  lifestyle: user.lifestyle,
-  currentLocation: user.location,
-  isOnline: user.isOnline,
-}));
+// Interest ID to label mapping
+const interestLabels: Record<string, string> = {
+  'grab-coffee': 'coffee',
+  'try-street-food': 'street food',
+  'cook-together': 'cooking',
+  'go-hiking': 'hiking',
+  'go-surfing': 'surfing',
+  'go-diving': 'diving',
+  'go-camping': 'camping',
+  'go-climbing': 'climbing',
+  'go-cycling': 'cycling',
+  'beach-days': 'beach',
+  'go-dancing': 'dancing',
+  'see-live-music': 'live music',
+  'hit-the-gym': 'gym',
+  'do-yoga': 'yoga',
+  'go-running': 'running',
+  'visit-museums': 'museums',
+  'take-photos': 'photography',
+  'find-street-art': 'street art',
+  'cowork-at-cafes': 'coworking',
+  'brainstorm-ideas': 'brainstorming',
+  'make-content': 'content',
+  'build-stuff': 'building',
+  'watch-sunsets': 'sunsets',
+  'read-together': 'reading',
+  'play-board-games': 'board games',
+  'meditate': 'meditation',
+};
+
+// Pseudo-random crossing times from user id
+const crossingTimes = ['just now', '2h ago', '5h ago', 'yesterday', '2 days ago', '3 days ago', 'last week'];
+function getCrossingTime(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = ((hash << 5) - hash) + userId.charCodeAt(i);
+    hash |= 0;
+  }
+  return crossingTimes[Math.abs(hash) % crossingTimes.length];
+}
+
+// Pseudo-random arrival dates
+const arrivalDates = ['Feb 10', 'Feb 12', 'Feb 15', 'Feb 18', 'Feb 20', 'Feb 22', 'Feb 25', 'Mar 1', 'Mar 5'];
+function getArrivalDate(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = ((hash << 3) - hash) + userId.charCodeAt(i);
+    hash |= 0;
+  }
+  return arrivalDates[Math.abs(hash) % arrivalDates.length];
+}
+
+// Check if two locations overlap (fuzzy match on city/country parts)
+function locationsOverlap(loc1: string, loc2: string): boolean {
+  const parts1 = loc1.toLowerCase().split(',').map(p => p.trim());
+  const parts2 = loc2.toLowerCase().split(',').map(p => p.trim());
+  return parts1.some(p1 => parts2.some(p2 => p1.includes(p2) || p2.includes(p1)));
+}
+
+// Check if two interest strings are related (fuzzy match)
+function interestsMatch(a: string, b: string): boolean {
+  const al = a.toLowerCase();
+  const bl = b.toLowerCase();
+  if (al === bl) return true;
+  // Check if one contains the other (e.g., 'coffee' matches 'grab-coffee')
+  return al.includes(bl) || bl.includes(al);
+}
+
+// Count shared interests between user arrays (fuzzy)
+function sharedInterestCount(a: string[], b: string[]): number {
+  return a.filter(ai => b.some(bi => interestsMatch(ai, bi))).length;
+}
+
+interface PersonCardProps {
+  user: MockUser;
+  subtitle: string;
+  onPress: () => void;
+  badge?: string;
+  badgeColor?: string;
+  badgeBg?: string;
+}
+
+function PersonCard({ user, subtitle, onPress, badge, badgeColor = '#fd6b03', badgeBg = '#FFF7ED' }: PersonCardProps) {
+  return (
+    <TouchableOpacity
+      className="mr-3"
+      style={{ width: 130 }}
+      activeOpacity={0.8}
+      onPress={onPress}
+    >
+      <View className="rounded-2xl overflow-hidden bg-gray-50">
+        <Image
+          source={{ uri: user.photos[0] }}
+          style={{ width: 130, height: 150 }}
+          resizeMode="cover"
+        />
+        <View className="p-2.5">
+          <Text
+            className="text-sm text-black"
+            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+            numberOfLines={1}
+          >
+            {user.name}, {user.age}
+          </Text>
+          <Text
+            className="text-xs text-gray-500 mt-0.5"
+            style={{ fontFamily: 'InstrumentSans_400Regular' }}
+            numberOfLines={1}
+          >
+            {subtitle}
+          </Text>
+          {badge && (
+            <View className="mt-1.5 px-2 py-0.5 rounded-full self-start" style={{ backgroundColor: badgeBg }}>
+              <Text
+                className="text-xs"
+                style={{ fontFamily: 'InstrumentSans_500Medium', color: badgeColor }}
+                numberOfLines={1}
+              >
+                {badge}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function ExplorePeopleScreen() {
   const router = useRouter();
   const { data } = useOnboarding();
   const { convexUser } = useAuthenticatedUser();
 
-  // Prefer Convex user data (persisted) over onboarding context (in-memory only)
+  const userLocation = convexUser?.currentLocation || data.currentLocation || '';
+  const userLifestyle = convexUser?.lifestyle || data.lifestyle || [];
+  const userInterests = convexUser?.interests || data.interests || [];
   const futureTrips = convexUser?.futureTrips ?? data.futureTrips;
-  const hasFutureTrip = futureTrips && futureTrips.length > 0;
-  const firstTrip = futureTrips?.[0]?.location;
+  const firstTripLocation = futureTrips?.[0]?.location || '';
+
+  // 1. Heading your way — people whose futureTrip matches the user's current location
+  const headingYourWay = useMemo(() => {
+    if (!userLocation) return [];
+    return mockUsers.filter(u =>
+      u.futureTrip && locationsOverlap(u.futureTrip, userLocation)
+    );
+  }, [userLocation]);
+
+  // 2. Recent crossings — people in the same current location (simulated as crossed paths)
+  const recentCrossings = useMemo(() => {
+    if (!userLocation) return [];
+    return mockUsers.filter(u => locationsOverlap(u.location, userLocation));
+  }, [userLocation]);
+
+  // 3. Other X — people with the same primary lifestyle type
+  const primaryLifestyle = userLifestyle[0] || '';
+  const sameLifestyle = useMemo(() => {
+    if (!primaryLifestyle) return [];
+    return mockUsers.filter(u => u.lifestyle.includes(primaryLifestyle));
+  }, [primaryLifestyle]);
+
+  // 4. Same interests — people who share interests, sorted by overlap count
+  const sameInterests = useMemo(() => {
+    if (userInterests.length === 0) return [];
+    return mockUsers
+      .map(u => ({ user: u, shared: sharedInterestCount(u.interests, userInterests) }))
+      .filter(x => x.shared > 0)
+      .sort((a, b) => b.shared - a.shared)
+      .map(x => x.user);
+  }, [userInterests]);
+
+  const navigateToUser = (userId: string) => {
+    router.push(`/user/${userId}`);
+  };
+
+  // Get shared interests as display text
+  const getSharedLabel = (user: MockUser): string => {
+    const shared = user.interests.filter(ai => userInterests.some(bi => interestsMatch(ai, bi)));
+    if (shared.length === 0) return '';
+    const labels = shared.slice(0, 2).map(i => interestLabels[i] || i);
+    if (shared.length > 2) return `${labels.join(', ')} +${shared.length - 2}`;
+    return labels.join(', ');
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       {/* Header */}
-      <View className="px-6 pt-4 pb-4 flex-row items-center justify-between">
+      <View className="px-6 pt-4 pb-2 flex-row items-center justify-between">
         <Text
           className="text-5xl text-black"
-          style={{ fontFamily: 'InstrumentSerif_400Regular' }}
+          style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
         >
           explore
         </Text>
@@ -72,128 +258,181 @@ export default function ExplorePeopleScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {/* Heading Your Way Section */}
-        {hasFutureTrip && (
-        <View className="mb-8">
+        {/* 1. Heading Your Way */}
+        {headingYourWay.length > 0 && (
+          <View className="mb-8 pt-4">
             <View className="flex-row items-center px-6 mb-4">
+              <Ionicons name="airplane" size={18} color="#fd6b03" />
               <Text
-                className="text-lg text-black"
+                className="text-lg text-black ml-2"
                 style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
               >
                 heading your way
               </Text>
-              <View className="ml-2 px-3 py-1 rounded-full bg-blue-100">
-                <Text
-                  className="text-sm text-blue-600"
-                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                >
-                  {firstTrip}
-                </Text>
-              </View>
             </View>
-
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 24 }}
             >
-              {explorePeople.map((user) => (
-                <TouchableOpacity
+              {headingYourWay.map(user => (
+                <PersonCard
                   key={user.id}
-                  className="mr-3"
-                  style={{ width: 120 }}
-                  activeOpacity={0.8}
-                >
-                  <View className="rounded-2xl overflow-hidden bg-gray-100">
-                    <Image
-                      source={{ uri: user.photo }}
-                      style={{ width: 120, height: 112 }}
-                      resizeMode="cover"
-                    />
-                    <View className="p-2">
-                      <Text
-                        className="text-sm text-black"
-                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                        numberOfLines={1}
-                      >
-                        {user.name}, {user.age}
-                      </Text>
-                      <Text
-                        className="text-xs text-gray-500 mt-0.5"
-                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                      >
-                        arrives {user.arrivalDate}
-                      </Text>
-                      {user.lifestyle[0] && (
-                        <View className="mt-2 bg-orange-100 px-2 py-1 rounded-full self-start">
-                          <Text
-                            className="text-xs text-orange-600"
-                            style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                            numberOfLines={1}
-                          >
-                            {lifestyleLabels[user.lifestyle[0]] || user.lifestyle[0]}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </TouchableOpacity>
+                  user={user}
+                  subtitle={`arrives ${getArrivalDate(user.id)}`}
+                  onPress={() => navigateToUser(user.id)}
+                  badge={user.location.split(',')[0]}
+                  badgeColor="#3B82F6"
+                  badgeBg="#EFF6FF"
+                />
               ))}
             </ScrollView>
           </View>
         )}
 
-        {/* Nearby People Section */}
-        <View className="px-6">
-          <Text
-            className="text-lg text-black mb-4"
-            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-          >
-            nearby
-          </Text>
-          {explorePeople.map((user) => (
-            <TouchableOpacity
-              key={user.id}
-              className="flex-row items-center p-4 bg-gray-50 rounded-2xl mb-3"
-              activeOpacity={0.7}
+        {/* If no heading your way but user has a future trip, show who's already there */}
+        {headingYourWay.length === 0 && firstTripLocation && (
+          <View className="mb-8 pt-4">
+            <View className="flex-row items-center px-6 mb-4">
+              <Ionicons name="airplane" size={18} color="#fd6b03" />
+              <Text
+                className="text-lg text-black ml-2"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                heading your way
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 24 }}
             >
-              <View className="relative">
-                <Image
-                  source={{ uri: user.photo }}
-                  className="w-16 h-16 rounded-full"
-                  resizeMode="cover"
+              {mockUsers
+                .filter(u => locationsOverlap(u.location, firstTripLocation) || (u.futureTrip && locationsOverlap(u.futureTrip, firstTripLocation)))
+                .slice(0, 10)
+                .map(user => (
+                  <PersonCard
+                    key={user.id}
+                    user={user}
+                    subtitle={`arrives ${getArrivalDate(user.id)}`}
+                    onPress={() => navigateToUser(user.id)}
+                    badge={user.location.split(',')[0]}
+                    badgeColor="#3B82F6"
+                    badgeBg="#EFF6FF"
+                  />
+                ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* 2. Recent Crossings */}
+        {recentCrossings.length > 0 && (
+          <View className="mb-8">
+            <View className="flex-row items-center px-6 mb-4">
+              <Ionicons name="swap-horizontal" size={18} color="#fd6b03" />
+              <Text
+                className="text-lg text-black ml-2"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                recent crossings
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 24 }}
+            >
+              {recentCrossings.map(user => (
+                <PersonCard
+                  key={user.id}
+                  user={user}
+                  subtitle={getCrossingTime(user.id)}
+                  onPress={() => navigateToUser(user.id)}
+                  badge={user.location.split(',')[0]}
+                  badgeColor="#8B5CF6"
+                  badgeBg="#F5F3FF"
                 />
-              </View>
-              <View className="flex-1 ml-4">
-                <View className="flex-row items-center">
-                  <Text
-                    className="text-black text-lg"
-                    style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                  >
-                    {user.name}, {user.age}
-                  </Text>
-                </View>
-                <Text
-                  className="text-gray-500 text-sm"
-                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                >
-                  {user.currentLocation}
-                </Text>
-                {user.lifestyle[0] && (
-                  <View className="mt-1 bg-orange-100 px-2 py-0.5 rounded-full self-start">
-                    <Text
-                      className="text-xs text-orange-600"
-                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                    >
-                      {lifestyleLabels[user.lifestyle[0]] || user.lifestyle[0]}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          ))}
-        </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* 3. Other X (same lifestyle type) */}
+        {sameLifestyle.length > 0 && primaryLifestyle && (
+          <View className="mb-8">
+            <View className="flex-row items-center px-6 mb-4">
+              <Ionicons name="people" size={18} color="#fd6b03" />
+              <Text
+                className="text-lg text-black ml-2"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                other {lifestylePlurals[primaryLifestyle] || primaryLifestyle + 's'}
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 24 }}
+            >
+              {sameLifestyle.map(user => (
+                <PersonCard
+                  key={user.id}
+                  user={user}
+                  subtitle={user.location.split(',')[0]}
+                  onPress={() => navigateToUser(user.id)}
+                  badge={lifestyleLabels[user.lifestyle[0]] || user.lifestyle[0]}
+                  badgeColor="#fd6b03"
+                  badgeBg="#FFF7ED"
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* 4. Same Interests */}
+        {sameInterests.length > 0 && (
+          <View className="mb-8">
+            <View className="flex-row items-center px-6 mb-4">
+              <Ionicons name="sparkles" size={18} color="#fd6b03" />
+              <Text
+                className="text-lg text-black ml-2"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                same interests
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 24 }}
+            >
+              {sameInterests.map(user => (
+                <PersonCard
+                  key={user.id}
+                  user={user}
+                  subtitle={user.location.split(',')[0]}
+                  onPress={() => navigateToUser(user.id)}
+                  badge={getSharedLabel(user)}
+                  badgeColor="#059669"
+                  badgeBg="#ECFDF5"
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Empty state if nothing to show */}
+        {headingYourWay.length === 0 && !firstTripLocation && recentCrossings.length === 0 && sameLifestyle.length === 0 && sameInterests.length === 0 && (
+          <View className="items-center pt-20 px-6">
+            <Ionicons name="compass-outline" size={48} color="#E5E7EB" />
+            <Text
+              className="text-gray-400 mt-4 text-center"
+              style={{ fontFamily: 'InstrumentSans_400Regular' }}
+            >
+              complete your profile to discover people with similar interests and travel plans
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
