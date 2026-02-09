@@ -1,4 +1,4 @@
-import { View, Text, Image, TouchableOpacity, Dimensions, StyleSheet, Modal, ScrollView, ActivityIndicator, Switch, PanResponder } from 'react-native';
+import { View, Text, Image, TouchableOpacity, Dimensions, StyleSheet, Modal, ScrollView, ActivityIndicator, Switch, PanResponder, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
@@ -23,10 +23,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 120;
 const SWIPE_VELOCITY_THRESHOLD = 500;
-const CARD_HEIGHT = SCREEN_HEIGHT * 0.73;
+const CARD_HEIGHT = Platform.OS === 'android' ? WINDOW_HEIGHT * 0.76 : WINDOW_HEIGHT * 0.73;
 
 interface Profile {
   id: string;
@@ -71,11 +71,12 @@ function getDistanceLabel(profileId: string, profileLocation: string, userLocati
   const sameCity = profileLocation.toLowerCase().split(',')[0] === userLocation.toLowerCase().split(',')[0];
 
   if (sameCity) {
-    const km = (Math.abs(hash % 40) + 2) / 10; // 0.2 - 4.2 km
+    const km = (Math.abs(hash % 20) + 1) / 10; // 0.1 - 2.1 km
     return km < 1 ? `${Math.round(km * 1000)}m away` : `${km.toFixed(1)}km away`;
   }
-  const km = Math.abs(hash % 180) + 20; // 20 - 200 km
-  return `${km}km away`;
+  // Keep distances short — this is the "nearby" page
+  const km = (Math.abs(hash % 140) + 5) / 10; // 0.5 - 14.5 km
+  return km < 1 ? `${Math.round(km * 1000)}m away` : `${km.toFixed(1)}km away`;
 }
 
 // Convert Convex user to Profile interface
@@ -155,6 +156,8 @@ function SwipeableCard({ profile, isFirst, onSwipeLeft, onSwipeRight, swipeDirec
 
   const panGesture = Gesture.Pan()
     .enabled(isFirst)
+    .activeOffsetX([-15, 15])
+    .failOffsetY([-10, 10])
     .onStart(() => {
       runOnJS(triggerHaptic)('light');
     })
@@ -560,10 +563,33 @@ export default function NearbyScreen() {
     return mockUsers.map((u) => mockUserToProfile(u, userLocation));
   }, [convexUsers, userLocation]);
 
-  // Filter out locally-swiped profiles to avoid the flash when Convex query hasn't re-run yet
+  // Filter profiles by preferences and locally-swiped
   const filteredProfiles = useMemo(() => {
-    return profiles.filter((p) => !localSwipedIds.has(p.id));
-  }, [profiles, localSwipedIds]);
+    return profiles.filter((p) => {
+      if (localSwipedIds.has(p.id)) return false;
+
+      // Age filter
+      if (p.age < ageMin || p.age > ageMax) return false;
+
+      // Distance filter — parse km from strings like "64km away" or "800m away"
+      const kmMatch = p.distance.match(/([\d.]+)\s*km/);
+      const mMatch = p.distance.match(/([\d.]+)\s*m\b/);
+      const distKm = kmMatch ? parseFloat(kmMatch[1]) : mMatch ? parseFloat(mMatch[1]) / 1000 : 0;
+      if (distKm > prefDistance) return false;
+
+      // Here-for filter
+      if (!hereForDating && !hereForFriends) return true; // safety: show all if both off
+      const lf = p.lookingFor.toLowerCase();
+      if (hereForDating && !hereForFriends) {
+        return lf.includes('dating') || lf.includes('both');
+      }
+      if (hereForFriends && !hereForDating) {
+        return lf.includes('friends') || lf.includes('both');
+      }
+
+      return true;
+    });
+  }, [profiles, localSwipedIds, ageMin, ageMax, prefDistance, hereForDating, hereForFriends]);
 
   const isLoading = userId && convexUsers === undefined;
 
@@ -672,7 +698,7 @@ export default function NearbyScreen() {
           <View className="flex-row items-center gap-3">
             <Text
               className="text-5xl text-black"
-              style={{ fontFamily: 'InstrumentSerif_400Regular' }}
+              style={{ fontFamily: 'InstrumentSerif_400Regular', includeFontPadding: false, paddingBottom: Platform.OS === 'android' ? 10 : 0 }}
             >
               nearby
             </Text>
@@ -946,7 +972,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 16,
-    elevation: 8,
+    elevation: 0,
   },
   mainPhotoContainer: {
     width: '100%',
@@ -1042,7 +1068,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 1,
   },
   emptyState: {
     flex: 1,

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState, useCallback } from 'react';
@@ -56,7 +56,7 @@ export default function HelpScreen() {
         <View className="flex-row items-center">
           <Text
             className="text-5xl text-black"
-            style={{ fontFamily: 'InstrumentSerif_400Regular' }}
+            style={{ fontFamily: 'InstrumentSerif_400Regular', includeFontPadding: false, paddingBottom: Platform.OS === 'android' ? 10 : 0 }}
           >
             help
           </Text>

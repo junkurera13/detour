@@ -21,11 +21,8 @@
 | Trial expiration handling | Show paywall when trial ends | ✅ |
 | Subscription check on launch | Verify entitlement status on app open | ✅ |
 | RevenueCat dashboard | Create entitlement + offerings with trial | ✅ |
-| **Complete App Store Connect setup** | Sign Paid Apps Agreement — Paid Apps Agreement shows "Pending User Info" in App Store Connect (info filled in, waiting for Apple to process) | 🟡 **IN PROGRESS** |
-
-> ⚠️ **NOTE:** Both paywalls have a bypass (`ALLOW_PAYWALL_BYPASS = true`) because App Store Connect Paid Apps Agreement status is "Pending User Info". Set to `false` in **both files** after agreement is active:
-> - `app/onboarding/paywall.tsx` (new accounts)
-> - `app/paywall.tsx` (trial expired)
+| Google Play subscription | Product linked, tested with license tester | ✅ |
+| "Likes You" unlock | Cards unlocked for subscribers/trial users | ✅ |
 
 ---
 
@@ -41,7 +38,7 @@
 
 ---
 
-## Phase 3: Android Release 🟡
+## Phase 3: Android Release ✅
 **Goal:** Get app on Google Play Internal Testing by Feb 12 deadline
 
 **Strategy:** Fully focused on Android (Google Play Internal Testing). iOS/TestFlight is deferred — Apple Paid Apps Agreement timeline won't resolve before the deadline.
@@ -53,8 +50,8 @@
 | Privacy policy | Create and host privacy policy | ✅ (hosted at https://junkurera13.github.io/detour/privacy-policy.html) |
 | App icons & splash | Finalize assets | ✅ (assets exist in assets/images/) |
 | RevenueCat product | Link product in RevenueCat dashboard | ✅ |
-| **Android build & upload** | EAS build + upload to Google Play Internal Testing | 🟡 **IN PROGRESS** (build running on EAS, fixing dependency issues) |
-| **Android internal testing** | Verify app works on internal testing | ⬜ |
+| Android build & upload | EAS build + upload to Google Play Internal Testing | ✅ |
+| Android internal testing | App verified on Android emulator, purchase flow tested | ✅ |
 
 > **NOTE:** `expo-auth-session` was added as a required peer dependency for `@clerk/clerk-expo`.
 
@@ -79,7 +76,7 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 | Task | Description | Status |
 |------|-------------|--------|
 | Seed demo data | Profiles to swipe, existing matches | ⬜ |
-| Sandbox purchases | Test purchase flow works | ⬜ |
+| Sandbox purchases | Test purchase flow works | ✅ (verified with Google Play license tester) |
 | Bug fixes | Fix any rough edges | ⬜ |
 
 ---
@@ -143,9 +140,8 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 - `app/onboarding/paywall.tsx` - For new subscriptions (new users + pending users who get approved/invite code)
 - `app/paywall.tsx` - For existing users whose free trial has expired
 
-**Pending BRN:**
+**Pending BRN (iOS only):**
 Korean Business Registration Number (BRN) is required to complete the Paid Apps Agreement in App Store Connect. Once received:
 1. Complete Korean tax form in App Store Connect
 2. Sign Paid Apps Agreement
-3. Set `ALLOW_PAYWALL_BYPASS = false` in both paywall files
-4. Test sandbox purchases
+3. Test sandbox purchases on iOS

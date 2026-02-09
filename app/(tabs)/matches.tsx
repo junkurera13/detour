@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
@@ -6,6 +6,7 @@ import { useQuery } from 'convex/react';
 import { useRouter } from 'expo-router';
 import { api } from '@/convex/_generated/api';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { useRevenueCat } from '@/context/RevenueCatContext';
 import { mockLikesYou, mockMatches, mockConversations } from '@/data/mockData';
 
 // Helper to format relative time
@@ -39,6 +40,7 @@ function calculateAge(birthday: string): number {
 export default function MatchesScreen() {
   const [activeTab, setActiveTab] = useState<'matches' | 'messages'>('matches');
   const { convexUser } = useAuthenticatedUser();
+  const { hasDetourPlus } = useRevenueCat();
   const router = useRouter();
   const userId = convexUser?._id;
 
@@ -125,7 +127,7 @@ export default function MatchesScreen() {
       <View className="px-6 pt-4 pb-4">
         <Text
           className="text-5xl text-black"
-          style={{ fontFamily: 'InstrumentSerif_400Regular' }}
+          style={{ fontFamily: 'InstrumentSerif_400Regular', includeFontPadding: false, paddingBottom: Platform.OS === 'android' ? 10 : 0 }}
         >
           connections
         </Text>
@@ -207,13 +209,25 @@ export default function MatchesScreen() {
                     source={{ uri: user.photos[0] }}
                     className="w-24 h-32 rounded-2xl"
                     resizeMode="cover"
-                    blurRadius={20}
+                    blurRadius={hasDetourPlus ? 0 : 20}
                   />
-                  <View className="absolute inset-0 items-center justify-center">
-                    <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
-                      <Ionicons name="lock-closed" size={20} color="#000" />
+                  {!hasDetourPlus && (
+                    <View className="absolute inset-0 items-center justify-center">
+                      <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
+                        <Ionicons name="lock-closed" size={20} color="#000" />
+                      </View>
                     </View>
-                  </View>
+                  )}
+                  {hasDetourPlus && (
+                    <View className="absolute bottom-2 left-2 right-2">
+                      <Text
+                        className="text-white text-sm"
+                        style={{ fontFamily: 'InstrumentSans_600SemiBold', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}
+                      >
+                        {user.name}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               ))}
               <TouchableOpacity

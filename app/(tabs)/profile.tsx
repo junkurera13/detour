@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, TextInput, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
@@ -190,7 +190,7 @@ export default function ProfileScreen() {
       <View className="px-6 pt-4 pb-6 flex-row items-center justify-between">
         <Text
           className="text-5xl text-black"
-          style={{ fontFamily: 'InstrumentSerif_400Regular' }}
+          style={{ fontFamily: 'InstrumentSerif_400Regular', includeFontPadding: false, paddingBottom: Platform.OS === 'android' ? 10 : 0 }}
         >
           profile
         </Text>

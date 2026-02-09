@@ -144,8 +144,8 @@ The app has two separate paywall screens for different user scenarios:
    - Routes directly to `/(tabs)` after subscription
    - Includes logout option in header
 
-**Paywall Bypass (Temporary):**
-Both paywall files have `ALLOW_PAYWALL_BYPASS = true` which allows skipping the paywall during development. This is temporary while waiting for Korean Business Registration Number (BRN) to complete the App Store Connect Paid Apps Agreement. Set to `false` once the agreement is signed and RevenueCat products are fully configured.
+**Paywall Status:**
+Paywalls are fully functional on Android with Google Play subscription products and 7-day free trial. iOS paywalls are pending App Store Connect Paid Apps Agreement (Korean BRN required).
 
 ## Current State
 
@@ -162,17 +162,18 @@ Functional MVP (7/10) with backend fully integrated. See `ROADMAP.md` for full d
 - Edit profile screen
 
 **Remaining for production (Android-focused, Feb 12 deadline):**
-- Android build & upload to Google Play Internal Testing (in progress on EAS)
-- Google Play Developer account verified and ready
 - Seed demo data for judges
 - Error monitoring (Sentry)
 
 **Deferred (post-hackathon):**
 - iOS / TestFlight release (blocked on App Store Connect Paid Apps Agreement — Korean BRN pending)
-- Set `ALLOW_PAYWALL_BYPASS = false` in both paywall files once Apple agreement is signed
 - Testing suite
 
 **Recently completed:**
+- Google Play subscription purchase flow verified with license tester (7-day free trial working)
+- Android build uploaded to Google Play Internal Testing
+- Removed paywall bypass (`ALLOW_PAYWALL_BYPASS`) — no longer needed
+- "Likes You" cards now unlock for subscribers/trial users (`hasDetourPlus` check)
 - RevenueCat dashboard configured with entitlements, offerings, and 7-day free trial
 - EAS Build configured (eas.json created, EAS CLI ready)
 - Privacy policy hosted at https://junkurera13.github.io/detour/privacy-policy.html

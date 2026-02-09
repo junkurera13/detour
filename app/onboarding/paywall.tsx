@@ -174,34 +174,11 @@ export default function PaywallScreen() {
 
   const priceLabel = yearlyPackage?.product?.priceString ?? '$99.99/year';
 
-  // TODO: Set to false once App Store Connect Paid Apps Agreement is complete (waiting for Korean BRN)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const ALLOW_PAYWALL_BYPASS = true;
-
   const handleStartTrial = async () => {
     if (isProcessing) return;
 
-    // If offerings aren't available (App Store Connect not fully set up), allow bypass
     if (!yearlyPackage) {
-      // Always allow bypass for now since App Store Connect isn't fully configured
-      Alert.alert(
-        'Development Mode',
-        'RevenueCat products not available. Skip paywall for testing?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Skip & Continue',
-            onPress: async () => {
-              setIsProcessing(true);
-              try {
-                await createUserInternal();
-              } finally {
-                setIsProcessing(false);
-              }
-            },
-          },
-        ]
-      );
+      Alert.alert('Plans not ready', 'Pricing is still loading. Please try again.');
       return;
     }
 
