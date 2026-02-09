@@ -1,8 +1,11 @@
-import { View, Text, ScrollView, TouchableOpacity, Image, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Platform, Modal, Switch, TextInput, Share, KeyboardAvoidingView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { useEvents } from '@/context/EventsContext';
 import { mockActivities as importedMockActivities } from '@/data/mockData';
 
 // Interest ID to label mapping
@@ -93,30 +96,180 @@ const mockActivities: Activity[] = importedMockActivities.map((activity) => ({
   maxAttendees: activity.maxAttendees,
 }));
 
+const dayFilters = [
+  { id: 'any', label: 'any day' },
+  { id: 'today', label: 'today' },
+  { id: 'tomorrow', label: 'tomorrow' },
+  { id: 'this-week', label: 'this week' },
+  { id: 'this-weekend', label: 'this weekend' },
+  { id: 'next-week', label: 'next week' },
+];
+
+const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+function matchesDayFilter(dateStr: string, filter: string): boolean {
+  if (filter === 'any') return true;
+  const d = dateStr.toLowerCase();
+  if (filter === 'today') return d === 'today';
+  if (filter === 'tomorrow') return d === 'tomorrow';
+  if (filter === 'this-weekend') return d === 'saturday' || d === 'sunday';
+  if (filter === 'next-week') return d.startsWith('next');
+  if (filter === 'this-week') {
+    // "this week" = today, tomorrow, or a plain weekday name (no "next" prefix)
+    return d === 'today' || d === 'tomorrow' || (weekdays.includes(d) && !d.startsWith('next'));
+  }
+  return true;
+}
+
+// Sort order for date strings
+function dateSortValue(dateStr: string): number {
+  const d = dateStr.toLowerCase();
+  if (d === 'today') return 0;
+  if (d === 'tomorrow') return 1;
+  const dayIndex = weekdays.indexOf(d);
+  if (dayIndex >= 0) return 2 + dayIndex;
+  if (d.startsWith('next')) return 10;
+  return 20;
+}
+
 export default function ExploreScreen() {
   const { data } = useOnboarding();
+  const router = useRouter();
   const [selectedInterest, setSelectedInterest] = useState<string | null>(null);
+  const [prefsVisible, setPrefsVisible] = useState(false);
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dayFilter, setDayFilter] = useState('any');
+  const [showAllActivities, setShowAllActivities] = useState(false);
+  const [showNearbyOnly, setShowNearbyOnly] = useState(false);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [myEventsVisible, setMyEventsVisible] = useState(false);
+  const [myEventsTab, setMyEventsTab] = useState<'upcoming' | 'hosting' | 'saved' | 'happened'>('upcoming');
+  const [createVisible, setCreateVisible] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    coverImage: '',
+    title: '',
+    description: '',
+    location: '',
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    tags: [] as string[],
+  });
+  const { joinedIds, savedIds, toggleSave, isSaved } = useEvents();
+
+  // Events for "my events" tabs
+  const joinedEvents = useMemo(() => mockActivities.filter(a => joinedIds.includes(a.id)), [joinedIds]);
+  const savedEvents = useMemo(() => mockActivities.filter(a => savedIds.includes(a.id)), [savedIds]);
 
   // Get user's interests for filter pills
   const userInterests = useMemo(() => data.interests || [], [data.interests]);
 
-  // Filter activities based on selected interest
-  const filteredActivities = useMemo(() => {
-    if (!selectedInterest) {
-      return mockActivities;
+  // Search results — match against title, host name, location, category
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return { activities: [] as Activity[], hosts: [] as { name: string; photo: string; activityCount: number }[] };
+
+    const matchedActivities = mockActivities.filter((a) =>
+      a.title.toLowerCase().includes(q) ||
+      a.host.name.toLowerCase().includes(q) ||
+      a.location.toLowerCase().includes(q) ||
+      (interestLabels[a.category] || a.category).toLowerCase().includes(q)
+    );
+
+    // Unique hosts from matched activities
+    const hostMap = new Map<string, { name: string; photo: string; activityCount: number }>();
+    for (const a of matchedActivities) {
+      const existing = hostMap.get(a.host.name);
+      if (existing) {
+        existing.activityCount++;
+      } else {
+        hostMap.set(a.host.name, { name: a.host.name, photo: a.host.photo, activityCount: 1 });
+      }
     }
-    return mockActivities.filter(activity => activity.category === selectedInterest);
-  }, [selectedInterest]);
+
+    // Also search all activities for host name matches (even if activity title didn't match)
+    if (q.length >= 2) {
+      for (const a of mockActivities) {
+        if (a.host.name.toLowerCase().includes(q) && !hostMap.has(a.host.name)) {
+          hostMap.set(a.host.name, { name: a.host.name, photo: a.host.photo, activityCount: 1 });
+        } else if (a.host.name.toLowerCase().includes(q) && hostMap.has(a.host.name)) {
+          // already counted
+        }
+      }
+    }
+
+    return {
+      activities: matchedActivities,
+      hosts: Array.from(hostMap.values()),
+    };
+  }, [searchQuery]);
+
+  // Filter activities based on interest, day, nearby, and recommended mode
+  const userLocation = data.currentLocation || '';
+  const filteredActivities = useMemo(() => {
+    let result = mockActivities;
+
+    // When not showing all, filter to user's interests (recommended)
+    if (!showAllActivities && userInterests.length > 0) {
+      result = result.filter(activity =>
+        userInterests.some(interest =>
+          activity.category.toLowerCase().includes(interest.toLowerCase()) ||
+          interest.toLowerCase().includes(activity.category.toLowerCase())
+        )
+      );
+    }
+
+    if (selectedInterest) {
+      result = result.filter(activity => activity.category === selectedInterest);
+    }
+    if (dayFilter !== 'any') {
+      result = result.filter(activity => matchesDayFilter(activity.date, dayFilter));
+    }
+    if (showNearbyOnly && userLocation) {
+      const loc = userLocation.toLowerCase();
+      result = result.filter(activity => {
+        const actLoc = activity.location.toLowerCase();
+        return loc.split(',').some(part => actLoc.includes(part.trim())) ||
+               actLoc.split(',').some(part => loc.includes(part.trim()));
+      });
+    }
+    return result;
+  }, [selectedInterest, dayFilter, showAllActivities, showNearbyOnly, userLocation, userInterests]);
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-      <View className="px-6 pt-4 pb-4">
+      <View className="px-6 pt-4 pb-4 flex-row items-center justify-between">
         <Text
           className="text-5xl text-black"
           style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
         >
           activity
         </Text>
+        <View className="flex-row items-center gap-2">
+          <TouchableOpacity
+            className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
+            activeOpacity={0.7}
+            onPress={() => { setSearchQuery(''); setSearchVisible(true); }}
+          >
+            <Ionicons name="search-outline" size={20} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
+            activeOpacity={0.7}
+            onPress={() => setPrefsVisible(true)}
+          >
+            <Ionicons name="options-outline" size={20} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
+            activeOpacity={0.7}
+            onPress={() => setMyEventsVisible(true)}
+          >
+            <Ionicons name="calendar-outline" size={20} color="#000" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -124,13 +277,13 @@ export default function ExploreScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}
       >
-        {/* Recommended Activities */}
+        {/* Section header */}
         <View className="px-6 mb-4">
           <Text
             className="text-lg text-black"
             style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
           >
-            recommended for you
+            {showAllActivities ? 'all activities' : 'recommended for you'}
           </Text>
         </View>
 
@@ -186,6 +339,7 @@ export default function ExploreScreen() {
                   elevation: 3,
                 }}
                 activeOpacity={0.9}
+                onPress={() => { setMenuOpenId(null); router.push(`/event/${activity.id}`); }}
               >
                 {/* Activity photo with category badge */}
                 <View className="relative">
@@ -194,25 +348,91 @@ export default function ExploreScreen() {
                     style={{ width: '100%', height: 160 }}
                     resizeMode="cover"
                   />
-                  {/* Category badge overlay */}
-                  <View className="absolute top-3 left-3 bg-white/90 px-3 py-1 rounded-full">
-                    <Text
-                      className="text-xs text-orange-600"
-                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                  {/* Share & more buttons */}
+                  <View className="absolute top-3 right-3 flex-row items-center gap-2">
+                    <TouchableOpacity
+                      onPress={() => Share.share({ message: `Check out "${activity.title}" on Detour!` })}
+                      className="w-8 h-8 rounded-full bg-black/40 items-center justify-center"
+                      activeOpacity={0.7}
                     >
-                      {interestLabels[activity.category] || activity.category}
-                    </Text>
+                      <Ionicons name="share-outline" size={16} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setMenuOpenId(menuOpenId === activity.id ? null : activity.id)}
+                      className="w-8 h-8 rounded-full bg-black/40 items-center justify-center"
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="ellipsis-vertical" size={16} color="#fff" />
+                    </TouchableOpacity>
                   </View>
+                  {/* Dropdown menu */}
+                  {menuOpenId === activity.id && (
+                    <View
+                      className="absolute top-14 right-3 bg-white rounded-xl py-2"
+                      style={{
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 12,
+                        elevation: 8,
+                        minWidth: 180,
+                      }}
+                    >
+                      <TouchableOpacity
+                        className="flex-row items-center px-4 py-3"
+                        onPress={() => { if (menuOpenId) toggleSave(menuOpenId); setMenuOpenId(null); }}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name={menuOpenId && isSaved(menuOpenId) ? 'bookmark' : 'bookmark-outline'} size={18} color="#374151" />
+                        <Text
+                          className="text-gray-800 ml-3"
+                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        >
+                          {menuOpenId && isSaved(menuOpenId) ? 'unsave event' : 'save event'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        className="flex-row items-center px-4 py-3"
+                        onPress={() => setMenuOpenId(null)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="eye-off-outline" size={18} color="#374151" />
+                        <Text
+                          className="text-gray-800 ml-3"
+                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        >
+                          show fewer like this
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        className="flex-row items-center px-4 py-3"
+                        onPress={() => setMenuOpenId(null)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="flag-outline" size={18} color="#EF4444" />
+                        <Text
+                          className="text-red-500 ml-3"
+                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        >
+                          report
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
 
                 {/* Activity details */}
                 <View className="p-4">
-                  <Text
-                    className="text-lg text-black mb-2"
-                    style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                  >
-                    {activity.title}
-                  </Text>
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text
+                      className="text-lg text-black flex-1"
+                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                      numberOfLines={1}
+                    >
+                      {activity.title}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={18} color="#9CA3AF" style={{ marginLeft: 4 }} />
+                  </View>
 
                   {/* Date/time row */}
                   <View className="flex-row items-center mb-1">
@@ -257,7 +477,7 @@ export default function ExploreScreen() {
                         className="text-sm text-gray-500 ml-1"
                         style={{ fontFamily: 'InstrumentSans_400Regular' }}
                       >
-                        {activity.attendees}/{activity.maxAttendees}
+                        {activity.attendees} going
                       </Text>
                     </View>
                   </View>
@@ -270,12 +490,680 @@ export default function ExploreScreen() {
                 className="text-gray-500 text-center"
                 style={{ fontFamily: 'InstrumentSans_400Regular' }}
               >
-                no activities match your interests yet
+                {showAllActivities ? 'no activities found' : 'no activities match your interests yet'}
               </Text>
             </View>
           )}
+
+          {/* See all activities button when in recommended mode */}
+          {!showAllActivities && filteredActivities.length > 0 && (
+            <TouchableOpacity
+              onPress={() => { setShowAllActivities(true); setSelectedInterest(null); }}
+              className="mt-2 mb-4 py-4 rounded-2xl bg-gray-100 items-center"
+              activeOpacity={0.7}
+            >
+              <Text
+                className="text-black"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                see all activities
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
+
+      {/* Floating Action Button — Host Event */}
+      <TouchableOpacity
+        className="absolute bottom-6 right-6 w-16 h-16 rounded-full items-center justify-center"
+        style={{ backgroundColor: '#fd6b03' }}
+        activeOpacity={0.8}
+        onPress={() => {
+          setNewEvent({ coverImage: '', title: '', description: '', location: '', startDate: '', startTime: '', endDate: '', endTime: '', tags: [] });
+          setCreateVisible(true);
+        }}
+      >
+        <Ionicons name="add" size={32} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Preferences Modal */}
+      <Modal
+        visible={prefsVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setPrefsVisible(false)}
+      >
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+          <View className="px-6 pt-4 pb-4 flex-row items-center justify-between">
+            <Text
+              className="text-2xl text-black"
+              style={{ fontFamily: 'InstrumentSans_700Bold' }}
+            >
+              preferences
+            </Text>
+            <TouchableOpacity
+              onPress={() => setPrefsVisible(false)}
+              className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+            >
+              <Ionicons name="close" size={22} color="#000" />
+            </TouchableOpacity>
+          </View>
+
+          <View className="px-6 pt-4">
+            {/* Day filter */}
+            <Text
+              className="text-lg text-black mb-3"
+              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+            >
+              when
+            </Text>
+            <View className="flex-row flex-wrap gap-2 mb-8">
+              {dayFilters.map((filter) => (
+                <TouchableOpacity
+                  key={filter.id}
+                  onPress={() => setDayFilter(filter.id)}
+                  className="px-4 py-2.5 rounded-full"
+                  style={{ backgroundColor: dayFilter === filter.id ? '#111827' : '#F3F4F6' }}
+                >
+                  <Text
+                    className={dayFilter === filter.id ? 'text-white' : 'text-black'}
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Show all activities toggle */}
+            <View className="flex-row items-center justify-between py-4">
+              <Text
+                className="text-lg text-black"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                show all activities
+              </Text>
+              <Switch
+                value={showAllActivities}
+                onValueChange={setShowAllActivities}
+                trackColor={{ false: '#E5E7EB', true: '#fd6b03' }}
+                thumbColor="#fff"
+              />
+            </View>
+
+            {/* Show nearby only toggle */}
+            <View className="flex-row items-center justify-between py-4">
+              <Text
+                className="text-lg text-black"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                show nearby only
+              </Text>
+              <Switch
+                value={showNearbyOnly}
+                onValueChange={setShowNearbyOnly}
+                trackColor={{ false: '#E5E7EB', true: '#fd6b03' }}
+                thumbColor="#fff"
+              />
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Search Modal */}
+      <Modal
+        visible={searchVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSearchVisible(false)}
+      >
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+          {/* Search header */}
+          <View className="px-6 pt-4 pb-3 flex-row items-center gap-3">
+            <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 py-3">
+              <Ionicons name="search-outline" size={18} color="#9CA3AF" />
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="search activities or people..."
+                placeholderTextColor="#9CA3AF"
+                autoFocus
+                className="flex-1 ml-2 text-black"
+                style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 16 }}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity onPress={() => setSearchVisible(false)}>
+              <Text
+                className="text-orange-500"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 40 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {searchQuery.trim().length === 0 ? (
+              <View className="items-center pt-20 px-6">
+                <Ionicons name="search" size={48} color="#E5E7EB" />
+                <Text
+                  className="text-gray-400 mt-4 text-center"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  search for activities, locations, or hosts
+                </Text>
+              </View>
+            ) : (
+              <>
+                {/* People results */}
+                {searchResults.hosts.length > 0 && (
+                  <View className="px-6 mb-6">
+                    <Text
+                      className="text-lg text-black mb-3"
+                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                    >
+                      people
+                    </Text>
+                    {searchResults.hosts.map((host) => (
+                      <View
+                        key={host.name}
+                        className="flex-row items-center py-3 border-b border-gray-50"
+                      >
+                        <Image
+                          source={{ uri: host.photo }}
+                          className="w-12 h-12 rounded-full"
+                          resizeMode="cover"
+                        />
+                        <View className="ml-3 flex-1">
+                          <Text
+                            className="text-black"
+                            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                          >
+                            {host.name}
+                          </Text>
+                          <Text
+                            className="text-gray-500 text-sm"
+                            style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                          >
+                            {host.activityCount} {host.activityCount === 1 ? 'activity' : 'activities'}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Activity results */}
+                {searchResults.activities.length > 0 && (
+                  <View className="px-6">
+                    <Text
+                      className="text-lg text-black mb-3"
+                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                    >
+                      activities
+                    </Text>
+                    {searchResults.activities.map((activity) => (
+                      <View
+                        key={activity.id}
+                        className="flex-row items-center py-3 border-b border-gray-50"
+                      >
+                        <Image
+                          source={{ uri: activity.photo }}
+                          className="w-14 h-14 rounded-xl"
+                          resizeMode="cover"
+                        />
+                        <View className="ml-3 flex-1">
+                          <Text
+                            className="text-black"
+                            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                            numberOfLines={1}
+                          >
+                            {activity.title}
+                          </Text>
+                          <Text
+                            className="text-gray-500 text-sm"
+                            style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                          >
+                            {activity.date} at {activity.time}
+                          </Text>
+                          <View className="flex-row items-center mt-0.5">
+                            <Ionicons name="location-outline" size={12} color="#9CA3AF" />
+                            <Text
+                              className="text-gray-400 text-xs ml-1"
+                              style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                            >
+                              {activity.location}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* No results */}
+                {searchResults.activities.length === 0 && searchResults.hosts.length === 0 && (
+                  <View className="items-center pt-20 px-6">
+                    <Ionicons name="search" size={48} color="#E5E7EB" />
+                    <Text
+                      className="text-gray-400 mt-4 text-center"
+                      style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                    >
+                      no results for "{searchQuery}"
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* My Events Modal */}
+      <Modal
+        visible={myEventsVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setMyEventsVisible(false)}
+      >
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+          <View className="px-6 pt-4 pb-4 flex-row items-center justify-between">
+            <Text
+              className="text-2xl text-black"
+              style={{ fontFamily: 'InstrumentSans_700Bold' }}
+            >
+              my events
+            </Text>
+            <TouchableOpacity
+              onPress={() => setMyEventsVisible(false)}
+              className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+            >
+              <Ionicons name="close" size={22} color="#000" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Tabs */}
+          <View className="px-6 pb-4">
+            <View className="flex-row gap-2">
+              {(['upcoming', 'hosting', 'saved', 'happened'] as const).map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  onPress={() => setMyEventsTab(tab)}
+                  className="px-4 py-2.5 rounded-full"
+                  style={{ backgroundColor: myEventsTab === tab ? '#111827' : '#F3F4F6' }}
+                >
+                  <Text
+                    className={myEventsTab === tab ? 'text-white' : 'text-black'}
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    {tab}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Tab content */}
+          <ScrollView
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 40 }}
+          >
+            {(() => {
+              const events =
+                myEventsTab === 'upcoming' ? joinedEvents :
+                myEventsTab === 'saved' ? savedEvents :
+                [];
+              const emptyIcon =
+                myEventsTab === 'upcoming' ? 'calendar-outline' as const :
+                myEventsTab === 'hosting' ? 'megaphone-outline' as const :
+                myEventsTab === 'saved' ? 'bookmark-outline' as const :
+                'time-outline' as const;
+              const emptyMsg =
+                myEventsTab === 'upcoming' ? 'no upcoming events yet. join an activity to see it here.' :
+                myEventsTab === 'hosting' ? 'you haven\'t hosted any events yet. create one to get started.' :
+                myEventsTab === 'saved' ? 'no saved events. tap the 3-dot menu on an event to save it.' :
+                'no past events yet. your history will show up here.';
+
+              if (events.length === 0) {
+                return (
+                  <View className="items-center pt-20 px-6">
+                    <Ionicons name={emptyIcon} size={48} color="#E5E7EB" />
+                    <Text
+                      className="text-gray-400 mt-4 text-center"
+                      style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                    >
+                      {emptyMsg}
+                    </Text>
+                  </View>
+                );
+              }
+
+              return (
+                <View className="px-6">
+                  {events.map((activity) => (
+                    <TouchableOpacity
+                      key={activity.id}
+                      className="flex-row items-center py-3 border-b border-gray-50"
+                      activeOpacity={0.7}
+                      onPress={() => { setMyEventsVisible(false); router.push(`/event/${activity.id}`); }}
+                    >
+                      <Image
+                        source={{ uri: activity.photo }}
+                        className="w-14 h-14 rounded-xl"
+                        resizeMode="cover"
+                      />
+                      <View className="ml-3 flex-1">
+                        <Text
+                          className="text-black"
+                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                          numberOfLines={1}
+                        >
+                          {activity.title}
+                        </Text>
+                        <Text
+                          className="text-gray-500 text-sm"
+                          style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                        >
+                          {activity.date} at {activity.time}
+                        </Text>
+                        <View className="flex-row items-center mt-0.5">
+                          <Ionicons name="location-outline" size={12} color="#9CA3AF" />
+                          <Text
+                            className="text-gray-400 text-xs ml-1"
+                            style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                          >
+                            {activity.location}
+                          </Text>
+                        </View>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              );
+            })()}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Create Event Modal */}
+      <Modal
+        visible={createVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setCreateVisible(false)}
+      >
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+          {/* Header */}
+          <View className="px-6 pt-4 pb-4 flex-row items-center justify-between">
+            <TouchableOpacity onPress={() => setCreateVisible(false)}>
+              <Text
+                className="text-gray-500"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                cancel
+              </Text>
+            </TouchableOpacity>
+            <Text
+              className="text-lg text-black"
+              style={{ fontFamily: 'InstrumentSans_700Bold' }}
+            >
+              create event
+            </Text>
+            <View style={{ width: 50 }} />
+          </View>
+
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            className="flex-1"
+          >
+            <ScrollView
+              className="flex-1"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 40 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Cover Image */}
+              <TouchableOpacity
+                className="mx-6 mb-6 rounded-2xl overflow-hidden"
+                style={{ height: 180, backgroundColor: '#F3F4F6' }}
+                activeOpacity={0.7}
+                onPress={async () => {
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images'],
+                    allowsEditing: true,
+                    aspect: [16, 9],
+                    quality: 0.8,
+                  });
+                  if (!result.canceled && result.assets[0]) {
+                    setNewEvent((prev) => ({ ...prev, coverImage: result.assets[0].uri }));
+                  }
+                }}
+              >
+                {newEvent.coverImage ? (
+                  <Image
+                    source={{ uri: newEvent.coverImage }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View className="flex-1 items-center justify-center">
+                    <Ionicons name="image-outline" size={36} color="#9CA3AF" />
+                    <Text
+                      className="text-gray-400 mt-2"
+                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                    >
+                      add cover image
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Title */}
+              <View className="mx-6 mb-5">
+                <Text
+                  className="text-xs text-gray-400 uppercase tracking-wider mb-2"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  title
+                </Text>
+                <TextInput
+                  value={newEvent.title}
+                  onChangeText={(t) => setNewEvent((prev) => ({ ...prev, title: t }))}
+                  placeholder="give your event a name"
+                  placeholderTextColor="#9CA3AF"
+                  className="bg-gray-50 rounded-xl px-4 py-3.5 text-black"
+                  style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 16 }}
+                />
+              </View>
+
+              {/* Description */}
+              <View className="mx-6 mb-5">
+                <Text
+                  className="text-xs text-gray-400 uppercase tracking-wider mb-2"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  description
+                </Text>
+                <TextInput
+                  value={newEvent.description}
+                  onChangeText={(t) => setNewEvent((prev) => ({ ...prev, description: t }))}
+                  placeholder="tell people what this event is about"
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  numberOfLines={4}
+                  className="bg-gray-50 rounded-xl px-4 py-3.5 text-black"
+                  style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 16, minHeight: 100, textAlignVertical: 'top' }}
+                />
+              </View>
+
+              {/* Details section */}
+              <View className="mx-6 mb-5">
+                <Text
+                  className="text-xs text-gray-400 uppercase tracking-wider mb-3"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  details
+                </Text>
+
+                {/* Location */}
+                <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3.5 mb-3">
+                  <Ionicons name="location-outline" size={20} color="#fd6b03" />
+                  <TextInput
+                    value={newEvent.location}
+                    onChangeText={(t) => setNewEvent((prev) => ({ ...prev, location: t }))}
+                    placeholder="add location"
+                    placeholderTextColor="#9CA3AF"
+                    className="flex-1 ml-3 text-black"
+                    style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 16 }}
+                  />
+                </View>
+
+                {/* Starts */}
+                <View className="bg-gray-50 rounded-xl px-4 py-3.5 mb-3">
+                  <View className="flex-row items-center mb-2">
+                    <Ionicons name="calendar-outline" size={20} color="#fd6b03" />
+                    <Text
+                      className="text-black ml-3"
+                      style={{ fontFamily: 'InstrumentSans_500Medium', fontSize: 16 }}
+                    >
+                      starts
+                    </Text>
+                  </View>
+                  <View className="flex-row gap-3 ml-8">
+                    <TextInput
+                      value={newEvent.startDate}
+                      onChangeText={(t) => setNewEvent((prev) => ({ ...prev, startDate: t }))}
+                      placeholder="date (e.g. Feb 15)"
+                      placeholderTextColor="#9CA3AF"
+                      className="flex-1 bg-white rounded-lg px-3 py-2.5 text-black"
+                      style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 14 }}
+                    />
+                    <TextInput
+                      value={newEvent.startTime}
+                      onChangeText={(t) => setNewEvent((prev) => ({ ...prev, startTime: t }))}
+                      placeholder="time (e.g. 6:00 PM)"
+                      placeholderTextColor="#9CA3AF"
+                      className="flex-1 bg-white rounded-lg px-3 py-2.5 text-black"
+                      style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 14 }}
+                    />
+                  </View>
+                </View>
+
+                {/* Ends */}
+                <View className="bg-gray-50 rounded-xl px-4 py-3.5">
+                  <View className="flex-row items-center mb-2">
+                    <Ionicons name="time-outline" size={20} color="#fd6b03" />
+                    <Text
+                      className="text-black ml-3"
+                      style={{ fontFamily: 'InstrumentSans_500Medium', fontSize: 16 }}
+                    >
+                      ends
+                    </Text>
+                  </View>
+                  <View className="flex-row gap-3 ml-8">
+                    <TextInput
+                      value={newEvent.endDate}
+                      onChangeText={(t) => setNewEvent((prev) => ({ ...prev, endDate: t }))}
+                      placeholder="date (e.g. Feb 15)"
+                      placeholderTextColor="#9CA3AF"
+                      className="flex-1 bg-white rounded-lg px-3 py-2.5 text-black"
+                      style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 14 }}
+                    />
+                    <TextInput
+                      value={newEvent.endTime}
+                      onChangeText={(t) => setNewEvent((prev) => ({ ...prev, endTime: t }))}
+                      placeholder="time (e.g. 8:00 PM)"
+                      placeholderTextColor="#9CA3AF"
+                      className="flex-1 bg-white rounded-lg px-3 py-2.5 text-black"
+                      style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 14 }}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Tags */}
+              <View className="mx-6 mb-5">
+                <Text
+                  className="text-xs text-gray-400 uppercase tracking-wider mb-3"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  tags
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {Object.entries(interestLabels).map(([id, label]) => {
+                    const selected = newEvent.tags.includes(id);
+                    return (
+                      <TouchableOpacity
+                        key={id}
+                        onPress={() => {
+                          setNewEvent((prev) => ({
+                            ...prev,
+                            tags: selected
+                              ? prev.tags.filter((t) => t !== id)
+                              : prev.tags.length < 5 ? [...prev.tags, id] : prev.tags,
+                          }));
+                        }}
+                        className="px-3 py-2 rounded-full"
+                        style={{ backgroundColor: selected ? '#fd6b03' : '#F3F4F6' }}
+                      >
+                        <Text
+                          className={`text-sm ${selected ? 'text-white' : 'text-gray-600'}`}
+                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        >
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <Text
+                  className="text-xs text-gray-400 mt-2"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  select up to 5 tags
+                </Text>
+              </View>
+            </ScrollView>
+
+            {/* Publish button */}
+            <View className="px-6 pb-6 pt-3 border-t border-gray-100">
+              <TouchableOpacity
+                className="w-full py-4 rounded-full items-center justify-center"
+                style={{ backgroundColor: newEvent.title.trim() ? '#fd6b03' : '#FDBA74' }}
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (!newEvent.title.trim()) {
+                    Alert.alert('Missing title', 'Please give your event a name.');
+                    return;
+                  }
+                  Alert.alert('Event published!', `"${newEvent.title}" has been created.`, [
+                    { text: 'OK', onPress: () => setCreateVisible(false) },
+                  ]);
+                }}
+              >
+                <Text
+                  className="text-white text-base"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  publish event
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }

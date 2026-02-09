@@ -45,6 +45,7 @@ export interface MockMessage {
 export interface MockActivity {
   id: string;
   title: string;
+  description: string;
   image: string;
   date: string;
   time: string;
@@ -56,6 +57,7 @@ export interface MockActivity {
   attendees: number;
   maxAttendees: number;
   category: string;
+  tags: string[];
 }
 
 // Primary face photos
@@ -682,6 +684,7 @@ export const mockActivities: MockActivity[] = [
   {
     id: 'act_1',
     title: 'Morning Surf Session',
+    description: 'Catching the early morning waves before the crowds. All levels welcome — I have an extra board if you need one. We\'ll meet at the beach entrance and paddle out together.',
     image: 'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=600&h=400&fit=crop',
     date: 'Tomorrow',
     time: '6:00 AM',
@@ -690,10 +693,12 @@ export const mockActivities: MockActivity[] = [
     attendees: 4,
     maxAttendees: 8,
     category: 'surfing',
+    tags: ['surfing', 'fitness', 'beach-days'],
   },
   {
     id: 'act_2',
     title: 'Coworking Coffee Meetup',
+    description: 'Casual morning meetup for remote workers and digital nomads. Grab a coffee, share what you\'re working on, and make some new connections. Great wifi guaranteed.',
     image: 'https://images.unsplash.com/photo-1521017432531-fbd92d768814?w=600&h=400&fit=crop',
     date: 'Today',
     time: '10:00 AM',
@@ -702,10 +707,12 @@ export const mockActivities: MockActivity[] = [
     attendees: 12,
     maxAttendees: 20,
     category: 'coffee',
+    tags: ['coffee', 'cowork-at-cafes', 'brainstorm-ideas'],
   },
   {
     id: 'act_3',
     title: 'Sunset Yoga',
+    description: 'Wind down with a relaxing vinyasa flow as the sun sets. Bring your own mat or rent one there. Perfect for all levels — we\'ll go at a chill pace.',
     image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&h=400&fit=crop',
     date: 'Today',
     time: '5:30 PM',
@@ -714,10 +721,12 @@ export const mockActivities: MockActivity[] = [
     attendees: 8,
     maxAttendees: 15,
     category: 'yoga',
+    tags: ['yoga', 'meditation', 'watch-sunsets'],
   },
   {
     id: 'act_4',
     title: 'Street Food Crawl',
+    description: 'Exploring the best local street food spots together. We\'ll hit 4-5 stalls — think satay, nasi goreng, martabak, and more. Come hungry!',
     image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=400&fit=crop',
     date: 'Friday',
     time: '7:00 PM',
@@ -726,10 +735,12 @@ export const mockActivities: MockActivity[] = [
     attendees: 6,
     maxAttendees: 10,
     category: 'food',
+    tags: ['food', 'try-street-food', 'find-hidden-gems'],
   },
   {
     id: 'act_5',
     title: 'Beach Volleyball',
+    description: 'Friendly pickup game on the beach. We\'ll split into teams when everyone arrives. No experience needed — just bring good vibes and sunscreen.',
     image: 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=600&h=400&fit=crop',
     date: 'Saturday',
     time: '4:00 PM',
@@ -738,10 +749,12 @@ export const mockActivities: MockActivity[] = [
     attendees: 7,
     maxAttendees: 12,
     category: 'fitness',
+    tags: ['fitness', 'beach-days', 'play-volleyball'],
   },
   {
     id: 'act_6',
     title: 'Photography Walk',
+    description: 'Golden hour shoot through the rice terraces. Bring any camera — phone is totally fine. I\'ll share some composition tips along the way.',
     image: 'https://images.unsplash.com/photo-1493863641943-9b68992a8d07?w=600&h=400&fit=crop',
     date: 'Sunday',
     time: '6:00 AM',
@@ -750,10 +763,12 @@ export const mockActivities: MockActivity[] = [
     attendees: 5,
     maxAttendees: 8,
     category: 'photography',
+    tags: ['photography', 'explore-the-city', 'find-hidden-gems'],
   },
   {
     id: 'act_7',
     title: 'Live Music Night',
+    description: 'Great lineup tonight with local and international artists. We\'ll grab a table together and enjoy the music. Drinks on your own — the cocktails here are unreal.',
     image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=400&fit=crop',
     date: 'Saturday',
     time: '8:00 PM',
@@ -762,10 +777,12 @@ export const mockActivities: MockActivity[] = [
     attendees: 15,
     maxAttendees: 30,
     category: 'music',
+    tags: ['music', 'grab-drinks', 'go-dancing'],
   },
   {
     id: 'act_8',
     title: 'Founder Breakfast',
+    description: 'Weekly breakfast for founders, freelancers, and builders. Share what you\'re working on, get feedback, and find potential collaborators. Informal and friendly.',
     image: 'https://images.unsplash.com/photo-1556740738-b6a63e27c4df?w=600&h=400&fit=crop',
     date: 'Monday',
     time: '8:00 AM',
@@ -774,10 +791,12 @@ export const mockActivities: MockActivity[] = [
     attendees: 8,
     maxAttendees: 15,
     category: 'entrepreneur',
+    tags: ['entrepreneur', 'cowork-at-cafes', 'brainstorm-ideas'],
   },
   {
     id: 'act_9',
     title: 'Scuba Diving Trip',
+    description: 'Day trip to Nusa Penida to see manta rays and coral gardens. PADI certified divers only. Gear rental and boat transfer included — just bring a towel.',
     image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=400&fit=crop',
     date: 'Next Tuesday',
     time: '7:00 AM',
@@ -786,10 +805,12 @@ export const mockActivities: MockActivity[] = [
     attendees: 4,
     maxAttendees: 6,
     category: 'diving',
+    tags: ['diving', 'beach-days', 'explore-the-city'],
   },
   {
     id: 'act_10',
     title: 'Balinese Cooking Class',
+    description: 'Learn to cook authentic Balinese dishes from scratch. We\'ll visit the market first to pick ingredients, then cook together. You\'ll leave with 3 new recipes.',
     image: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=600&h=400&fit=crop',
     date: 'Wednesday',
     time: '10:00 AM',
@@ -798,6 +819,7 @@ export const mockActivities: MockActivity[] = [
     attendees: 6,
     maxAttendees: 8,
     category: 'cooking',
+    tags: ['cooking', 'food', 'find-hidden-gems'],
   },
 ];
 

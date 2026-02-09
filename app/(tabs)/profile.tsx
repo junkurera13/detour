@@ -7,8 +7,10 @@ import { useRouter } from 'expo-router';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { mockProfileViewers } from '@/data/mockData';
+import { mockProfileViewers, mockActivities } from '@/data/mockData';
 import { useRevenueCat } from '@/context/RevenueCatContext';
+import { useEvents } from '@/context/EventsContext';
+import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 
 const lifestyleLabels: Record<string, string> = {
   'van-life': 'van life',
@@ -83,7 +85,9 @@ export default function ProfileScreen() {
   const builderStats = useQuery(api.helpRequests.getBuilderStats, convexAuthenticated ? {} : "skip");
   const updateUser = useMutation(api.users.update);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<'about' | 'builder'>('about');
+  const [activeTab, setActiveTab] = useState<'about' | 'events' | 'builder'>('about');
+  const { joinedIds } = useEvents();
+  const myEvents = useMemo(() => mockActivities.filter(a => joinedIds.includes(a.id)), [joinedIds]);
   const [editingStopIndex, setEditingStopIndex] = useState<number | null>(null);
   const [editingStopText, setEditingStopText] = useState('');
   const slideAnim = useRef(new Animated.Value(400)).current;
@@ -285,34 +289,94 @@ export default function ProfileScreen() {
         {/* Tab Toggle */}
         <View className="px-6 mb-6">
           <View className="flex-row bg-gray-100 rounded-full p-1">
-            <TouchableOpacity
-              onPress={() => setActiveTab('about')}
-              className="flex-1 py-2.5 rounded-full items-center"
-              style={{ backgroundColor: activeTab === 'about' ? '#fff' : 'transparent' }}
-            >
-              <Text
-                className={activeTab === 'about' ? 'text-black' : 'text-gray-400'}
-                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+            {(['about', 'events', 'builder'] as const).map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                className="flex-1 py-2.5 rounded-full items-center"
+                style={{ backgroundColor: activeTab === tab ? '#fff' : 'transparent' }}
               >
-                about
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setActiveTab('builder')}
-              className="flex-1 py-2.5 rounded-full items-center"
-              style={{ backgroundColor: activeTab === 'builder' ? '#fff' : 'transparent' }}
-            >
-              <Text
-                className={activeTab === 'builder' ? 'text-black' : 'text-gray-400'}
-                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-              >
-                builder profile
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  className={activeTab === tab ? 'text-black' : 'text-gray-400'}
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 }}
+                >
+                  {tab === 'builder' ? 'builder' : tab}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
-        {activeTab === 'about' ? (
+        {activeTab === 'events' ? (
+          <View className="px-6 mb-6">
+            {myEvents.length > 0 ? (
+              myEvents.map((activity) => {
+                const isHost = activity.host.name.toLowerCase() === profileData.name.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    key={activity.id}
+                    className="flex-row items-center py-3 border-b border-gray-50"
+                    activeOpacity={0.7}
+                    onPress={() => router.push(`/event/${activity.id}` as any)}
+                  >
+                    <Image
+                      source={{ uri: activity.image }}
+                      className="w-14 h-14 rounded-xl"
+                      resizeMode="cover"
+                    />
+                    <View className="ml-3 flex-1">
+                      <View className="flex-row items-center">
+                        <Text
+                          className="text-black"
+                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                          numberOfLines={1}
+                        >
+                          {activity.title}
+                        </Text>
+                        {isHost && (
+                          <View className="bg-orange-100 rounded-full px-2 py-0.5 ml-2">
+                            <Text
+                              className="text-orange-600 text-xs"
+                              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                            >
+                              host
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text
+                        className="text-gray-500 text-sm"
+                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                      >
+                        {activity.date} at {activity.time}
+                      </Text>
+                      <View className="flex-row items-center mt-0.5">
+                        <Ionicons name="location-outline" size={12} color="#9CA3AF" />
+                        <Text
+                          className="text-gray-400 text-xs ml-1"
+                          style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                        >
+                          {activity.location}
+                        </Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <View className="items-center py-12">
+                <Ionicons name="calendar-outline" size={48} color="#E5E7EB" />
+                <Text
+                  className="text-gray-400 mt-4 text-center"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  no upcoming events
+                </Text>
+              </View>
+            )}
+          </View>
+        ) : activeTab === 'about' ? (
           <>
             {/* Journey Route */}
             <View className="px-6 mb-6">
@@ -368,20 +432,26 @@ export default function ProfileScreen() {
                         </View>
                         {editingStopIndex === index ? (
                           <View className="ml-3 flex-1 flex-row items-center">
-                            <TextInput
-                              value={editingStopText}
-                              onChangeText={setEditingStopText}
-                              placeholder="city or region"
-                              autoFocus
-                              onSubmitEditing={() => handleSaveStop(index)}
-                              onBlur={() => handleSaveStop(index)}
-                              className="flex-1 text-base text-black py-1"
-                              style={{
-                                fontFamily: 'InstrumentSans_500Medium',
-                                borderBottomWidth: 1,
-                                borderBottomColor: '#374151',
+                            <View className="flex-1">
+                              <LocationAutocomplete
+                                value={editingStopText}
+                                placeholder="search for a city..."
+                                onSelect={(location) => {
+                                  setEditingStopText(location.fullName);
+                                  handleSaveStop(index);
+                                }}
+                              />
+                            </View>
+                            <TouchableOpacity
+                              onPress={() => {
+                                handleRemoveStop(index);
+                                setEditingStopIndex(null);
+                                setEditingStopText('');
                               }}
-                            />
+                              className="ml-2 p-1"
+                            >
+                              <Ionicons name="close-circle" size={20} color="#EF4444" />
+                            </TouchableOpacity>
                           </View>
                         ) : (
                           <TouchableOpacity
@@ -450,26 +520,13 @@ export default function ProfileScreen() {
                               <Ionicons name="add" size={16} color="#9CA3AF" />
                             </View>
                           </View>
-                          <View className="ml-3 flex-1">
-                            <TextInput
+                          <View className="ml-3 flex-1" style={{ zIndex: 10 }}>
+                            <LocationAutocomplete
                               value={editingStopText}
-                              onChangeText={setEditingStopText}
-                              placeholder="city or region"
-                              autoFocus
-                              onSubmitEditing={() => handleSaveStop(profileData.futureTrips.length)}
-                              onBlur={() => {
-                                if (!editingStopText.trim()) {
-                                  setEditingStopIndex(null);
-                                  setEditingStopText('');
-                                } else {
-                                  handleSaveStop(profileData.futureTrips.length);
-                                }
-                              }}
-                              className="text-base text-black py-1"
-                              style={{
-                                fontFamily: 'InstrumentSans_500Medium',
-                                borderBottomWidth: 1,
-                                borderBottomColor: '#374151',
+                              placeholder="search for a city..."
+                              onSelect={(location) => {
+                                setEditingStopText(location.fullName);
+                                handleSaveStop(profileData.futureTrips.length);
                               }}
                             />
                           </View>

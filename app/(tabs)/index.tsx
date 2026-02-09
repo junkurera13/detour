@@ -713,39 +713,39 @@ export default function NearbyScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View className="px-6 pt-4 flex-row items-center justify-between">
+          <Text
+            className="text-5xl text-black"
+            style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
+          >
+            nearby
+          </Text>
           <View className="flex-row items-center gap-3">
-            <Text
-              className="text-5xl text-black"
-              style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
-            >
-              nearby
-            </Text>
             <TouchableOpacity
               onPress={() => setPrefsVisible(true)}
               activeOpacity={0.7}
             >
               <Ionicons name="options-outline" size={22} color="#000" />
             </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/explore-people')}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: '#fd6b03',
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#fd6b03',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.3,
+                shadowRadius: 6,
+                elevation: 4,
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="diamond" size={20} color="#fff" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            onPress={() => router.push('/explore-people')}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 17,
-              backgroundColor: '#fd6b03',
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#fd6b03',
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.3,
-              shadowRadius: 6,
-              elevation: 4,
-            }}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="diamond" size={17} color="#fff" />
-          </TouchableOpacity>
         </View>
 
         {/* Card Stack */}

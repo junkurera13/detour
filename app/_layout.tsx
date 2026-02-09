@@ -22,6 +22,7 @@ import {
 import { OnboardingProvider } from '@/context/OnboardingContext';
 import { RevenueCatProvider } from '@/context/RevenueCatContext';
 import { NotificationsProvider } from '@/context/NotificationsContext';
+import { EventsProvider } from '@/context/EventsContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { env } from '@/lib/env';
 
@@ -62,6 +63,7 @@ export default function RootLayout() {
             <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
               <NotificationsProvider>
                 <OnboardingProvider>
+                  <EventsProvider>
                   <ErrorBoundary>
                     <Stack
                       screenOptions={{
@@ -98,6 +100,7 @@ export default function RootLayout() {
                     </Stack>
                     <StatusBar style="dark" />
                   </ErrorBoundary>
+                  </EventsProvider>
                 </OnboardingProvider>
               </NotificationsProvider>
             </ConvexProviderWithClerk>

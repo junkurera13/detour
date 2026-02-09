@@ -5,8 +5,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { mockUsers } from '@/data/mockData';
-import { useMemo } from 'react';
+import { mockUsers, mockActivities } from '@/data/mockData';
+import { useMemo, useState } from 'react';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PHOTO_SIZE = (SCREEN_WIDTH - 48 - 8) / 2; // px-6 padding (48) + gap (8)
@@ -109,6 +109,32 @@ export default function UserProfileScreen() {
     }
     return null;
   }, [convexUser, mockUser]);
+
+  const [activeTab, setActiveTab] = useState<'about' | 'events' | 'builder'>('about');
+
+  // Get events this user is attending or hosting (deterministic based on name)
+  const userEvents = useMemo(() => {
+    if (!profileData) return [];
+    const name = profileData.name.toLowerCase();
+    // Include events they host
+    const hosted = mockActivities.filter(a => a.host.name.toLowerCase() === name);
+    // Deterministically assign some events based on name hash
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = ((hash << 5) - hash) + name.charCodeAt(i);
+      hash |= 0;
+    }
+    const start = Math.abs(hash) % mockActivities.length;
+    const count = 1 + (Math.abs(hash) % 3); // 1-3 extra events
+    const attending: typeof mockActivities = [];
+    for (let i = 0; i < count; i++) {
+      const act = mockActivities[(start + i) % mockActivities.length];
+      if (!hosted.some(h => h.id === act.id)) {
+        attending.push(act);
+      }
+    }
+    return [...hosted, ...attending];
+  }, [profileData]);
 
   if (!profileData) {
     return (
@@ -213,6 +239,110 @@ export default function UserProfileScreen() {
           )}
         </View>
 
+        {/* Tab Toggle */}
+        <View className="px-6 mb-6">
+          <View className="flex-row bg-gray-100 rounded-full p-1">
+            {(['about', 'events', 'builder'] as const).map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                className="flex-1 py-2.5 rounded-full items-center"
+                style={{ backgroundColor: activeTab === tab ? '#fff' : 'transparent' }}
+              >
+                <Text
+                  className={activeTab === tab ? 'text-black' : 'text-gray-400'}
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 }}
+                >
+                  {tab === 'builder' ? 'builder' : tab}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {activeTab === 'events' ? (
+          <View className="px-6 mb-6">
+            {userEvents.length > 0 ? (
+              userEvents.map((activity) => {
+                const isHost = activity.host.name.toLowerCase() === profileData.name.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    key={activity.id}
+                    className="flex-row items-center py-3 border-b border-gray-50"
+                    activeOpacity={0.7}
+                    onPress={() => router.push(`/event/${activity.id}` as any)}
+                  >
+                    <Image
+                      source={{ uri: activity.image }}
+                      className="w-14 h-14 rounded-xl"
+                      resizeMode="cover"
+                    />
+                    <View className="ml-3 flex-1">
+                      <View className="flex-row items-center">
+                        <Text
+                          className="text-black"
+                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                          numberOfLines={1}
+                        >
+                          {activity.title}
+                        </Text>
+                        {isHost && (
+                          <View className="bg-orange-100 rounded-full px-2 py-0.5 ml-2">
+                            <Text
+                              className="text-orange-600 text-xs"
+                              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                            >
+                              host
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text
+                        className="text-gray-500 text-sm"
+                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                      >
+                        {activity.date} at {activity.time}
+                      </Text>
+                      <View className="flex-row items-center mt-0.5">
+                        <Ionicons name="location-outline" size={12} color="#9CA3AF" />
+                        <Text
+                          className="text-gray-400 text-xs ml-1"
+                          style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                        >
+                          {activity.location}
+                        </Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <View className="items-center py-12">
+                <Ionicons name="calendar-outline" size={48} color="#E5E7EB" />
+                <Text
+                  className="text-gray-400 mt-4 text-center"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  no upcoming events
+                </Text>
+              </View>
+            )}
+          </View>
+        ) : activeTab === 'builder' ? (
+          <View className="px-6 mb-6">
+            <View className="items-center py-12">
+              <Ionicons name="hammer-outline" size={48} color="#E5E7EB" />
+              <Text
+                className="text-gray-400 mt-4 text-center"
+                style={{ fontFamily: 'InstrumentSans_400Regular' }}
+              >
+                no builder activity yet
+              </Text>
+            </View>
+          </View>
+        ) : (
+        <>
         {/* Journey Route (read-only, same card style as own profile) */}
         <View className="px-6 mb-6">
           <View
@@ -362,6 +492,8 @@ export default function UserProfileScreen() {
               ))}
             </View>
           </View>
+        )}
+        </>
         )}
       </ScrollView>
     </SafeAreaView>
