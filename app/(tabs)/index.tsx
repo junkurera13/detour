@@ -9,7 +9,7 @@ import { Doc } from '@/convex/_generated/dataModel';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { mockUsers, MockUser } from '@/data/mockData';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 import Animated, {
@@ -129,6 +129,7 @@ function SwipeableCard({ profile, isFirst, onSwipeLeft, onSwipeRight, swipeDirec
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const [menuVisible, setMenuVisible] = useState(false);
+  const cardRouter = useRouter();
 
   const triggerHaptic = (type: 'light' | 'medium') => {
     if (type === 'light') {
@@ -236,11 +237,15 @@ function SwipeableCard({ profile, isFirst, onSwipeLeft, onSwipeRight, swipeDirec
 
             {/* Profile info overlay */}
             <View style={styles.profileInfo}>
-              <View style={styles.nameRow}>
+              <TouchableOpacity
+                style={styles.nameRow}
+                activeOpacity={0.7}
+                onPress={() => cardRouter.push(`/user/${profile.id}`)}
+              >
                 <Text style={styles.nameText}>
                   {profile.name}, {profile.age}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
               <View style={styles.locationRow}>
                 <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.8)" />
@@ -529,6 +534,7 @@ function RangeSlider({
 
 export default function NearbyScreen() {
   const router = useRouter();
+  const { focusUserId } = useLocalSearchParams<{ focusUserId?: string }>();
   const { data } = useOnboarding();
   const { convexUser } = useAuthenticatedUser();
   const userId = convexUser?._id;
@@ -604,6 +610,17 @@ export default function NearbyScreen() {
     });
   }, [profiles, localSwipedIds, ageMin, ageMax, prefDistance, hereForDating, hereForFriends]);
 
+  // If focusUserId is set (from Likes You), reorder so that user is first
+  const orderedProfiles = useMemo(() => {
+    if (!focusUserId) return filteredProfiles;
+    const idx = filteredProfiles.findIndex((p) => p.id === focusUserId);
+    if (idx <= 0) return filteredProfiles; // already first or not found
+    const copy = [...filteredProfiles];
+    const [focused] = copy.splice(idx, 1);
+    copy.unshift(focused);
+    return copy;
+  }, [filteredProfiles, focusUserId]);
+
   const isLoading = userId && convexUsers === undefined;
 
   // Animated style for X button - scales up when swiping left
@@ -661,23 +678,23 @@ export default function NearbyScreen() {
   }, [createSwipe, isProcessingSwipe, userId]);
 
   const handleSwipeLeft = useCallback(() => {
-    const profile = filteredProfiles[0];
+    const profile = orderedProfiles[0];
     if (!profile) return;
     setSwipeDirection(null);
     setLocalSwipedIds((prev) => new Set(prev).add(profile.id));
     recordSwipe('pass', profile.id);
-  }, [recordSwipe, filteredProfiles]);
+  }, [recordSwipe, orderedProfiles]);
 
   const handleSwipeRight = useCallback(() => {
-    const profile = filteredProfiles[0];
+    const profile = orderedProfiles[0];
     if (!profile) return;
     setSwipeDirection(null);
     setLocalSwipedIds((prev) => new Set(prev).add(profile.id));
     recordSwipe('like', profile.id);
-  }, [recordSwipe, filteredProfiles]);
+  }, [recordSwipe, orderedProfiles]);
 
   const handlePassPress = useCallback(() => {
-    const profile = filteredProfiles[0];
+    const profile = orderedProfiles[0];
     if (!profile) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSwipeDirection('left');
@@ -686,10 +703,10 @@ export default function NearbyScreen() {
       recordSwipe('pass', profile.id);
       setSwipeDirection(null);
     }, 350);
-  }, [recordSwipe, filteredProfiles]);
+  }, [recordSwipe, orderedProfiles]);
 
   const handleLikePress = useCallback(() => {
-    const profile = filteredProfiles[0];
+    const profile = orderedProfiles[0];
     if (!profile) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSwipeDirection('right');
@@ -698,10 +715,10 @@ export default function NearbyScreen() {
       recordSwipe('like', profile.id);
       setSwipeDirection(null);
     }, 350);
-  }, [recordSwipe, filteredProfiles]);
+  }, [recordSwipe, orderedProfiles]);
 
-  const visibleProfiles = filteredProfiles.slice(0, 2);
-  const isEmpty = !isLoading && filteredProfiles.length === 0;
+  const visibleProfiles = orderedProfiles.slice(0, 2);
+  const isEmpty = !isLoading && orderedProfiles.length === 0;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

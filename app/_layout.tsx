@@ -95,6 +95,12 @@ export default function RootLayout() {
                           gestureEnabled: false,
                         }}
                       />
+                      <Stack.Screen
+                        name="user/[userId]"
+                        options={{
+                          animation: 'slide_from_right',
+                        }}
+                      />
                     </Stack>
                     <StatusBar style="dark" />
                   </ErrorBoundary>

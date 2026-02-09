@@ -204,6 +204,11 @@ export default function MatchesScreen() {
                   key={user.id}
                   className="relative"
                   activeOpacity={0.9}
+                  onPress={() => {
+                    if (hasDetourPlus) {
+                      router.push({ pathname: '/(tabs)', params: { focusUserId: user.id } });
+                    }
+                  }}
                 >
                   <Image
                     source={{ uri: user.photos[0] }}
