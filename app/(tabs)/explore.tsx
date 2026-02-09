@@ -759,7 +759,7 @@ export default function ExploreScreen() {
                       className="text-gray-400 mt-4 text-center"
                       style={{ fontFamily: 'InstrumentSans_400Regular' }}
                     >
-                      no results for "{searchQuery}"
+                      no results for &ldquo;{searchQuery}&rdquo;
                     </Text>
                   </View>
                 )}
