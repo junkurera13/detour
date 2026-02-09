@@ -113,7 +113,7 @@ export default function ExploreScreen() {
       <View className="px-6 pt-4 pb-4">
         <Text
           className="text-5xl text-black"
-          style={{ fontFamily: 'InstrumentSerif_400Regular', includeFontPadding: false, paddingBottom: Platform.OS === 'android' ? 10 : 0 }}
+          style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
         >
           activity
         </Text>

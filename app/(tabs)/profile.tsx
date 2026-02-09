@@ -190,7 +190,7 @@ export default function ProfileScreen() {
       <View className="px-6 pt-4 pb-6 flex-row items-center justify-between">
         <Text
           className="text-5xl text-black"
-          style={{ fontFamily: 'InstrumentSerif_400Regular', includeFontPadding: false, paddingBottom: Platform.OS === 'android' ? 10 : 0 }}
+          style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
         >
           profile
         </Text>

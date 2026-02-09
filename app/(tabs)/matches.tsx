@@ -127,7 +127,7 @@ export default function MatchesScreen() {
       <View className="px-6 pt-4 pb-4">
         <Text
           className="text-5xl text-black"
-          style={{ fontFamily: 'InstrumentSerif_400Regular', includeFontPadding: false, paddingBottom: Platform.OS === 'android' ? 10 : 0 }}
+          style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
         >
           connections
         </Text>
@@ -345,9 +345,6 @@ export default function MatchesScreen() {
                     className="w-14 h-14 rounded-full"
                     resizeMode="cover"
                   />
-                  {convo.online && (
-                    <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
-                  )}
                 </View>
 
                 <View className="flex-1 ml-4">

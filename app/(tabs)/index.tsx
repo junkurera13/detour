@@ -7,10 +7,11 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Doc } from '@/convex/_generated/dataModel';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { mockUsers, MockUser } from '@/data/mockData';
+import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -26,7 +27,7 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 const { width: SCREEN_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 120;
 const SWIPE_VELOCITY_THRESHOLD = 500;
-const CARD_HEIGHT = Platform.OS === 'android' ? WINDOW_HEIGHT * 0.76 : WINDOW_HEIGHT * 0.73;
+const CARD_HEIGHT = Platform.OS === 'android' ? WINDOW_HEIGHT * 0.74 : WINDOW_HEIGHT * 0.71;
 
 interface Profile {
   id: string;
@@ -239,7 +240,6 @@ function SwipeableCard({ profile, isFirst, onSwipeLeft, onSwipeRight, swipeDirec
                 <Text style={styles.nameText}>
                   {profile.name}, {profile.age}
                 </Text>
-                <View style={styles.onlineIndicator} />
               </View>
 
               <View style={styles.locationRow}>
@@ -541,6 +541,9 @@ export default function NearbyScreen() {
   const [prefDistance, setPrefDistance] = useState(25);
   const [hereForDating, setHereForDating] = useState(true);
   const [hereForFriends, setHereForFriends] = useState(true);
+  const [prefLocation, setPrefLocation] = useState('');
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const locationInitialized = useRef(false);
   const swipeProgress = useSharedValue(0);
 
   // Fetch profiles from Convex
@@ -553,7 +556,17 @@ export default function NearbyScreen() {
   const createSwipe = useMutation(api.swipes.create);
 
   // Convert Convex users to Profile interface, fall back to mock data
-  const userLocation = convexUser?.currentLocation || data.currentLocation || '';
+  const baseLocation = convexUser?.currentLocation || data.currentLocation || '';
+  const userLocation = prefLocation || baseLocation;
+
+  // Initialize prefLocation from user data once
+  useEffect(() => {
+    if (!locationInitialized.current && baseLocation) {
+      setPrefLocation(baseLocation);
+      locationInitialized.current = true;
+    }
+  }, [baseLocation]);
+
   const profiles = useMemo(() => {
     // If we have Convex users, use them
     if (convexUsers && convexUsers.length > 0) {
@@ -698,7 +711,7 @@ export default function NearbyScreen() {
           <View className="flex-row items-center gap-3">
             <Text
               className="text-5xl text-black"
-              style={{ fontFamily: 'InstrumentSerif_400Regular', includeFontPadding: false, paddingBottom: Platform.OS === 'android' ? 10 : 0 }}
+              style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
             >
               nearby
             </Text>
@@ -726,7 +739,7 @@ export default function NearbyScreen() {
             }}
             activeOpacity={0.8}
           >
-            <Ionicons name="compass" size={17} color="#fff" />
+            <Ionicons name="diamond" size={17} color="#fff" />
           </TouchableOpacity>
         </View>
 
@@ -816,6 +829,56 @@ export default function NearbyScreen() {
           </View>
 
           <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
+            {/* Location */}
+            <View className="pt-4 pb-6">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text
+                  className="text-sm text-gray-500 uppercase"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  location
+                </Text>
+                {prefLocation !== baseLocation && !isEditingLocation && (
+                  <TouchableOpacity
+                    onPress={() => setPrefLocation(baseLocation)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      className="text-sm"
+                      style={{ fontFamily: 'InstrumentSans_500Medium', color: '#fd6b03' }}
+                    >
+                      reset
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {isEditingLocation ? (
+                <LocationAutocomplete
+                  value={prefLocation}
+                  onSelect={(location) => {
+                    setPrefLocation(location.fullName);
+                    setIsEditingLocation(false);
+                  }}
+                  placeholder="search for a city..."
+                />
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setIsEditingLocation(true)}
+                  activeOpacity={0.7}
+                  className="flex-row items-center"
+                >
+                  <Ionicons name="location" size={18} color="#fd6b03" />
+                  <Text
+                    className="ml-3 text-black flex-1"
+                    style={{ fontFamily: 'InstrumentSans_500Medium', fontSize: 15 }}
+                  >
+                    {prefLocation || 'Tap to set location'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+
             {/* Age Range */}
             <View className="pt-4 pb-6">
               <View className="flex-row items-center justify-between mb-4">
@@ -1005,13 +1068,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: '#fff',
     fontFamily: 'InstrumentSans_700Bold',
-  },
-  onlineIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#22c55e',
-    marginLeft: 10,
   },
   locationRow: {
     flexDirection: 'row',

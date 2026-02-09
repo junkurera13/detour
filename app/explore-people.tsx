@@ -163,9 +163,6 @@ export default function ExplorePeopleScreen() {
                   className="w-16 h-16 rounded-full"
                   resizeMode="cover"
                 />
-                {user.isOnline && (
-                  <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
-                )}
               </View>
               <View className="flex-1 ml-4">
                 <View className="flex-row items-center">
@@ -175,14 +172,6 @@ export default function ExplorePeopleScreen() {
                   >
                     {user.name}, {user.age}
                   </Text>
-                  {user.isOnline && (
-                    <Text
-                      className="text-green-500 text-xs ml-2"
-                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                    >
-                      online
-                    </Text>
-                  )}
                 </View>
                 <Text
                   className="text-gray-500 text-sm"

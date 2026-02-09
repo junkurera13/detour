@@ -56,7 +56,7 @@ export default function HelpScreen() {
         <View className="flex-row items-center">
           <Text
             className="text-5xl text-black"
-            style={{ fontFamily: 'InstrumentSerif_400Regular', includeFontPadding: false, paddingBottom: Platform.OS === 'android' ? 10 : 0 }}
+            style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
           >
             help
           </Text>

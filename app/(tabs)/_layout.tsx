@@ -1,13 +1,15 @@
 import { Tabs } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { View, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import * as Haptics from 'expo-haptics';
 
 export default function TabLayout() {
   const { data } = useOnboarding();
-  const profilePhoto = data.photos[0];
+  const { convexUser } = useAuthenticatedUser();
+  const profilePhoto = convexUser?.photos?.[0] || data.photos[0];
   const insets = useSafeAreaInsets();
   const tabBarHeight = 62 + insets.bottom;
   const tabBarPaddingBottom = Math.max(insets.bottom, 12);
@@ -40,7 +42,7 @@ export default function TabLayout() {
         name="index"
         options={{
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="map-marker-radius" size={28} color={color} />
+            <Ionicons name="dice" size={28} color={color} />
           ),
         }}
       />
