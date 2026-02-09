@@ -37,7 +37,6 @@ export function useNotifications() {
   const registerForPushNotifications = useCallback(async () => {
     // Push notifications only work on physical devices
     if (!Device.isDevice) {
-      console.log('Push notifications require a physical device');
       return null;
     }
 
@@ -59,7 +58,6 @@ export function useNotifications() {
     setPermissionStatus(finalStatus);
 
     if (finalStatus !== 'granted') {
-      console.log('Push notification permission not granted');
       return null;
     }
 
@@ -83,7 +81,6 @@ export function useNotifications() {
         await savePushToken({ expoPushToken: token });
       } catch (err) {
         // User might not exist yet, that's OK
-        console.log('Could not save push token yet:', err);
       }
 
       return token;
@@ -117,8 +114,8 @@ export function useNotifications() {
 
     // Listener for notifications received while app is in foreground
     notificationListener.current = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        console.log('Notification received in foreground:', notification);
+      () => {
+        // Foreground notification received — no action needed
       }
     );
 

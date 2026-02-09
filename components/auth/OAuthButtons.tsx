@@ -27,7 +27,6 @@ export function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) {
     try {
       const oauthFlow = provider === 'google' ? googleOAuth : appleOAuth;
       const redirectUrl = Linking.createURL('oauth-callback');
-      console.log('OAuth redirect URL:', redirectUrl);
 
       const { createdSessionId, setActive } = await oauthFlow({
         redirectUrl,
@@ -42,7 +41,6 @@ export function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) {
         onSuccess();
       }
     } catch (err: any) {
-      console.error(`OAuth ${provider} error:`, err);
       // Don't show error for user cancellation
       if (!err?.message?.includes('cancelled')) {
         onError(`Failed to sign in with ${provider}`);

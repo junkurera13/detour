@@ -44,6 +44,7 @@ export function LocationAutocomplete({
       setResults([]);
       setShowResults(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   const searchLocations = useCallback(async (searchQuery: string) => {

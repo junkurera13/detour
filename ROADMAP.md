@@ -3,10 +3,10 @@
 ## Timeline Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  PHASE 1: Premium Features    →  PHASE 2: UX Polish  →  PHASE 3: TestFlight  │
-│  (RevenueCat core value)         (Visible wins)         (Submission)         │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│  PHASE 1: Premium Features  →  PHASE 2: UX Polish  →  PHASE 3: Android Release  │
+│  (RevenueCat core value)       (Visible wins)         (Google Play Internal)     │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -41,28 +41,35 @@
 
 ---
 
-## Phase 3: Store Submission 🟡
-**Goal:** Get app on Google Play Internal Testing (priority) + TestFlight
+## Phase 3: Android Release 🟡
+**Goal:** Get app on Google Play Internal Testing by Feb 12 deadline
 
-**Strategy:** Prioritizing Android (Google Play Internal Testing) for guaranteed submission by Feb 12 deadline. TestFlight in parallel if Apple timeline allows.
+**Strategy:** Fully focused on Android (Google Play Internal Testing). iOS/TestFlight is deferred — Apple Paid Apps Agreement timeline won't resolve before the deadline.
 
 | Task | Description | Status |
 |------|-------------|--------|
-| Apple Developer account | Ensure account is active | ✅ |
-| App Store Connect | Create app record | ✅ |
-| Subscription product | Create yearly subscription in App Store Connect | ✅ (Ready to Submit) |
-| RevenueCat product | Link product in RevenueCat dashboard | ✅ |
-| **Paid Apps Agreement** | Complete user info in App Store Connect | 🟡 **IN PROGRESS** |
+| Google Play Developer account | Register for Google Play Console ($25) | ✅ (registered, identity verified) |
 | EAS Build setup | Configure eas.json for builds | ✅ (eas.json created, EAS CLI installed, project linked) |
 | Privacy policy | Create and host privacy policy | ✅ (hosted at https://junkurera13.github.io/detour/privacy-policy.html) |
 | App icons & splash | Finalize assets | ✅ (assets exist in assets/images/) |
-| **Google Play Developer account** | Register for Google Play Console ($25) | 🟡 **IN PROGRESS** (registered, identity verification pending) |
+| RevenueCat product | Link product in RevenueCat dashboard | ✅ |
 | **Android build & upload** | EAS build + upload to Google Play Internal Testing | 🟡 **IN PROGRESS** (build running on EAS, fixing dependency issues) |
 | **Android internal testing** | Verify app works on internal testing | ⬜ |
-| iOS build & upload | EAS build + submit to TestFlight | ⬜ (after Paid Apps Agreement) |
-| TestFlight testing | Verify app works on TestFlight | ⬜ |
 
 > **NOTE:** `expo-auth-session` was added as a required peer dependency for `@clerk/clerk-expo`.
+
+### Deferred (iOS)
+
+iOS release is deferred to post-hackathon. The following are complete and ready to resume once the Apple Paid Apps Agreement is processed:
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Apple Developer account | Account is active | ✅ |
+| App Store Connect | App record created | ✅ |
+| Subscription product | Yearly subscription in App Store Connect | ✅ (Ready to Submit) |
+| Paid Apps Agreement | Waiting for Korean BRN / Apple processing | 🟡 BLOCKED |
+| iOS build & upload | EAS build + submit to TestFlight | ⬜ (after Paid Apps Agreement) |
+| TestFlight testing | Verify app works on TestFlight | ⬜ |
 
 ---
 
@@ -99,6 +106,7 @@
 
 ## Out of Scope
 
+- iOS / TestFlight release (deferred to post-hackathon)
 - Testing suite
 - Security audits
 - Content moderation
@@ -125,7 +133,7 @@
 
 ---
 
-*Last updated: February 7, 2026*
+*Last updated: February 9, 2026*
 
 ---
 

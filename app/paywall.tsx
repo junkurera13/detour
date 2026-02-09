@@ -57,11 +57,6 @@ export default function PaywallScreen() {
   const packageById = (id: string) =>
     currentOffering?.availablePackages?.find((pkg: { identifier: string }) => pkg.identifier === id);
 
-  // Debug logging
-  console.log('RevenueCat offerings:', JSON.stringify(offerings, null, 2));
-  console.log('Current offering:', JSON.stringify(currentOffering, null, 2));
-  console.log('Available packages:', currentOffering?.availablePackages?.map((p: any) => p.identifier));
-
   // Try annual first, fall back to any available package for testing
   const yearlyPackage = currentOffering?.annual ?? packageById('$rc_annual') ?? packageById('yearly') ?? packageById('detour_plus_yearly') ?? currentOffering?.availablePackages?.[0];
   const yearlyPrice = yearlyPackage?.product?.pricePerYearString ?? yearlyPackage?.product?.priceString ?? '$99.99/year';

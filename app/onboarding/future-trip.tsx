@@ -95,8 +95,7 @@ export default function FutureTripScreen() {
 
       // Go to pending screen
       router.replace('/pending');
-    } catch (error) {
-      console.error('Failed to create user:', error);
+    } catch {
       Alert.alert(
         'Error',
         'Failed to create your account. Please try again.',

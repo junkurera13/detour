@@ -116,7 +116,6 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
             const emailVerified = signUpAttempt.verifications?.emailAddress?.status === 'verified';
             if (emailVerified && signUpAttempt.status === 'missing_requirements') {
               // Email verified but something else needed - this shouldn't happen with our Clerk config
-              console.log('Email verified but missing:', signUpAttempt.missingFields);
               if (signUpAttempt.createdSessionId) {
                 await setActiveSignUp!({ session: signUpAttempt.createdSessionId });
                 await waitForTokenSync();
@@ -184,13 +183,6 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
       if (isNewUser) {
         const result = await signUp!.attemptEmailAddressVerification({ code });
 
-        console.log('SignUp result:', {
-          status: result.status,
-          missingFields: result.missingFields,
-          unverifiedFields: result.unverifiedFields,
-          createdSessionId: result.createdSessionId,
-        });
-
         if (result.status === 'complete') {
           if (result.createdSessionId) {
             await setActiveSignUp!({ session: result.createdSessionId });
@@ -201,10 +193,8 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
         } else if (result.status === 'missing_requirements') {
           // Log what's missing so we can debug
           const missing = result.missingFields?.join(', ') || 'unknown fields';
-          console.error('Clerk requires additional fields:', missing);
           setError(`Clerk setup issue: requires ${missing}. Please check Clerk dashboard.`);
         } else {
-          console.log('SignUp status:', result.status);
           setError(`Verification status: ${result.status}`);
         }
       } else {
@@ -223,13 +213,10 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
         } else if (result.status === 'needs_second_factor') {
           setError('Two-factor authentication required');
         } else {
-          console.log('SignIn status:', result.status);
           setError('Verification incomplete');
         }
       }
     } catch (err) {
-      console.error('Verification error:', err);
-
       if (isClerkAPIResponseError(err)) {
         const errorMessage = err.errors[0]?.message || 'Invalid code';
         const errorCode = err.errors[0]?.code;
@@ -238,7 +225,7 @@ export function EmailAuth({ onSuccess, onBack }: EmailAuthProps) {
         if (errorMessage.toLowerCase().includes('verified') ||
             errorCode === 'verification_already_verified') {
 
-          console.log('Already verified, checking signUp status:', signUp?.status);
+          // Already verified - try to complete the sign-up
 
           // If signUp is complete, activate session and proceed
           if (signUp?.status === 'complete') {

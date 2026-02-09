@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
@@ -41,10 +41,6 @@ export default function PendingScreen() {
 
   // Queries
   const waitlistPosition = useQuery(api.users.getWaitlistPosition);
-
-  // Mutations
-  const consumeInviteCode = useMutation(api.inviteCodes.use);
-  const updateUser = useMutation(api.users.update);
 
   const isChecking = code.trim().length >= 4 && (debouncedCode !== code.trim().toUpperCase() || validation === undefined);
   const isValid = validation?.isValid === true;

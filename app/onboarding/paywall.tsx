@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMutation, useConvexAuth } from 'convex/react';
 import { useAuth } from '@clerk/clerk-expo';
 import { api } from '@/convex/_generated/api';
@@ -66,18 +66,7 @@ export default function PaywallScreen() {
   const consumeInviteCode = useMutation(api.inviteCodes.use);
   const { convexUser } = useAuthenticatedUser();
 
-  // Debug logging
-  useEffect(() => {
-    console.log('Paywall Auth State:', {
-      isClerkLoaded,
-      isSignedIn,
-      isConvexLoading,
-      isAuthenticated,
-    });
-  }, [isClerkLoaded, isSignedIn, isConvexLoading, isAuthenticated]);
-
   const createUserInternal = async () => {
-    console.log('handleCreateUser called', { isProcessing, isAuthenticated, isSignedIn });
 
     // Check if still loading
     if (isConvexLoading || !isClerkLoaded) {
@@ -186,6 +175,7 @@ export default function PaywallScreen() {
   const priceLabel = yearlyPackage?.product?.priceString ?? '$99.99/year';
 
   // TODO: Set to false once App Store Connect Paid Apps Agreement is complete (waiting for Korean BRN)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const ALLOW_PAYWALL_BYPASS = true;
 
   const handleStartTrial = async () => {
@@ -193,8 +183,6 @@ export default function PaywallScreen() {
 
     // If offerings aren't available (App Store Connect not fully set up), allow bypass
     if (!yearlyPackage) {
-      console.log('[Paywall] No yearlyPackage, ALLOW_PAYWALL_BYPASS =', ALLOW_PAYWALL_BYPASS);
-
       // Always allow bypass for now since App Store Connect isn't fully configured
       Alert.alert(
         'Development Mode',

@@ -65,7 +65,7 @@ export default function PhotosScreen() {
       try {
         const cloudUrls = await uploadPhotos(photos);
         updateData({ photos: cloudUrls });
-      } catch (err) {
+      } catch {
         Alert.alert(
           'upload failed',
           'failed to upload your photos. please try again.'

@@ -106,7 +106,7 @@ export default function ExploreScreen() {
       return mockActivities;
     }
     return mockActivities.filter(activity => activity.category === selectedInterest);
-  }, [selectedInterest, userInterests]);
+  }, [selectedInterest]);
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>

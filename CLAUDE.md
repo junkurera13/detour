@@ -161,11 +161,15 @@ Functional MVP (7/10) with backend fully integrated. See `ROADMAP.md` for full d
 - Push notifications (Expo Notifications)
 - Edit profile screen
 
-**Remaining for production:**
-- App Store Connect Paid Apps Agreement (submitted, status "Pending User Info" in App Store Connect) - then set `ALLOW_PAYWALL_BYPASS = false` in both paywall files
-- Google Play Developer account registered (identity verification pending)
-- Android build in progress on EAS
+**Remaining for production (Android-focused, Feb 12 deadline):**
+- Android build & upload to Google Play Internal Testing (in progress on EAS)
+- Google Play Developer account verified and ready
+- Seed demo data for judges
 - Error monitoring (Sentry)
+
+**Deferred (post-hackathon):**
+- iOS / TestFlight release (blocked on App Store Connect Paid Apps Agreement — Korean BRN pending)
+- Set `ALLOW_PAYWALL_BYPASS = false` in both paywall files once Apple agreement is signed
 - Testing suite
 
 **Recently completed:**

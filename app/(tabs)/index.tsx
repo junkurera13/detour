@@ -613,7 +613,6 @@ export default function NearbyScreen() {
       if (result.isMatch) {
         // TODO: Show match modal in future enhancement
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        console.log('Match created!', result.matchId);
       }
     } catch (error) {
       console.error('Failed to record swipe:', error);
