@@ -130,6 +130,7 @@ export const update = mutation({
       endDate: v.optional(v.string()),
     }))),
     builderBio: v.optional(v.string()),
+    builderSpecialties: v.optional(v.array(v.string())),
     userStatus: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...updates }) => {

@@ -179,6 +179,7 @@ export default function EditProfileScreen() {
   const [interests, setInterests] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [builderBio, setBuilderBio] = useState('');
+  const [builderSpecialties, setBuilderSpecialties] = useState<string[]>([]);
 
   // UI state
   const [activeSection, setActiveSection] = useState<Section>('basic');
@@ -202,6 +203,7 @@ export default function EditProfileScreen() {
       setInterests(user.interests || []);
       setPhotos(user.photos || []);
       setBuilderBio(user.builderBio || '');
+      setBuilderSpecialties(user.builderSpecialties || []);
     }
   }, [user]);
 
@@ -215,9 +217,10 @@ export default function EditProfileScreen() {
       JSON.stringify(lifestyle) !== JSON.stringify(user.lifestyle) ||
       JSON.stringify(interests) !== JSON.stringify(user.interests) ||
       JSON.stringify(photos) !== JSON.stringify(user.photos) ||
-      builderBio !== (user.builderBio || '');
+      builderBio !== (user.builderBio || '') ||
+      JSON.stringify(builderSpecialties) !== JSON.stringify(user.builderSpecialties || []);
     setHasChanges(changed);
-  }, [name, username, instagram, lifestyle, interests, photos, builderBio, user]);
+  }, [name, username, instagram, lifestyle, interests, photos, builderBio, builderSpecialties, user]);
 
   // Username validation
   useEffect(() => {
@@ -283,6 +286,12 @@ export default function EditProfileScreen() {
     });
   };
 
+  const toggleBuilderSpecialty = (id: string) => {
+    setBuilderSpecialties((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
+
   const toggleInterest = (id: string) => {
     setInterests((prev) => {
       if (prev.includes(id)) {
@@ -324,16 +333,18 @@ export default function EditProfileScreen() {
       // Upload any new local photos
       const uploadedPhotos = await uploadPhotos(photos);
 
-      await updateUser({
+      const args: Record<string, unknown> = {
         id: user._id,
         name: name.trim(),
         username: username.trim(),
-        instagram: instagram.trim() || undefined,
         lifestyle,
         interests,
         photos: uploadedPhotos,
-        builderBio: builderBio.trim() || undefined,
-      });
+      };
+      if (instagram.trim()) args.instagram = instagram.trim();
+      if (builderBio.trim()) args.builderBio = builderBio.trim();
+      if (builderSpecialties.length > 0) args.builderSpecialties = builderSpecialties;
+      await updateUser(args as any);
 
       router.back();
     } catch {
@@ -655,6 +666,31 @@ export default function EditProfileScreen() {
                 >
                   {builderBio.length}/80
                 </Text>
+              </View>
+              <View>
+                <Text
+                  className="text-sm text-black mb-2"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  specialties
+                </Text>
+                <View className="flex-row flex-wrap">
+                  {[
+                    { id: 'repairs', label: 'repairs', emoji: '🔧' },
+                    { id: 'electrical', label: 'electrical', emoji: '⚡' },
+                    { id: 'build', label: 'build', emoji: '🪚' },
+                    { id: 'plumbing', label: 'plumbing', emoji: '🚿' },
+                    { id: 'other', label: 'other', emoji: '📦' },
+                  ].map((option) => (
+                    <SelectionChip
+                      key={option.id}
+                      label={option.label}
+                      emoji={option.emoji}
+                      selected={builderSpecialties.includes(option.id)}
+                      onPress={() => toggleBuilderSpecialty(option.id)}
+                    />
+                  ))}
+                </View>
               </View>
             </View>
           )}

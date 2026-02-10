@@ -333,8 +333,8 @@ export default function ExploreScreen() {
                 className="mb-4 rounded-2xl overflow-hidden bg-white"
                 style={{
                   shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.08,
                   shadowRadius: 8,
                   elevation: 3,
                 }}

@@ -478,27 +478,28 @@ export const getBuilderStats = query({
     const inProgressRequests = myRequests.filter((r) => r.status === "in_progress");
     const acceptedOffers = myOffers.filter((o) => o.status === "accepted");
 
-    // Derive specialties from categories the user has offered help in
-    const offeredRequestIds = myOffers.map((o) => o.requestId);
-    const offeredRequests = await Promise.all(
-      [...new Set(offeredRequestIds)].map((id) => ctx.db.get(id))
-    );
-    const offerCategories = offeredRequests
-      .filter(Boolean)
-      .map((r) => r!.category);
-
-    // Also include categories from their own requests
-    const requestCategories = myRequests.map((r) => r.category);
-    const allCategories = [...offerCategories, ...requestCategories];
-
-    // Count category frequency and sort by most active
-    const categoryCounts: Record<string, number> = {};
-    for (const cat of allCategories) {
-      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    // Use user-set specialties if available, otherwise derive from activity
+    let specialties: string[];
+    if (user.builderSpecialties && user.builderSpecialties.length > 0) {
+      specialties = user.builderSpecialties;
+    } else {
+      const offeredRequestIds = myOffers.map((o) => o.requestId);
+      const offeredRequests = await Promise.all(
+        [...new Set(offeredRequestIds)].map((id) => ctx.db.get(id))
+      );
+      const offerCategories = offeredRequests
+        .filter(Boolean)
+        .map((r) => r!.category);
+      const requestCategories = myRequests.map((r) => r.category);
+      const allCategories = [...offerCategories, ...requestCategories];
+      const categoryCounts: Record<string, number> = {};
+      for (const cat of allCategories) {
+        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+      }
+      specialties = Object.entries(categoryCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cat]) => cat);
     }
-    const specialties = Object.entries(categoryCounts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([cat]) => cat);
 
     return {
       totalRequests: myRequests.length,

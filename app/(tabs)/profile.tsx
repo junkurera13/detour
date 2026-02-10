@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, Alert, Platform, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -122,6 +122,10 @@ export default function ProfileScreen() {
   const [editingLocationIndex, setEditingLocationIndex] = useState<number | null>(null);
   const [editingStopText, setEditingStopText] = useState('');
   const [datePickerTarget, setDatePickerTarget] = useState<{ index: number; field: 'start' | 'end' } | null>(null);
+  const [editingBuilder, setEditingBuilder] = useState(false);
+  const [editBuilderBio, setEditBuilderBio] = useState('');
+  const [editBuilderSpecialties, setEditBuilderSpecialties] = useState<string[]>([]);
+  const [savingBuilder, setSavingBuilder] = useState(false);
   const slideAnim = useRef(new Animated.Value(400)).current;
 
   // Use Convex user data if available, fallback to onboarding data
@@ -696,49 +700,209 @@ export default function ProfileScreen() {
           <>
             {/* Builder Profile - Help Activity */}
             <View className="px-6 mb-6">
-              {builderStats ? (
-                <View className="bg-gray-50 rounded-3xl p-5">
-                  {/* Bio */}
-                  {user?.builderBio && (
-                    <View className="mb-5">
+              <View className="bg-gray-50 rounded-3xl p-5">
+                {editingBuilder ? (
+                  <>
+                    {/* Edit mode */}
+                    <View className="mb-4">
                       <Text
-                        className="text-black text-base"
+                        className="text-base text-gray-500 mb-2"
                         style={{ fontFamily: 'InstrumentSans_500Medium' }}
                       >
-                        {`\u201C${user.builderBio}\u201D`}
+                        bio
+                      </Text>
+                      <TextInput
+                        className="bg-gray-50 rounded-2xl px-4 py-3 text-black text-lg"
+                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                        value={editBuilderBio}
+                        onChangeText={(text) => setEditBuilderBio(text.slice(0, 80))}
+                        placeholder="e.g. electrician by trade, happy to help"
+                        placeholderTextColor="#9CA3AF"
+                        multiline
+                        maxLength={80}
+                      />
+                      <Text
+                        className="text-gray-400 text-xs mt-1 text-right"
+                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                      >
+                        {editBuilderBio.length}/80
                       </Text>
                     </View>
-                  )}
 
-                  {/* Specialties */}
-                  {builderStats.specialties.length > 0 && (
-                    <View className="mb-5">
+                    <View className="mb-4">
                       <Text
-                        className="text-sm text-gray-500 mb-2"
+                        className="text-base text-gray-500 mb-2"
                         style={{ fontFamily: 'InstrumentSans_500Medium' }}
                       >
                         specialties
                       </Text>
                       <View className="flex-row flex-wrap gap-2">
-                        {builderStats.specialties.map((cat) => {
-                          const info = helpCategoryLabels[cat];
+                        {Object.entries(helpCategoryLabels).map(([id, info]) => {
+                          const selected = editBuilderSpecialties.includes(id);
                           return (
-                            <View key={cat} className="bg-white px-3 py-2 rounded-full flex-row items-center">
-                              {info && <Text className="mr-1.5">{info.emoji}</Text>}
+                            <TouchableOpacity
+                              key={id}
+                              onPress={() => setEditBuilderSpecialties((prev) =>
+                                prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+                              )}
+                              className={`px-4 py-2.5 rounded-full flex-row items-center border-2 ${
+                                selected ? 'bg-white border-orange-primary' : 'bg-white border-transparent'
+                              }`}
+                            >
+                              <Text className="mr-1.5 text-base">{info.emoji}</Text>
                               <Text
-                                className="text-black text-sm"
+                                className={`text-base ${selected ? 'text-orange-primary' : 'text-black'}`}
                                 style={{ fontFamily: 'InstrumentSans_500Medium' }}
                               >
-                                {info?.label || cat}
+                                {info.label}
                               </Text>
-                            </View>
+                            </TouchableOpacity>
                           );
                         })}
                       </View>
                     </View>
-                  )}
 
-                  {/* Stats grid */}
+                    <View className="flex-row gap-2">
+                      <TouchableOpacity
+                        onPress={() => setEditingBuilder(false)}
+                        className="flex-1 py-3 rounded-full bg-white items-center"
+                      >
+                        <Text
+                          className="text-black text-base"
+                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                        >
+                          cancel
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={async () => {
+                          if (!user) return;
+                          setSavingBuilder(true);
+                          try {
+                            const args: Record<string, unknown> = { id: user._id };
+                            const bio = editBuilderBio.trim();
+                            if (bio) args.builderBio = bio;
+                            if (editBuilderSpecialties.length > 0) args.builderSpecialties = editBuilderSpecialties;
+                            await updateUser(args as any);
+                            setEditingBuilder(false);
+                          } catch {
+                            Alert.alert('error', 'failed to save. please try again.');
+                          } finally {
+                            setSavingBuilder(false);
+                          }
+                        }}
+                        disabled={savingBuilder}
+                        className="flex-1 py-3 rounded-full bg-orange-primary items-center"
+                        style={{ opacity: savingBuilder ? 0.5 : 1 }}
+                      >
+                        <Text
+                          className="text-white text-base"
+                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                        >
+                          {savingBuilder ? 'saving...' : 'save'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    {/* View mode */}
+                    <TouchableOpacity
+                      onPress={() => {
+                        setEditBuilderBio(user?.builderBio || '');
+                        setEditBuilderSpecialties(user?.builderSpecialties || []);
+                        setEditingBuilder(true);
+                      }}
+                      className="absolute top-4 right-4 z-10"
+                    >
+                      <Ionicons name="pencil-outline" size={18} color="#9CA3AF" />
+                    </TouchableOpacity>
+
+                    {/* Bio */}
+                    <Text
+                      className="text-base text-gray-500 mb-2"
+                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                    >
+                      about
+                    </Text>
+                    {user?.builderBio ? (
+                      <View className="mb-5">
+                        <Text
+                          className="text-black text-lg"
+                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        >
+                          {user.builderBio}
+                        </Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setEditBuilderBio('');
+                          setEditBuilderSpecialties(user?.builderSpecialties || []);
+                          setEditingBuilder(true);
+                        }}
+                        className="mb-5"
+                      >
+                        <Text
+                          className="text-gray-400 text-lg"
+                          style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                        >
+                          tap to add a builder bio...
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Specialties */}
+                    {builderStats && builderStats.specialties.length > 0 ? (
+                      <View className="mb-5">
+                        <Text
+                          className="text-base text-gray-500 mb-2"
+                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        >
+                          specialties
+                        </Text>
+                        <View className="flex-row flex-wrap gap-2">
+                          {builderStats.specialties.map((cat) => {
+                            const info = helpCategoryLabels[cat];
+                            return (
+                              <View key={cat} className="bg-white px-4 py-2.5 rounded-full flex-row items-center">
+                                {info && <Text className="mr-1.5 text-base">{info.emoji}</Text>}
+                                <Text
+                                  className="text-black text-base"
+                                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                                >
+                                  {info?.label || cat}
+                                </Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setEditBuilderBio(user?.builderBio || '');
+                          setEditBuilderSpecialties([]);
+                          setEditingBuilder(true);
+                        }}
+                        className="mb-5"
+                      >
+                        <Text
+                          className="text-gray-400 text-base"
+                          style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                        >
+                          tap to add specialties...
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                  </>
+                )}
+              </View>
+
+              {/* Stats bento */}
+              {builderStats && (
+                <View className="bg-gray-50 rounded-3xl p-5 mt-3">
                   <View className="flex-row mb-5">
                     <View className="flex-1 items-center py-3 bg-white rounded-2xl mr-2">
                       <Text
@@ -748,7 +912,7 @@ export default function ProfileScreen() {
                         {builderStats.completedRequests}
                       </Text>
                       <Text
-                        className="text-xs text-gray-500 mt-1"
+                        className="text-sm text-gray-500 mt-1"
                         style={{ fontFamily: 'InstrumentSans_500Medium' }}
                       >
                         completed
@@ -762,7 +926,7 @@ export default function ProfileScreen() {
                         {builderStats.totalRequests}
                       </Text>
                       <Text
-                        className="text-xs text-gray-500 mt-1"
+                        className="text-sm text-gray-500 mt-1"
                         style={{ fontFamily: 'InstrumentSans_500Medium' }}
                       >
                         requests
@@ -774,7 +938,7 @@ export default function ProfileScreen() {
                   {builderStats.activeRequests.length > 0 && (
                     <View>
                       <Text
-                        className="text-sm text-gray-500 mb-2"
+                        className="text-base text-gray-500 mb-2"
                         style={{ fontFamily: 'InstrumentSans_500Medium' }}
                       >
                         current requests
@@ -791,14 +955,14 @@ export default function ProfileScreen() {
                             </View>
                             <View className="flex-1">
                               <Text
-                                className="text-black text-sm"
+                                className="text-black text-base"
                                 style={{ fontFamily: 'InstrumentSans_500Medium' }}
                                 numberOfLines={1}
                               >
                                 {req.title}
                               </Text>
                               <Text
-                                className="text-gray-400 text-xs"
+                                className="text-gray-400 text-sm"
                                 style={{ fontFamily: 'InstrumentSans_400Regular' }}
                               >
                                 {req.status === 'open' ? 'open' : 'in progress'}
@@ -807,7 +971,7 @@ export default function ProfileScreen() {
                             {req.isUrgent && (
                               <View className="bg-red-100 px-2 py-1 rounded-full">
                                 <Text
-                                  className="text-red-600 text-xs"
+                                  className="text-red-600 text-sm"
                                   style={{ fontFamily: 'InstrumentSans_500Medium' }}
                                 >
                                   urgent
@@ -820,28 +984,18 @@ export default function ProfileScreen() {
                     </View>
                   )}
 
-                  {/* Empty state for no active requests */}
+                  {/* Empty state */}
                   {builderStats.activeRequests.length === 0 && builderStats.totalRequests === 0 && (
                     <View className="items-center py-4">
                       <Ionicons name="hammer-outline" size={32} color="#D1D5DB" />
                       <Text
-                        className="text-gray-400 text-sm mt-2 text-center"
+                        className="text-gray-400 text-base mt-2 text-center"
                         style={{ fontFamily: 'InstrumentSans_400Regular' }}
                       >
                         no help activity yet
                       </Text>
                     </View>
                   )}
-                </View>
-              ) : (
-                <View className="bg-gray-50 rounded-3xl p-5 items-center py-8">
-                  <Ionicons name="hammer-outline" size={32} color="#D1D5DB" />
-                  <Text
-                    className="text-gray-400 text-sm mt-2 text-center"
-                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                  >
-                    no help activity yet
-                  </Text>
                 </View>
               )}
             </View>

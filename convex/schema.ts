@@ -40,6 +40,7 @@ export default defineSchema({
 
     // Builder profile
     builderBio: v.optional(v.string()),
+    builderSpecialties: v.optional(v.array(v.string())),
 
     // Status
     joinPath: v.string(), // "invite" or "apply"
