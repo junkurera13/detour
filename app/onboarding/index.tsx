@@ -1,70 +1,41 @@
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { useState } from 'react';
-import { useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { useOnboarding } from '@/context/OnboardingContext';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useAuth } from '@clerk/clerk-expo';
+import { useFinalizeAuth } from '@/hooks/useFinalizeAuth';
 import { EmailAuth } from '@/components/auth/EmailAuth';
 import { OAuthButtons } from '@/components/auth/OAuthButtons';
 
 export default function AuthLandingScreen() {
-  const router = useRouter();
-  const { updateData } = useOnboarding();
+  const { isSignedIn, isLoaded: isClerkLoaded } = useAuth();
+  const finalizeAuth = useFinalizeAuth();
   const [showEmailAuth, setShowEmailAuth] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [authResolutionFailed, setAuthResolutionFailed] = useState(false);
+  const authInFlightRef = useRef(false);
 
-  const getOrCreateUser = useMutation(api.users.getOrCreateByToken);
+  const handleAuthSuccess = useCallback(async () => {
+    if (authInFlightRef.current) return;
 
-  const handleAuthSuccess = async () => {
+    authInFlightRef.current = true;
+    setAuthResolutionFailed(false);
     setIsLoading(true);
 
-    // Retry logic to handle token propagation delay
-    const maxRetries = 3;
-    let lastError: unknown;
+    const result = await finalizeAuth();
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        // Check if user exists in Convex
-        const result = await getOrCreateUser({});
-
-        if (result.isNew || !result.user) {
-          // New user - start onboarding
-          router.replace('/onboarding/name');
-        } else {
-          // Existing user - update local state and route based on status
-          const user = result.user;
-          updateData({
-            name: user.name,
-            username: user.username,
-            hasCompletedOnboarding: true,
-            userStatus: user.userStatus as 'none' | 'pending' | 'approved',
-          });
-
-          if (user.userStatus === 'approved') {
-            router.replace('/(tabs)');
-          } else {
-            router.replace('/pending');
-          }
-        }
-        return; // Success, exit the function
-      } catch (error) {
-        lastError = error;
-        console.error(`Auth attempt ${attempt}/${maxRetries} failed:`, error);
-
-        if (attempt < maxRetries) {
-          // Wait before retrying (exponential backoff)
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        }
-      }
+    if (!result.ok) {
+      authInFlightRef.current = false;
+      setAuthResolutionFailed(true);
+      setIsLoading(false);
+      Alert.alert('Error', 'Authentication failed. Please try again.');
     }
+  }, [finalizeAuth]);
 
-    // All retries failed
-    console.error('Auth error after all retries:', lastError);
-    Alert.alert('Error', 'Authentication failed. Please try again.');
-    setIsLoading(false);
-  };
+  useEffect(() => {
+    if (!isClerkLoaded || !isSignedIn || showEmailAuth || authResolutionFailed) return;
+    void handleAuthSuccess();
+  }, [authResolutionFailed, handleAuthSuccess, isClerkLoaded, isSignedIn, showEmailAuth]);
 
   if (showEmailAuth) {
     return (
@@ -75,7 +46,7 @@ export default function AuthLandingScreen() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || (isClerkLoaded && isSignedIn && !authResolutionFailed)) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#fd6b03" />
@@ -129,7 +100,6 @@ export default function AuthLandingScreen() {
             </TouchableOpacity>
 
             <OAuthButtons
-              onSuccess={handleAuthSuccess}
               onError={(error) => Alert.alert('Error', error)}
             />
           </View>

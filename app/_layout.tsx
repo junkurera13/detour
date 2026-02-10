@@ -74,6 +74,12 @@ export default function RootLayout() {
                     >
                       <Stack.Screen name="index" />
                       <Stack.Screen
+                        name="oauth-callback"
+                        options={{
+                          gestureEnabled: false,
+                        }}
+                      />
+                      <Stack.Screen
                         name="onboarding"
                         options={{
                           gestureEnabled: false,

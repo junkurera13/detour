@@ -9,11 +9,10 @@ import * as Linking from 'expo-linking';
 WebBrowser.maybeCompleteAuthSession();
 
 interface OAuthButtonsProps {
-  onSuccess: () => void;
   onError: (error: string) => void;
 }
 
-export function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) {
+export function OAuthButtons({ onError }: OAuthButtonsProps) {
   useWarmUpBrowser();
 
   const { startOAuthFlow: googleOAuth } = useOAuth({ strategy: 'oauth_google' });
@@ -26,7 +25,7 @@ export function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) {
 
     try {
       const oauthFlow = provider === 'google' ? googleOAuth : appleOAuth;
-      const redirectUrl = Linking.createURL('oauth-callback');
+      const redirectUrl = Linking.createURL('/oauth-callback');
 
       const { createdSessionId, setActive } = await oauthFlow({
         redirectUrl,
@@ -34,11 +33,8 @@ export function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) {
 
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
-        // Wait for Clerk token to propagate to Convex
-        // This delay is necessary because ConvexProviderWithClerk needs time
-        // to sync the new auth token after setActive completes
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        onSuccess();
+      } else {
+        onError(`Failed to sign in with ${provider}`);
       }
     } catch (err: any) {
       // Don't show error for user cancellation
