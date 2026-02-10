@@ -63,6 +63,11 @@ export const approveUser = mutation({
       updatedAt: Date.now(),
     });
 
+    // Generate 3 invite codes for the newly approved user
+    await ctx.scheduler.runAfter(0, internal.inviteCodes.generateCodesForUser, {
+      userId: args.userId,
+    });
+
     // Send push notification if user has a push token
     if (user.expoPushToken) {
       await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {

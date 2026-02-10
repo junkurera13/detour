@@ -1,5 +1,140 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
+
+const INVITE_CODES_PER_USER = 3;
+const SAFE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function generateCode(prefix: string): string {
+  const cleanPrefix = prefix.replace(/[^a-zA-Z]/g, "").slice(0, 4).toUpperCase() || "DTOUR";
+  let suffix = "";
+  for (let i = 0; i < 4; i++) {
+    suffix += SAFE_CHARS[Math.floor(Math.random() * SAFE_CHARS.length)];
+  }
+  return `${cleanPrefix}-${suffix}`;
+}
+
+export const generateCodesForUser = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user || user.userStatus !== "approved") return;
+
+    const existingCodes = await ctx.db
+      .query("inviteCodes")
+      .withIndex("by_creator", (q) => q.eq("createdBy", args.userId))
+      .collect();
+
+    const toGenerate = INVITE_CODES_PER_USER - existingCodes.length;
+    if (toGenerate <= 0) return;
+
+    for (let i = 0; i < toGenerate; i++) {
+      let code = generateCode(user.username || user.name);
+      // Ensure uniqueness
+      let existing = await ctx.db
+        .query("inviteCodes")
+        .withIndex("by_code", (q) => q.eq("code", code))
+        .first();
+      while (existing) {
+        code = generateCode(user.username || user.name);
+        existing = await ctx.db
+          .query("inviteCodes")
+          .withIndex("by_code", (q) => q.eq("code", code))
+          .first();
+      }
+
+      await ctx.db.insert("inviteCodes", {
+        code,
+        createdBy: args.userId,
+        maxUses: 1,
+        currentUses: 0,
+        isActive: true,
+        createdAt: Date.now(),
+      });
+    }
+  },
+});
+
+// Backfill: generate codes for all approved users missing them
+export const backfillCodes = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const approved = users.filter((u) => u.userStatus === "approved");
+    let generated = 0;
+    for (const user of approved) {
+      const existing = await ctx.db
+        .query("inviteCodes")
+        .withIndex("by_creator", (q) => q.eq("createdBy", user._id))
+        .collect();
+      const toGenerate = INVITE_CODES_PER_USER - existing.length;
+      if (toGenerate <= 0) continue;
+      for (let i = 0; i < toGenerate; i++) {
+        let code = generateCode(user.username || user.name);
+        let dup = await ctx.db.query("inviteCodes").withIndex("by_code", (q) => q.eq("code", code)).first();
+        while (dup) {
+          code = generateCode(user.username || user.name);
+          dup = await ctx.db.query("inviteCodes").withIndex("by_code", (q) => q.eq("code", code)).first();
+        }
+        await ctx.db.insert("inviteCodes", {
+          code,
+          createdBy: user._id,
+          maxUses: 1,
+          currentUses: 0,
+          isActive: true,
+          createdAt: Date.now(),
+        });
+        generated++;
+      }
+    }
+    return { generated };
+  },
+});
+
+export const getMyInviteCodes = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .first();
+    if (!user) return [];
+
+    const codes = await ctx.db
+      .query("inviteCodes")
+      .withIndex("by_creator", (q) => q.eq("createdBy", user._id))
+      .collect();
+
+    return await Promise.all(
+      codes.map(async (code) => {
+        let usedByUser = null;
+        if (code.usedBy) {
+          const usedByDoc = await ctx.db.get(code.usedBy);
+          if (usedByDoc) {
+            usedByUser = {
+              _id: usedByDoc._id,
+              name: usedByDoc.name,
+              username: usedByDoc.username,
+              photos: usedByDoc.photos,
+            };
+          }
+        }
+        return {
+          _id: code._id,
+          code: code.code,
+          isActive: code.isActive,
+          currentUses: code.currentUses,
+          maxUses: code.maxUses,
+          createdAt: code.createdAt,
+          usedByUser,
+        };
+      })
+    );
+  },
+});
 
 export const validate = query({
   args: { code: v.string() },
@@ -57,6 +192,11 @@ export const use = mutation({
     await ctx.db.patch(args.userId, {
       userStatus: "approved",
       updatedAt: Date.now(),
+    });
+
+    // Generate 3 invite codes for the newly approved user (chain reaction)
+    await ctx.scheduler.runAfter(0, internal.inviteCodes.generateCodesForUser, {
+      userId: args.userId,
     });
 
     return { success: true };

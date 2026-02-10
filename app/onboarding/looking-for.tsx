@@ -43,7 +43,7 @@ export default function LookingForScreen() {
         <View className="pt-6">
           {/* Dating card — always selected */}
           <View
-            className="px-5 py-3 rounded-2xl mb-3 border-2 bg-white border-orange-primary"
+            className="px-5 py-3 rounded-2xl mb-3 bg-white"
           >
             <View className="flex-row items-center">
               <Image

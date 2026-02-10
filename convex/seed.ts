@@ -11,6 +11,7 @@ const testUsers = [
     gender: "woman",
     lookingFor: ["friends", "dating"],
     datingPreference: ["men"],
+    datingGoals: ["long-term"],
     lifestyle: ["digital-nomad", "slow-travel"],
     timeNomadic: "2-years",
     interests: ["design", "coffee", "hiking", "photography"],
@@ -32,6 +33,7 @@ const testUsers = [
     gender: "man",
     lookingFor: ["dating"],
     datingPreference: ["women"],
+    datingGoals: ["long-term", "casual"],
     lifestyle: ["digital-nomad", "perpetual-traveler"],
     timeNomadic: "3-years",
     interests: ["surfing", "cooking", "dev", "reading"],
@@ -53,6 +55,7 @@ const testUsers = [
     gender: "woman",
     lookingFor: ["friends", "dating"],
     datingPreference: ["men"],
+    datingGoals: ["casual"],
     lifestyle: ["backpacker", "hostel-hopper"],
     timeNomadic: "1-year",
     interests: ["writing", "live-music", "street-food", "yoga"],
@@ -72,6 +75,7 @@ const testUsers = [
     gender: "man",
     lookingFor: ["friends", "dating"],
     datingPreference: ["women"],
+    datingGoals: ["life-partner"],
     lifestyle: ["digital-nomad", "expat"],
     timeNomadic: "4-years",
     interests: ["design", "photography", "wine", "climbing"],
@@ -92,6 +96,7 @@ const testUsers = [
     gender: "woman",
     lookingFor: ["friends", "dating"],
     datingPreference: ["men"],
+    datingGoals: ["long-term", "casual"],
     lifestyle: ["digital-nomad", "slow-travel"],
     timeNomadic: "2-years",
     interests: ["content-creator", "fitness", "cooking", "photography"],
@@ -113,6 +118,7 @@ const testUsers = [
     gender: "man",
     lookingFor: ["dating"],
     datingPreference: ["women"],
+    datingGoals: ["casual", "intimacy"],
     lifestyle: ["digital-nomad"],
     timeNomadic: "2-years",
     interests: ["muay-thai", "food", "coffee", "podcasts"],
@@ -133,6 +139,7 @@ const testUsers = [
     gender: "woman",
     lookingFor: ["friends"],
     datingPreference: [],
+    datingGoals: [],
     lifestyle: ["backpacker", "slow-travel"],
     timeNomadic: "1-year",
     interests: ["photography", "art", "food", "markets"],
@@ -153,6 +160,7 @@ const testUsers = [
     gender: "man",
     lookingFor: ["friends", "dating"],
     datingPreference: ["women"],
+    datingGoals: ["long-term"],
     lifestyle: ["digital-nomad"],
     timeNomadic: "3-years",
     interests: ["dev", "chess", "hiking", "coffee"],
@@ -174,6 +182,7 @@ const testUsers = [
     gender: "woman",
     lookingFor: ["friends", "dating"],
     datingPreference: ["men", "women"],
+    datingGoals: ["casual", "long-term"],
     lifestyle: ["digital-nomad", "hostel-hopper"],
     timeNomadic: "1-year",
     interests: ["diving", "dancing", "languages", "food"],
@@ -193,6 +202,7 @@ const testUsers = [
     gender: "man",
     lookingFor: ["friends", "dating"],
     datingPreference: ["women"],
+    datingGoals: ["life-partner"],
     lifestyle: ["digital-nomad", "slow-travel"],
     timeNomadic: "2-years",
     interests: ["writing", "salsa", "coffee", "hiking"],
@@ -213,6 +223,7 @@ const testUsers = [
     gender: "woman",
     lookingFor: ["friends"],
     datingPreference: [],
+    datingGoals: [],
     lifestyle: ["digital-nomad", "slow-travel"],
     timeNomadic: "2-years",
     interests: ["illustration", "anime", "ramen", "photography"],
@@ -233,6 +244,7 @@ const testUsers = [
     gender: "man",
     lookingFor: ["dating"],
     datingPreference: ["women"],
+    datingGoals: ["long-term", "life-partner"],
     lifestyle: ["expat", "digital-nomad"],
     timeNomadic: "5-years",
     interests: ["craft-beer", "history", "cycling", "reading"],
@@ -252,6 +264,7 @@ const testUsers = [
     gender: "woman",
     lookingFor: ["friends", "dating"],
     datingPreference: ["men"],
+    datingGoals: ["life-partner"],
     lifestyle: ["slow-travel", "yoga-retreat"],
     timeNomadic: "2-years",
     interests: ["yoga", "meditation", "cooking", "journaling"],
@@ -273,6 +286,7 @@ const testUsers = [
     gender: "man",
     lookingFor: ["friends", "dating"],
     datingPreference: ["women"],
+    datingGoals: ["casual"],
     lifestyle: ["digital-nomad", "backpacker"],
     timeNomadic: "1-year",
     interests: ["videography", "street-food", "skateboarding", "music"],
@@ -293,6 +307,7 @@ const testUsers = [
     gender: "woman",
     lookingFor: ["dating"],
     datingPreference: ["men"],
+    datingGoals: ["long-term", "intimacy"],
     lifestyle: ["digital-nomad", "perpetual-traveler"],
     timeNomadic: "3-years",
     interests: ["diving", "wine", "sailing", "cooking"],
@@ -356,6 +371,7 @@ export const reseedUsers = mutation({
           latitude: user.latitude,
           longitude: user.longitude,
           pets: (user as any).pets,
+          datingGoals: (user as any).datingGoals,
           updatedAt: Date.now(),
         });
         updatedCount++;
@@ -363,6 +379,43 @@ export const reseedUsers = mutation({
     }
 
     return { message: `Updated ${updatedCount} seed users`, count: updatedCount };
+  },
+});
+
+// Backfill datingGoals for old seed users that have empty goals
+export const backfillDatingGoals = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const goalMap: Record<string, string[]> = {
+      "emma.explores": ["long-term"],
+      "lucas.builds": ["casual", "long-term"],
+      "nina.vibes": ["life-partner"],
+      "alex.vanlife": ["casual"],
+      "priya.yoga": ["long-term", "life-partner"],
+      "tom.adventures": ["casual", "intimacy"],
+      "luna.free": ["long-term"],
+      "dan.eth": ["casual"],
+      "mia.writes": ["life-partner"],
+      "ryan.surfs": ["casual", "long-term"],
+      "clara.sails": ["long-term"],
+    };
+    let patched = 0;
+    for (const [username, goals] of Object.entries(goalMap)) {
+      const user = await ctx.db.query("users").withIndex("by_username", (q) => q.eq("username", username)).first();
+      if (user) {
+        await ctx.db.patch(user._id, { datingGoals: goals });
+        patched++;
+      }
+    }
+    // Also backfill any user still missing the field entirely
+    const allUsers = await ctx.db.query("users").collect();
+    for (const user of allUsers) {
+      if (user.datingGoals === undefined) {
+        await ctx.db.patch(user._id, { datingGoals: [] });
+        patched++;
+      }
+    }
+    return { patched };
   },
 });
 

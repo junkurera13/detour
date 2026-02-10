@@ -155,6 +155,7 @@ export default function UserProfileScreen() {
         interests: convexUser.interests,
         futureTrips: convexUser.futureTrips || (convexUser.futureTrip ? [{ location: convexUser.futureTrip }] : []),
         pets: convexUser.pets || [],
+        datingGoals: convexUser.datingGoals || [],
       };
     }
     if (mockUser) {
@@ -169,6 +170,7 @@ export default function UserProfileScreen() {
         interests: mockUser.interests,
         futureTrips: mockUser.futureTrip ? [{ location: mockUser.futureTrip, startDate: getMockTripDate(mockUser.id, 0), endDate: getMockTripEndDate(mockUser.id, 0) }] : [],
         pets: [],
+        datingGoals: [],
       };
     }
     return null;
@@ -184,6 +186,7 @@ export default function UserProfileScreen() {
       futureTrips: profileData.futureTrips,
       lifestyle: profileData.lifestyle,
       pets: profileData.pets,
+      datingGoals: profileData.datingGoals,
     });
   }, [currentUser, profileData]);
 

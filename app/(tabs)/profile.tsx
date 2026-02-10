@@ -163,8 +163,16 @@ export default function ProfileScreen() {
   const [savingBuilder, setSavingBuilder] = useState(false);
   const [viewersModalVisible, setViewersModalVisible] = useState(false);
   const profileViewers = useQuery(api.profileViews.getRecentViewers, convexAuthenticated ? {} : "skip");
+  const myInviteCodes = useQuery(api.inviteCodes.getMyInviteCodes, convexAuthenticated ? {} : "skip");
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(400)).current;
   const viewersSlideAnim = useRef(new Animated.Value(400)).current;
+  const inviteSlideAnim = useRef(new Animated.Value(400)).current;
+
+  const availableInvites = useMemo(() => {
+    if (!myInviteCodes) return 0;
+    return myInviteCodes.filter(c => c.currentUses === 0 && c.isActive).length;
+  }, [myInviteCodes]);
 
   // Compute age from whichever source is available
   const age = useMemo(() => {
@@ -239,6 +247,16 @@ export default function ProfileScreen() {
       });
     } catch {
       // user cancelled or share failed — no action needed
+    }
+  };
+
+  const handleShareInviteCode = async (code: string) => {
+    try {
+      await Share.share({
+        message: `join me on detour! use my invite code: ${code}\n\nhttps://detour.app`,
+      });
+    } catch {
+      // user cancelled or share failed
     }
   };
 
@@ -336,18 +354,29 @@ export default function ProfileScreen() {
           >
             profile
           </Text>
-          <TouchableOpacity
-            className="ml-3 flex-row items-center rounded-full px-3 py-1.5"
-            style={{ borderWidth: 1.5, borderColor: '#fd6b03' }}
-          >
-            <Ionicons name="ticket-outline" size={16} color="#fd6b03" />
-            <Text
-              className="text-orange-primary text-sm ml-1.5"
-              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+          {myInviteCodes && myInviteCodes.length > 0 && (
+            <TouchableOpacity
+              className="ml-3 flex-row items-center rounded-full px-3 py-1.5"
+              style={{ borderWidth: 1.5, borderColor: '#fd6b03' }}
+              onPress={() => {
+                setInviteModalVisible(true);
+                Animated.spring(inviteSlideAnim, {
+                  toValue: 0,
+                  useNativeDriver: true,
+                  tension: 65,
+                  friction: 11,
+                }).start();
+              }}
             >
-              3
-            </Text>
-          </TouchableOpacity>
+              <Ionicons name="ticket-outline" size={16} color="#fd6b03" />
+              <Text
+                className="text-orange-primary text-sm ml-1.5"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                {availableInvites}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
         <View className="flex-row items-center gap-3">
           {profileViewers && profileViewers.length > 0 ? (
@@ -1260,6 +1289,113 @@ export default function ProfileScreen() {
               ))}
             </View>
 
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Invite Codes Modal */}
+      <Modal
+        visible={inviteModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => {
+          Animated.timing(inviteSlideAnim, {
+            toValue: 400,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => setInviteModalVisible(false));
+        }}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <TouchableOpacity
+            className="flex-1"
+            activeOpacity={1}
+            onPress={() => {
+              Animated.timing(inviteSlideAnim, {
+                toValue: 400,
+                duration: 200,
+                useNativeDriver: true,
+              }).start(() => setInviteModalVisible(false));
+            }}
+          />
+          <Animated.View
+            style={{ transform: [{ translateY: inviteSlideAnim }] }}
+            className="bg-white rounded-t-3xl px-6 pb-10 pt-4"
+          >
+            <View className="w-10 h-1 bg-gray-300 rounded-full self-center mb-4" />
+            <Text
+              className="text-xl text-black mb-1"
+              style={{ fontFamily: 'InstrumentSans_700Bold' }}
+            >
+              your invite codes
+            </Text>
+            <Text
+              className="text-gray-500 text-sm mb-4"
+              style={{ fontFamily: 'InstrumentSans_400Regular' }}
+            >
+              share with friends to skip the waitlist
+            </Text>
+
+            {myInviteCodes?.map((invite) => (
+              <View
+                key={invite._id}
+                className="flex-row items-center py-3 border-b border-gray-50"
+              >
+                <View className="flex-1">
+                  <Text
+                    className="text-black text-base"
+                    style={{ fontFamily: 'InstrumentSans_600SemiBold', letterSpacing: 1.5 }}
+                  >
+                    {invite.code}
+                  </Text>
+                  {invite.usedByUser ? (
+                    <TouchableOpacity
+                      className="flex-row items-center mt-1"
+                      onPress={() => {
+                        Animated.timing(inviteSlideAnim, {
+                          toValue: 400,
+                          duration: 200,
+                          useNativeDriver: true,
+                        }).start(() => {
+                          setInviteModalVisible(false);
+                          router.push(`/user/${invite.usedByUser!._id}` as any);
+                        });
+                      }}
+                    >
+                      {invite.usedByUser.photos?.[0] && (
+                        <Image
+                          source={{ uri: invite.usedByUser.photos[0] }}
+                          style={{ width: 16, height: 16, borderRadius: 8, marginRight: 4 }}
+                        />
+                      )}
+                      <Text
+                        className="text-gray-400 text-sm"
+                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                      >
+                        used by {invite.usedByUser.name?.toLowerCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text
+                      className="text-green-500 text-sm mt-1"
+                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                    >
+                      available
+                    </Text>
+                  )}
+                </View>
+
+                {!invite.usedByUser && (
+                  <TouchableOpacity
+                    onPress={() => handleShareInviteCode(invite.code)}
+                    className="w-10 h-10 rounded-full items-center justify-center"
+                    style={{ backgroundColor: '#FFF7ED' }}
+                  >
+                    <Ionicons name="share-outline" size={18} color="#fd6b03" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
           </Animated.View>
         </View>
       </Modal>

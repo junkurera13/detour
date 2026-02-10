@@ -6,6 +6,7 @@ export interface CompatibilityUser {
   futureTrips?: { location: string }[];
   lifestyle: string[];
   pets?: { type: string; name: string }[];
+  datingGoals?: string[];
 }
 
 const NEARBY_THRESHOLD_KM = 50;
@@ -25,6 +26,7 @@ export interface CompatibilityBreakdown {
   route: { score: number; sameCity: boolean; sharedTrips: string[] };
   interests: { score: number; shared: string[]; total: number };
   lifestyle: { score: number; shared: string[]; total: number };
+  datingGoals: { score: number; shared: string[] };
   travellingWith: { score: number; sharedTypes: string[] };
 }
 
@@ -33,9 +35,10 @@ export interface CompatibilityResult {
   breakdown: CompatibilityBreakdown;
 }
 
-const WEIGHT_ROUTE = 0.35;
-const WEIGHT_INTERESTS = 0.35;
-const WEIGHT_LIFESTYLE = 0.25;
+const WEIGHT_ROUTE = 0.30;
+const WEIGHT_INTERESTS = 0.30;
+const WEIGHT_LIFESTYLE = 0.20;
+const WEIGHT_DATING_GOALS = 0.15;
 const WEIGHT_TRAVELLING_WITH = 0.05;
 const MIN_SCORE = 30;
 
@@ -45,7 +48,7 @@ function overlapItems(a: string[], b: string[]): string[] {
 }
 
 export function computeCompatibility(userA: CompatibilityUser, userB: CompatibilityUser): CompatibilityResult {
-  // Route overlap (35%) — same city worth 0.7, shared future trips worth up to 0.3
+  // Route overlap (30%) — same city worth 0.7, shared future trips worth up to 0.3
   const citiesA = (userA.futureTrips || []).map((t) => t.location.split(',')[0].trim().toLowerCase());
   const citiesB = (userB.futureTrips || []).map((t) => t.location.split(',')[0].trim().toLowerCase());
   const sharedTripCities = citiesA.filter((c) => citiesB.includes(c));
@@ -59,15 +62,21 @@ export function computeCompatibility(userA: CompatibilityUser, userB: Compatibil
         userB.currentLocation.split(',')[0].trim().toLowerCase();
   const routeRatio = Math.min(1, (sameCity ? 0.7 : 0) + tripRatio * 0.3);
 
-  // Shared interests (35%)
+  // Shared interests (30%) — absolute count scale
   const sharedInterestItems = overlapItems(userA.interests, userB.interests);
-  const minInterests = Math.min(userA.interests.length, userB.interests.length);
-  const interestRatio = minInterests > 0 ? sharedInterestItems.length / minInterests : 0;
+  const sharedCount = sharedInterestItems.length;
+  const interestRatio = sharedCount >= 6 ? 1 : sharedCount === 5 ? 0.85 : sharedCount === 4 ? 0.75 : sharedCount === 3 ? 0.60 : sharedCount === 2 ? 0.40 : sharedCount === 1 ? 0.20 : 0;
 
-  // Lifestyle match (25%)
+  // Lifestyle match (20%)
   const sharedLifestyleItems = overlapItems(userA.lifestyle, userB.lifestyle);
   const minLifestyle = Math.min(userA.lifestyle.length, userB.lifestyle.length);
   const lifestyleRatio = minLifestyle > 0 ? sharedLifestyleItems.length / minLifestyle : 0;
+
+  // Dating goals overlap (15%) — any shared goal = 100%, none = 0%, both empty = neutral
+  const goalsA = (userA.datingGoals || []).map(g => g.toLowerCase());
+  const goalsB = (userB.datingGoals || []).map(g => g.toLowerCase());
+  const sharedGoals = goalsA.filter(g => goalsB.includes(g));
+  const datingGoalsRatio = (goalsA.length === 0 && goalsB.length === 0) ? 1 : sharedGoals.length > 0 ? 1 : 0;
 
   // Travelling with (5%) — both have pets = 100%, one has / other doesn't = 0%, neither = neutral
   const petsA = (userA.pets || []);
@@ -83,6 +92,7 @@ export function computeCompatibility(userA: CompatibilityUser, userB: Compatibil
     routeRatio * WEIGHT_ROUTE +
     interestRatio * WEIGHT_INTERESTS +
     lifestyleRatio * WEIGHT_LIFESTYLE +
+    datingGoalsRatio * WEIGHT_DATING_GOALS +
     travellingWithRatio * WEIGHT_TRAVELLING_WITH;
 
   // Scale to 0-100 with a floor of MIN_SCORE
@@ -100,12 +110,16 @@ export function computeCompatibility(userA: CompatibilityUser, userB: Compatibil
       interests: {
         score: Math.round(interestRatio * 100),
         shared: sharedInterestItems,
-        total: minInterests,
+        total: sharedCount,
       },
       lifestyle: {
         score: Math.round(lifestyleRatio * 100),
         shared: sharedLifestyleItems,
         total: minLifestyle,
+      },
+      datingGoals: {
+        score: Math.round(datingGoalsRatio * 100),
+        shared: sharedGoals,
       },
       travellingWith: {
         score: Math.round(travellingWithRatio * 100),

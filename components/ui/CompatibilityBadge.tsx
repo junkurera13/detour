@@ -111,6 +111,19 @@ export function CompatibilityBadge({ score, size = 'sm', breakdown }: Props) {
       ? `${breakdown.lifestyle.shared.length} in common: ${breakdown.lifestyle.shared.slice(0, 3).join(', ')}${breakdown.lifestyle.shared.length > 3 ? '...' : ''}`
       : 'different lifestyles';
 
+  const goalLabels: Record<string, string> = {
+    'long-term': 'long-term',
+    'life-partner': 'life partner',
+    'casual': 'casual',
+    'intimacy': 'intimacy',
+  };
+  const datingGoalsDetail =
+    breakdown.datingGoals.shared.length > 0
+      ? `both want ${breakdown.datingGoals.shared.map(g => goalLabels[g] || g).join(', ')}`
+      : breakdown.datingGoals.score === 100
+        ? 'no goals set by either'
+        : 'different intentions';
+
   const travellingWithDetail = (() => {
     const types = breakdown.travellingWith.sharedTypes;
     if (types.length > 0) {
@@ -178,6 +191,13 @@ export function CompatibilityBadge({ score, size = 'sm', breakdown }: Props) {
               label="lifestyle match"
               detail={lifestyleDetail}
               subScore={breakdown.lifestyle.score}
+            />
+            <BreakdownRow
+              icon="flag-outline"
+              iconColor="#F59E0B"
+              label="dating goals"
+              detail={datingGoalsDetail}
+              subScore={breakdown.datingGoals.score}
             />
             <BreakdownRow
               icon="paw-outline"

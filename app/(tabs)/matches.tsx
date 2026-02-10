@@ -71,9 +71,12 @@ interface LikeUser {
   lookingFor: string;
   interests: string[];
   instagram?: string;
+  compatibility?: number;
+  compatibilityBreakdown?: CompatibilityBreakdown;
 }
 
-function convexUserToLikeUser(user: Doc<"users">): LikeUser {
+function convexUserToLikeUser(user: Doc<"users">, currentUser?: Doc<"users"> | null): LikeUser {
+  const compat = currentUser ? computeCompatibility(currentUser, user) : undefined;
   return {
     id: user._id,
     name: user.name,
@@ -86,6 +89,8 @@ function convexUserToLikeUser(user: Doc<"users">): LikeUser {
     lookingFor: user.lookingFor.join(', '),
     interests: user.interests,
     instagram: user.instagram,
+    compatibility: compat?.score,
+    compatibilityBreakdown: compat?.breakdown,
   };
 }
 
@@ -198,6 +203,11 @@ function LikePreviewCard({
                 <Text style={cardStyles.nameText}>
                   {user.name}, {user.age}
                 </Text>
+                {user.compatibility != null && (
+                  <View style={{ marginLeft: 8 }}>
+                    <CompatibilityBadge score={user.compatibility} breakdown={user.compatibilityBreakdown} />
+                  </View>
+                )}
               </View>
               <View style={cardStyles.locationRow}>
                 <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.8)" />
@@ -487,7 +497,7 @@ export default function MatchesScreen() {
 
   // Build likes you list from real data + mock for demo user
   const likesYou = useMemo(() => {
-    const realLikeUsers: LikeUser[] = (realLikes || []).map((l) => convexUserToLikeUser(l.user));
+    const realLikeUsers: LikeUser[] = (realLikes || []).map((l) => convexUserToLikeUser(l.user, convexUser));
 
     if (isDemo) {
       const realIds = new Set(realLikeUsers.map((u) => u.id));
@@ -496,24 +506,34 @@ export default function MatchesScreen() {
       );
       const mockFiltered = mockLikesYou
         .filter((u) => !realIds.has(u.id) && !matchedUserIds.has(u.id))
-        .map((u): LikeUser => ({
-          id: u.id,
-          name: u.name,
-          age: u.age,
-          location: u.location,
-          photos: u.photos,
-          bio: u.bio,
-          lifestyle: u.lifestyle,
-          timeNomadic: u.timeNomadic,
-          lookingFor: u.lookingFor,
-          interests: u.interests,
-          instagram: u.instagram,
-        }));
+        .map((u): LikeUser => {
+          const compat = convexUser ? computeCompatibility(convexUser, {
+            interests: u.interests,
+            currentLocation: u.location,
+            lifestyle: u.lifestyle,
+            datingGoals: [],
+          }) : undefined;
+          return {
+            id: u.id,
+            name: u.name,
+            age: u.age,
+            location: u.location,
+            photos: u.photos,
+            bio: u.bio,
+            lifestyle: u.lifestyle,
+            timeNomadic: u.timeNomadic,
+            lookingFor: u.lookingFor,
+            interests: u.interests,
+            instagram: u.instagram,
+            compatibility: compat?.score,
+            compatibilityBreakdown: compat?.breakdown,
+          };
+        });
       return [...realLikeUsers, ...mockFiltered];
     }
 
     return realLikeUsers;
-  }, [realLikes, isDemo, matchesData]);
+  }, [realLikes, isDemo, matchesData, convexUser]);
 
   const visibleLikes = useMemo(
     () => likesYou.filter((u) => !dismissedLikeIds.has(u.id)),

@@ -632,8 +632,8 @@ export default function NearbyScreen() {
 
       // Distance filter — only show profiles within prefDistance km
       // "everyone" (Infinity) shows all profiles regardless of distance
-      if (prefDistance !== Infinity) {
-        if (p.distanceKm == null) return false;
+      // If coordinates are unavailable, include the profile (can't compute distance)
+      if (prefDistance !== Infinity && p.distanceKm != null) {
         if (p.distanceKm > prefDistance) return false;
       }
 

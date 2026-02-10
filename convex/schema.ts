@@ -20,6 +20,9 @@ export default defineSchema({
     datingPreference: v.optional(v.array(v.string())),
     friendsPreference: v.optional(v.array(v.string())),
 
+    // Dating goals
+    datingGoals: v.optional(v.array(v.string())), // ["long-term", "life-partner", "casual", "intimacy"]
+
     // Nomad info
     lifestyle: v.array(v.string()),
     timeNomadic: v.string(),

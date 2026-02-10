@@ -126,6 +126,7 @@ export default function PaywallScreen() {
         lookingFor: data.lookingFor,
         datingPreference: data.datingPreference.length > 0 ? data.datingPreference : undefined,
         friendsPreference: data.friendsPreference.length > 0 ? data.friendsPreference : undefined,
+        datingGoals: data.datingGoals,
         lifestyle: data.lifestyle,
         timeNomadic: data.timeNomadic,
         interests: data.interests,
