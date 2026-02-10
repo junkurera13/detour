@@ -88,3 +88,45 @@ export const getBySwiper = query({
       .collect();
   },
 });
+
+export const getLikesForUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const swipes = await ctx.db
+      .query("swipes")
+      .withIndex("by_swiped", (q) => q.eq("swipedId", args.userId))
+      .collect();
+
+    const likeSwipes = swipes.filter(
+      (s) => s.action === "like" || s.action === "superlike"
+    );
+
+    // Exclude already-matched users
+    const matchesAsUser1 = await ctx.db
+      .query("matches")
+      .withIndex("by_user1", (q) => q.eq("user1Id", args.userId))
+      .filter((q) => q.eq(q.field("status"), "matched"))
+      .collect();
+    const matchesAsUser2 = await ctx.db
+      .query("matches")
+      .withIndex("by_user2", (q) => q.eq("user2Id", args.userId))
+      .filter((q) => q.eq(q.field("status"), "matched"))
+      .collect();
+
+    const matchedUserIds = new Set([
+      ...matchesAsUser1.map((m) => m.user2Id),
+      ...matchesAsUser2.map((m) => m.user1Id),
+    ]);
+
+    const unmatched = likeSwipes.filter((s) => !matchedUserIds.has(s.swiperId));
+
+    const likersWithData = await Promise.all(
+      unmatched.map(async (swipe) => {
+        const user = await ctx.db.get(swipe.swiperId);
+        return user ? { swipe, user } : null;
+      })
+    );
+
+    return likersWithData.filter((l): l is NonNullable<typeof l> => l !== null);
+  },
+});

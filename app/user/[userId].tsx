@@ -8,6 +8,9 @@ import { Id } from '@/convex/_generated/dataModel';
 import { mockUsers } from '@/data/mockData';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useMemo, useState, useEffect, useRef } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import { isDemoUser } from '@/utils/isDemoUser';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PHOTO_SIZE = (SCREEN_WIDTH - 48 - 8) / 2; // px-6 padding (48) + gap (8)
@@ -96,6 +99,8 @@ function calculateAge(birthday: string): number {
 export default function UserProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const router = useRouter();
+  const { convexUser: currentUser } = useAuthenticatedUser();
+  const isDemo = isDemoUser(currentUser?.email);
 
   // Try fetching from Convex (real user)
   const isMockUser = userId?.startsWith('user_');
@@ -104,8 +109,15 @@ export default function UserProfileScreen() {
     !isMockUser && userId ? { id: userId as Id<"users"> } : "skip"
   );
 
-  // Find mock user if applicable
-  const mockUser = isMockUser ? mockUsers.find((u) => u.id === userId) : null;
+  // Find mock user if applicable (demo only)
+  const mockUser = (isMockUser && isDemo) ? mockUsers.find((u) => u.id === userId) : null;
+
+  // Redirect non-demo users away from mock profiles
+  useEffect(() => {
+    if (isMockUser && !isDemo) {
+      router.back();
+    }
+  }, [isMockUser, isDemo, router]);
 
   // Record profile view for real users
   const recordView = useMutation(api.profileViews.record);
@@ -149,7 +161,6 @@ export default function UserProfileScreen() {
   const [activeTab, setActiveTab] = useState<'about' | 'events' | 'builder'>('about');
   const [menuVisible, setMenuVisible] = useState(false);
   const menuSlideAnim = useRef(new Animated.Value(400)).current;
-  const { convexUser: currentUser } = useAuthenticatedUser();
 
   // Crossing paths detection
   const crossingPath = useMemo(() => {
@@ -168,6 +179,36 @@ export default function UserProfileScreen() {
   }, [currentUser, profileData]);
   const blockUser = useMutation(api.blocks.blockUser);
   const reportUser = useMutation(api.reports.create);
+  const createSwipe = useMutation(api.swipes.create);
+  const insets = useSafeAreaInsets();
+  const [liked, setLiked] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+
+  const handleLike = async () => {
+    if (!currentUser || !userId || liked || likeLoading) return;
+    setLikeLoading(true);
+    try {
+      const result = await createSwipe({
+        swiperId: currentUser._id,
+        swipedId: userId as Id<"users">,
+        action: 'like',
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setLiked(true);
+      if (result.isMatch) {
+        Alert.alert('it\'s a match!', `you and ${profileData?.name || 'this person'} liked each other.`, [
+          { text: 'ok', onPress: () => router.back() },
+        ]);
+      } else {
+        router.back();
+      }
+    } catch {
+      // Already swiped or other error — go back
+      router.back();
+    } finally {
+      setLikeLoading(false);
+    }
+  };
 
   const openMenu = () => {
     setMenuVisible(true);
@@ -279,7 +320,7 @@ export default function UserProfileScreen() {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* Profile Photo + Info (centered, same as own profile) */}
         <View className="px-6 pb-6 items-center">
@@ -522,7 +563,12 @@ export default function UserProfileScreen() {
                           className="text-xs text-gray-400 mt-0.5"
                           style={{ fontFamily: 'InstrumentSans_400Regular' }}
                         >
-                          {trip.startDate}{trip.endDate ? ` — ${trip.endDate}` : ''}
+                          {(() => {
+                            const d = new Date(trip.startDate);
+                            return !isNaN(d.getTime())
+                              ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                              : trip.startDate;
+                          })()}
                         </Text>
                       )}
                     </View>
@@ -661,6 +707,35 @@ export default function UserProfileScreen() {
           </Animated.View>
         </View>
       </Modal>
+
+      {/* Floating like button — matches nearby page style */}
+      <TouchableOpacity
+        onPress={handleLike}
+        disabled={liked || likeLoading}
+        activeOpacity={0.8}
+        style={{
+          position: 'absolute',
+          bottom: insets.bottom + 24,
+          right: 24,
+          width: 64,
+          height: 64,
+          borderRadius: 32,
+          backgroundColor: '#fd6b03',
+          alignItems: 'center',
+          justifyContent: 'center',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 1,
+        }}
+      >
+        {likeLoading ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <Ionicons name="heart" size={32} color="#fff" />
+        )}
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }

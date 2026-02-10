@@ -163,7 +163,7 @@ const interestCategories = [
   },
 ];
 
-type Section = 'basic' | 'photos' | 'lifestyle' | 'interests' | 'builder';
+type Section = 'basic' | 'lifestyle' | 'interests' | 'builder';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -443,8 +443,7 @@ export default function EditProfileScreen() {
   };
 
   const sections: { id: Section; label: string }[] = [
-    { id: 'basic', label: 'basic info' },
-    { id: 'photos', label: 'photos' },
+    { id: 'basic', label: 'about' },
     { id: 'lifestyle', label: 'lifestyle' },
     { id: 'interests', label: 'interests' },
     { id: 'builder', label: 'builder' },
@@ -563,30 +562,33 @@ export default function EditProfileScreen() {
                 autoCapitalize="none"
                 prefix="@"
               />
-            </View>
-          )}
-
-          {activeSection === 'photos' && (
-            <View className="px-6 pt-6">
-              <Text
-                className="text-gray-500 mb-4"
-                style={{ fontFamily: 'InstrumentSans_400Regular' }}
-              >
-                tap to add, hold to remove. ({photos.length}/6)
-              </Text>
-              {/* Row 1: Large photo + 2 small stacked */}
-              <View style={{ flexDirection: 'row', gap: GRID_GAP }}>
-                {renderPhotoSlot(0, true)}
-                <View style={{ gap: GRID_GAP }}>
-                  {renderPhotoSlot(1)}
-                  {renderPhotoSlot(2)}
+              <View>
+                <Text
+                  className="text-sm text-black mb-2"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  photos
+                </Text>
+                <Text
+                  className="text-gray-500 mb-4"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  tap to add, hold to remove. ({photos.length}/6)
+                </Text>
+                {/* Row 1: Large photo + 2 small stacked */}
+                <View style={{ flexDirection: 'row', gap: GRID_GAP }}>
+                  {renderPhotoSlot(0, true)}
+                  <View style={{ gap: GRID_GAP }}>
+                    {renderPhotoSlot(1)}
+                    {renderPhotoSlot(2)}
+                  </View>
                 </View>
-              </View>
-              {/* Row 2: 3 small photos */}
-              <View style={{ flexDirection: 'row', gap: GRID_GAP, marginTop: GRID_GAP }}>
-                {renderPhotoSlot(3)}
-                {renderPhotoSlot(4)}
-                {renderPhotoSlot(5)}
+                {/* Row 2: 3 small photos */}
+                <View style={{ flexDirection: 'row', gap: GRID_GAP, marginTop: GRID_GAP }}>
+                  {renderPhotoSlot(3)}
+                  {renderPhotoSlot(4)}
+                  {renderPhotoSlot(5)}
+                </View>
               </View>
             </View>
           )}

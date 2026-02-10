@@ -2,12 +2,14 @@ import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Pla
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { useRouter } from 'expo-router';
 import { api } from '@/convex/_generated/api';
+import { Doc } from '@/convex/_generated/dataModel';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useRevenueCat } from '@/context/RevenueCatContext';
-import { mockLikesYou, mockMatches, mockConversations, MockUser } from '@/data/mockData';
+import { mockLikesYou, mockMatches, mockConversations } from '@/data/mockData';
+import { isDemoUser } from '@/utils/isDemoUser';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -55,6 +57,36 @@ function calculateAge(birthday: string): number {
   return age;
 }
 
+interface LikeUser {
+  id: string;
+  name: string;
+  age: number;
+  location: string;
+  photos: string[];
+  bio: string;
+  lifestyle: string[];
+  timeNomadic: string;
+  lookingFor: string;
+  interests: string[];
+  instagram?: string;
+}
+
+function convexUserToLikeUser(user: Doc<"users">): LikeUser {
+  return {
+    id: user._id,
+    name: user.name,
+    age: calculateAge(user.birthday),
+    location: user.currentLocation,
+    photos: user.photos.length > 0 ? user.photos : ['https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400'],
+    bio: '',
+    lifestyle: user.lifestyle,
+    timeNomadic: user.timeNomadic,
+    lookingFor: user.lookingFor.join(', '),
+    interests: user.interests,
+    instagram: user.instagram,
+  };
+}
+
 // Swipeable preview card for Likes You modal
 function LikePreviewCard({
   user,
@@ -62,7 +94,7 @@ function LikePreviewCard({
   swipeProgress,
   swipeDirection,
 }: {
-  user: MockUser;
+  user: LikeUser;
   onDismiss: (action: 'like' | 'pass') => void;
   swipeProgress: SharedValue<number>;
   swipeDirection: 'left' | 'right' | null;
@@ -355,16 +387,14 @@ export default function MatchesScreen() {
   const { hasDetourPlus } = useRevenueCat();
   const router = useRouter();
   const userId = convexUser?._id;
+  const isDemo = isDemoUser(convexUser?.email);
   const [showAllLikes, setShowAllLikes] = useState(false);
-  const [previewUser, setPreviewUser] = useState<MockUser | null>(null);
+  const [previewUser, setPreviewUser] = useState<LikeUser | null>(null);
   const [previewSwipeDir, setPreviewSwipeDir] = useState<'left' | 'right' | null>(null);
-  // Filter out users who are already in matches
-  const [likesYou, setLikesYou] = useState<MockUser[]>(() => {
-    const matchedUserIds = new Set(mockMatches.map((m) => m.user.id));
-    return mockLikesYou.filter((u) => !matchedUserIds.has(u.id));
-  });
+  const [dismissedLikeIds, setDismissedLikeIds] = useState<Set<string>>(new Set());
   const [likedBackMatches, setLikedBackMatches] = useState<Array<{ id: string; userId: string; name: string; age: number; photo: string; matchedAt: string }>>([]);
   const [deletedConvoIds, setDeletedConvoIds] = useState<Set<string>>(new Set());
+  const createSwipe = useMutation(api.swipes.create);
   const previewSwipeProgress = useSharedValue(0);
 
   const passButtonStyle = useAnimatedStyle(() => {
@@ -387,29 +417,42 @@ export default function MatchesScreen() {
     return { transform: [{ scale }] };
   });
 
-  const handlePreviewDismiss = (action: 'like' | 'pass') => {
+  const handlePreviewDismiss = async (action: 'like' | 'pass') => {
     if (!previewUser) return;
     const dismissedUser = previewUser;
     setPreviewSwipeDir(null);
     setPreviewUser(null);
     previewSwipeProgress.value = 0;
 
-    // Remove from likes you
-    setLikesYou((prev) => prev.filter((u) => u.id !== dismissedUser.id));
+    setDismissedLikeIds((prev) => new Set(prev).add(dismissedUser.id));
 
-    // If liked back, add to matches
     if (action === 'like') {
-      setLikedBackMatches((prev) => [
-        {
-          id: dismissedUser.id,
-          userId: dismissedUser.id,
-          name: dismissedUser.name,
-          age: dismissedUser.age,
-          photo: dismissedUser.photos[0],
-          matchedAt: 'just now',
-        },
-        ...prev,
-      ]);
+      // For real users, create a swipe to trigger backend match
+      if (!dismissedUser.id.startsWith('user_') && userId) {
+        try {
+          await createSwipe({
+            swiperId: userId,
+            swipedId: dismissedUser.id as any,
+            action: 'like',
+          });
+        } catch (e) {
+          console.error('Failed to like back:', e);
+        }
+      }
+      // For mock users (demo only), add to local matches
+      if (dismissedUser.id.startsWith('user_')) {
+        setLikedBackMatches((prev) => [
+          {
+            id: dismissedUser.id,
+            userId: dismissedUser.id,
+            name: dismissedUser.name,
+            age: dismissedUser.age,
+            photo: dismissedUser.photos[0],
+            matchedAt: 'just now',
+          },
+          ...prev,
+        ]);
+      }
     }
   };
 
@@ -431,6 +474,47 @@ export default function MatchesScreen() {
   const conversationPreviews = useQuery(
     api.messages.getConversationPreviews,
     userId ? { userId } : "skip"
+  );
+
+  // Fetch real likes for current user
+  const realLikes = useQuery(
+    api.swipes.getLikesForUser,
+    userId ? { userId } : "skip"
+  );
+
+  // Build likes you list from real data + mock for demo user
+  const likesYou = useMemo(() => {
+    const realLikeUsers: LikeUser[] = (realLikes || []).map((l) => convexUserToLikeUser(l.user));
+
+    if (isDemo) {
+      const realIds = new Set(realLikeUsers.map((u) => u.id));
+      const matchedUserIds = new Set(
+        (matchesData || []).map((m) => m.otherUser?._id).filter(Boolean)
+      );
+      const mockFiltered = mockLikesYou
+        .filter((u) => !realIds.has(u.id) && !matchedUserIds.has(u.id))
+        .map((u): LikeUser => ({
+          id: u.id,
+          name: u.name,
+          age: u.age,
+          location: u.location,
+          photos: u.photos,
+          bio: u.bio,
+          lifestyle: u.lifestyle,
+          timeNomadic: u.timeNomadic,
+          lookingFor: u.lookingFor,
+          interests: u.interests,
+          instagram: u.instagram,
+        }));
+      return [...realLikeUsers, ...mockFiltered];
+    }
+
+    return realLikeUsers;
+  }, [realLikes, isDemo, matchesData]);
+
+  const visibleLikes = useMemo(
+    () => likesYou.filter((u) => !dismissedLikeIds.has(u.id)),
+    [likesYou, dismissedLikeIds]
   );
 
   const isLoading = userId && matchesData === undefined;
@@ -475,18 +559,21 @@ export default function MatchesScreen() {
         };
       });
     }
-    // Fall back to mock matches for testing
-    return mockMatches.map((match) => ({
-      id: match.id,
-      userId: match.user.id,
-      name: match.user.name,
-      age: match.user.age,
-      matchedAt: formatRelativeTime(new Date(match.matchedAt).getTime()),
-      photo: match.user.photos[0],
-      isNew: match.hasNewMessage,
-      crossingPath: null as string | null,
-    }));
-  }, [matchesData, myTripLocations]);
+    // Fall back to mock matches only for demo user
+    if (isDemo) {
+      return mockMatches.map((match) => ({
+        id: match.id,
+        userId: match.user.id,
+        name: match.user.name,
+        age: match.user.age,
+        matchedAt: formatRelativeTime(new Date(match.matchedAt).getTime()),
+        photo: match.user.photos[0],
+        isNew: match.hasNewMessage,
+        crossingPath: null as string | null,
+      }));
+    }
+    return [];
+  }, [matchesData, myTripLocations, isDemo]);
 
   // Combine real/mock matches with liked-back matches from the Likes You section
   const allMatches = useMemo(() => {
@@ -512,16 +599,19 @@ export default function MatchesScreen() {
         };
       });
     }
-    // Fall back to mock conversations for testing
-    return mockConversations.map((convo) => ({
-      id: convo.id,
-      name: convo.user.name,
-      lastMessage: convo.messages[convo.messages.length - 1]?.content || 'Start a conversation!',
-      time: convo.lastMessageAt,
-      photo: convo.user.photos[0],
-      unread: convo.unreadCount,
-    }));
-  }, [conversationPreviews]);
+    // Fall back to mock conversations only for demo user
+    if (isDemo) {
+      return mockConversations.map((convo) => ({
+        id: convo.id,
+        name: convo.user.name,
+        lastMessage: convo.messages[convo.messages.length - 1]?.content || 'Start a conversation!',
+        time: convo.lastMessageAt,
+        photo: convo.user.photos[0],
+        unread: convo.unreadCount,
+      }));
+    }
+    return [];
+  }, [conversationPreviews, isDemo]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -590,7 +680,7 @@ export default function MatchesScreen() {
                     className="text-white text-sm"
                     style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
                   >
-                    {likesYou.length}
+                    {visibleLikes.length}
                   </Text>
                 </View>
               </View>
@@ -601,7 +691,7 @@ export default function MatchesScreen() {
                 className="mb-6"
                 contentContainerStyle={{ gap: 12 }}
               >
-                {likesYou.slice(0, 7).map((user) => (
+                {visibleLikes.slice(0, 7).map((user) => (
                   <TouchableOpacity
                     key={user.id}
                     className="relative"
@@ -637,7 +727,7 @@ export default function MatchesScreen() {
                     )}
                   </TouchableOpacity>
                 ))}
-                {likesYou.length > 7 && (
+                {visibleLikes.length > 7 && (
                   <TouchableOpacity
                     className="w-24 h-32 bg-gray-100 rounded-2xl items-center justify-center"
                     activeOpacity={0.7}
@@ -906,7 +996,7 @@ export default function MatchesScreen() {
                 className="text-white text-sm"
                 style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
               >
-                {likesYou.length}
+                {visibleLikes.length}
               </Text>
             </View>
           </View>
@@ -916,7 +1006,7 @@ export default function MatchesScreen() {
             contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}
           >
             <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-              {likesYou.map((user) => {
+              {visibleLikes.map((user) => {
                 const itemWidth = Math.floor((Dimensions.get('window').width - 48 - 16) / 3);
                 return (
                 <TouchableOpacity

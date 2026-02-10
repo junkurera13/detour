@@ -907,3 +907,61 @@ export const seedActivities = mutation({
     return { message: `Seeded ${seededCount} activities`, count: seededCount };
   },
 });
+
+export const seedSwipes = mutation({
+  args: { myUsername: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const myUsername = args.myUsername || "junz";
+    const me = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", myUsername))
+      .first();
+
+    if (!me) {
+      return { message: `User '${myUsername}' not found.` };
+    }
+
+    const existingSwipes = await ctx.db
+      .query("swipes")
+      .withIndex("by_swiped", (q) => q.eq("swipedId", me._id))
+      .first();
+    if (existingSwipes) {
+      return { message: "Swipes already seeded" };
+    }
+
+    const likerUsernames = [
+      "hana.k_", "marcodelucci", "jess_ontheroad", "tomasux",
+      "aisha.o", "natethompson_", "camille.jpg", "ravi.codes",
+      "linneainasia", "seb_writes", "meimei.draws", "oscardata",
+    ];
+
+    const now = Date.now();
+    let count = 0;
+
+    for (const username of likerUsernames) {
+      const liker = await ctx.db
+        .query("users")
+        .withIndex("by_username", (q) => q.eq("username", username))
+        .first();
+      if (!liker) continue;
+
+      const existing = await ctx.db
+        .query("swipes")
+        .withIndex("by_pair", (q) =>
+          q.eq("swiperId", liker._id).eq("swipedId", me._id)
+        )
+        .first();
+      if (existing) continue;
+
+      await ctx.db.insert("swipes", {
+        swiperId: liker._id,
+        swipedId: me._id,
+        action: "like",
+        createdAt: now - Math.floor(Math.random() * 86400000 * 3),
+      });
+      count++;
+    }
+
+    return { message: `Seeded ${count} likes for @${myUsername}` };
+  },
+});

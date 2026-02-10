@@ -42,7 +42,7 @@ export default function TabLayout() {
         name="index"
         options={{
           tabBarIcon: ({ color }) => (
-            <Ionicons name="dice" size={28} color={color} />
+            <Ionicons name="dice-outline" size={28} color={color} />
           ),
         }}
       />
@@ -73,7 +73,7 @@ export default function TabLayout() {
         name="messages"
         options={{
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="hand-heart" size={28} color={color} />
+            <MaterialCommunityIcons name="hand-heart-outline" size={28} color={color} />
           ),
         }}
       />
@@ -98,20 +98,7 @@ export default function TabLayout() {
                 />
               </View>
             ) : (
-              <View
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  borderWidth: 2,
-                  borderColor: focused ? '#fd6b03' : '#E5E7EB',
-                  backgroundColor: '#F3F4F6',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <MaterialCommunityIcons name="account" size={18} color={color} />
-              </View>
+              <Ionicons name="person-outline" size={28} color={color} />
             )
           ),
         }}

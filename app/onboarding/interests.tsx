@@ -89,7 +89,6 @@ const interestCategories = [
       { id: 'cowork-at-cafes', label: 'cowork at cafes' },
       { id: 'brainstorm-ideas', label: 'brainstorm ideas' },
       { id: 'make-content', label: 'make content' },
-      { id: 'jam-together', label: 'jam together' },
       { id: 'build-stuff', label: 'build stuff' },
     ],
   },

@@ -10,13 +10,35 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { mockActivities } from '@/data/mockData';
 import { useRevenueCat } from '@/context/RevenueCatContext';
+import { isDemoUser } from '@/utils/isDemoUser';
 import { useEvents } from '@/context/EventsContext';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
+
+function calculateAge(birthday: string): number {
+  const birthDate = new Date(birthday);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
 
 // Format a Date to a short display string like "Mar 15"
 function formatDateShort(date: Date): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${months[date.getMonth()]} ${date.getDate()}`;
+}
+
+// Format a trip date string (ISO or short like "Mar 15") to "Feb 14"
+function formatTripDate(dateStr?: string): string | null {
+  if (!dateStr) return null;
+  const date = new Date(dateStr);
+  if (!isNaN(date.getTime())) {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  return dateStr;
 }
 
 // Parse a short date string like "Mar 15" back to a Date
@@ -127,8 +149,12 @@ export default function ProfileScreen() {
   const updateUser = useMutation(api.users.update);
   const [menuVisible, setMenuVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'about' | 'events' | 'builder'>('about');
+  const isDemo = isDemoUser(user?.email);
   const { joinedIds } = useEvents();
-  const myEvents = useMemo(() => mockActivities.filter(a => joinedIds.includes(a.id)), [joinedIds]);
+  const myEvents = useMemo(() => {
+    if (isDemo) return mockActivities.filter(a => joinedIds.includes(a.id));
+    return [];
+  }, [joinedIds, isDemo]);
   const [editingLocationIndex, setEditingLocationIndex] = useState<number | null>(null);
   const [editingStopText, setEditingStopText] = useState('');
   const [datePickerTarget, setDatePickerTarget] = useState<{ index: number; field: 'start' | 'end' } | null>(null);
@@ -141,11 +167,20 @@ export default function ProfileScreen() {
   const slideAnim = useRef(new Animated.Value(400)).current;
   const viewersSlideAnim = useRef(new Animated.Value(400)).current;
 
+  // Compute age from whichever source is available
+  const age = useMemo(() => {
+    if (user?.birthday) return calculateAge(user.birthday);
+    const bday = onboardingData.birthday;
+    if (bday) return calculateAge(bday instanceof Date ? bday.toISOString() : bday);
+    return null;
+  }, [user?.birthday, onboardingData.birthday]);
+
   // Use Convex user data if available, fallback to onboarding data
   const profileData = useMemo(() => {
     if (user) {
       return {
         name: user.name,
+        age,
         username: user.username,
         photos: user.photos,
         currentLocation: user.currentLocation,
@@ -157,6 +192,7 @@ export default function ProfileScreen() {
     }
     return {
       name: onboardingData.name,
+      age,
       username: onboardingData.username,
       photos: onboardingData.photos,
       currentLocation: onboardingData.currentLocation,
@@ -165,7 +201,7 @@ export default function ProfileScreen() {
       interests: onboardingData.interests,
       futureTrips: onboardingData.futureTrips || [],
     };
-  }, [user, onboardingData]);
+  }, [user, onboardingData, age]);
 
   useEffect(() => {
     if (menuVisible) {
@@ -216,15 +252,14 @@ export default function ProfileScreen() {
     }
   };
 
-  // Build a clean trip array with only schema-valid fields: location, startDate, endDate.
+  // Build a clean trip array with only schema-valid fields: location, startDate.
   // Convex v.object() is strict — extra keys cause validation failures.
   const buildCleanTrips = () =>
     profileData.futureTrips.map((t) => {
-      const trip: { location: string; startDate?: string; endDate?: string } = {
+      const trip: { location: string; startDate?: string } = {
         location: t.location,
       };
       if (t.startDate) trip.startDate = t.startDate;
-      if (t.endDate) trip.endDate = t.endDate;
       return trip;
     });
 
@@ -248,14 +283,10 @@ export default function ProfileScreen() {
     setEditingStopText('');
   };
 
-  const handleSaveStopDate = async (index: number, field: 'start' | 'end', date: Date) => {
+  const handleSaveStopDate = async (index: number, _field: 'start' | 'end', date: Date) => {
     if (!user || index >= profileData.futureTrips.length) return;
     const trips = buildCleanTrips();
-    if (field === 'start') {
-      trips[index].startDate = formatDateShort(date);
-    } else {
-      trips[index].endDate = formatDateShort(date);
-    }
+    trips[index].startDate = formatDateShort(date);
     try {
       await updateUser({ id: user._id, futureTrips: trips });
     } catch (e) {
@@ -350,7 +381,7 @@ export default function ProfileScreen() {
             className="text-2xl text-black mt-4"
             style={{ fontFamily: 'InstrumentSans_700Bold' }}
           >
-            {profileData.name.toLowerCase() || 'your name'}
+            {profileData.name.toLowerCase() || 'your name'}{profileData.age != null ? `, ${profileData.age}` : ''}
           </Text>
 
           {profileData.username && (
@@ -573,12 +604,7 @@ export default function ProfileScreen() {
                             <View style={{ alignItems: 'flex-end', marginLeft: 12 }}>
                               <TouchableOpacity onPress={() => setDatePickerTarget({ index, field: 'start' })}>
                                 <Text style={{ fontSize: 12, color: trip.startDate ? '#000' : '#D1D5DB', fontFamily: 'InstrumentSans_400Regular' }}>
-                                  {trip.startDate || 'start'}
-                                </Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity onPress={() => setDatePickerTarget({ index, field: 'end' })} style={{ marginTop: 2 }}>
-                                <Text style={{ fontSize: 12, color: trip.endDate ? '#000' : '#D1D5DB', fontFamily: 'InstrumentSans_400Regular' }}>
-                                  {trip.endDate || 'end'}
+                                  {formatTripDate(trip.startDate) || 'date'}
                                 </Text>
                               </TouchableOpacity>
                             </View>
@@ -588,18 +614,10 @@ export default function ProfileScreen() {
                       {datePickerTarget?.index === index && (
                         <View style={{ marginLeft: 52, marginTop: 4, marginBottom: 4 }}>
                           <DateTimePicker
-                            value={
-                              datePickerTarget.field === 'start'
-                                ? parseTripDate(trip.startDate) || new Date()
-                                : parseTripDate(trip.endDate) || parseTripDate(trip.startDate) || new Date()
-                            }
+                            value={parseTripDate(trip.startDate) || new Date()}
                             mode="date"
                             display={Platform.OS === 'ios' ? 'compact' : 'default'}
-                            minimumDate={
-                              datePickerTarget.field === 'end' && trip.startDate
-                                ? parseTripDate(trip.startDate) || new Date()
-                                : new Date()
-                            }
+                            minimumDate={new Date()}
                             onChange={(_: DateTimePickerEvent, date?: Date) => {
                               const target = datePickerTarget;
                               setDatePickerTarget(null);

@@ -19,6 +19,7 @@ export function SelectionChip({ label, selected, onPress, emoji }: SelectionChip
       <Text
         className={`text-base ${selected ? 'text-orange-primary' : 'text-black'}`}
         style={{ fontFamily: 'InstrumentSans_500Medium' }}
+        numberOfLines={1}
       >
         {emoji ? `${emoji} ${label}` : label}
       </Text>

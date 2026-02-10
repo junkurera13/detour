@@ -31,24 +31,6 @@ export default function InstagramScreen() {
       onSkip={handleSkip}
     >
       <View className="flex-1 pt-8">
-        <View className="flex-row items-center bg-gray-50 rounded-2xl p-4 mb-6">
-          <Ionicons name="logo-instagram" size={32} color="#E4405F" />
-          <View className="ml-3 flex-1">
-            <Text
-              className="text-sm text-gray-500"
-              style={{ fontFamily: 'InstrumentSans_400Regular' }}
-            >
-              profiles with instagram linked get
-            </Text>
-            <Text
-              className="text-black"
-              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-            >
-              2x more connections
-            </Text>
-          </View>
-        </View>
-
         <Input
           value={instagram}
           onChangeText={(text) => setInstagram(text.replace('@', ''))}

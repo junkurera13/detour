@@ -11,6 +11,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { mockUsers, MockUser } from '@/data/mockData';
+import { isDemoUser } from '@/utils/isDemoUser';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 import Animated, {
   useSharedValue,
@@ -537,6 +538,7 @@ export default function NearbyScreen() {
   const { data } = useOnboarding();
   const { convexUser } = useAuthenticatedUser();
   const userId = convexUser?._id;
+  const isDemo = isDemoUser(convexUser?.email);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const [isProcessingSwipe, setIsProcessingSwipe] = useState(false);
   const [localSwipedIds, setLocalSwipedIds] = useState<Set<string>>(new Set());
@@ -577,9 +579,12 @@ export default function NearbyScreen() {
     if (convexUsers && convexUsers.length > 0) {
       return convexUsers.map((u) => convexUserToProfile(u, userLocation));
     }
-    // Fall back to mock data for testing when no real users exist
-    return mockUsers.map((u) => mockUserToProfile(u, userLocation));
-  }, [convexUsers, userLocation]);
+    // Fall back to mock data only for demo user
+    if (isDemo) {
+      return mockUsers.map((u) => mockUserToProfile(u, userLocation));
+    }
+    return [];
+  }, [convexUsers, userLocation, isDemo]);
 
   // Current user's interests for hobby-weighted sorting
   const userInterests = useMemo(() => {
