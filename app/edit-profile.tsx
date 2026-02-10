@@ -674,7 +674,7 @@ export default function EditProfileScreen() {
                       className="text-sm text-gray-500 mb-2"
                       style={{ fontFamily: 'InstrumentSans_500Medium' }}
                     >
-                      what's their name?
+                      what&apos;s their name?
                     </Text>
                     <TextInput
                       value={newPetName}
