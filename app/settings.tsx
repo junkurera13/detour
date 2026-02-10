@@ -1,12 +1,14 @@
-import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator, Modal, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useClerk } from '@clerk/clerk-expo';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 
 const DISTANCE_OPTIONS = [5, 10, 15, 20, 25];
 
@@ -14,7 +16,33 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { signOut } = useClerk();
   const { resetData } = useOnboarding();
+  const { convexUser } = useAuthenticatedUser();
   const deleteAccountMutation = useMutation(api.users.deleteAccount);
+  const unblockUser = useMutation(api.blocks.unblockUser);
+
+  // Blocked users
+  const [blockedVisible, setBlockedVisible] = useState(false);
+  const blockedUsers = useQuery(
+    api.blocks.getBlockedUsers,
+    convexUser?._id ? { userId: convexUser._id } : "skip"
+  );
+
+  const handleUnblock = (blockedId: Id<"users">, name: string) => {
+    if (!convexUser) return;
+    Alert.alert('unblock user?', `${name} will be able to see your profile and message you again.`, [
+      { text: 'cancel', style: 'cancel' },
+      {
+        text: 'unblock',
+        onPress: async () => {
+          try {
+            await unblockUser({ blockerId: convexUser._id, blockedId });
+          } catch {
+            Alert.alert('error', 'failed to unblock user');
+          }
+        },
+      },
+    ]);
+  };
 
   // Activity Notifications state
   const [notifyNearbyActivities, setNotifyNearbyActivities] = useState(true);
@@ -63,12 +91,12 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone. All your data, matches, messages, and help requests will be permanently deleted.',
+      'delete account?',
+      'are you sure? this will permanently delete all your data, matches, messages, and help requests. this cannot be undone.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'yes, delete my account',
           style: 'destructive',
           onPress: async () => {
             setIsDeleting(true);
@@ -80,7 +108,7 @@ export default function SettingsScreen() {
             } catch (error) {
               console.error('Delete account error:', error);
               setIsDeleting(false);
-              Alert.alert('Error', 'Failed to delete account. Please try again.');
+              Alert.alert('error', 'failed to delete account. please try again.');
             }
           },
         },
@@ -247,7 +275,7 @@ export default function SettingsScreen() {
             <TouchableOpacity
               className="flex-row items-center justify-between px-4 py-4"
               activeOpacity={0.7}
-              onPress={() => Alert.alert('Coming Soon', 'Blocked users management will be available soon.')}
+              onPress={() => setBlockedVisible(true)}
             >
               <Text
                 className="text-black"
@@ -255,7 +283,17 @@ export default function SettingsScreen() {
               >
                 blocked users
               </Text>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              <View className="flex-row items-center">
+                {blockedUsers && blockedUsers.length > 0 && (
+                  <Text
+                    className="text-gray-400 text-sm mr-2"
+                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                  >
+                    {blockedUsers.length}
+                  </Text>
+                )}
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -297,6 +335,103 @@ export default function SettingsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Blocked Users Modal */}
+      <Modal
+        visible={blockedVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setBlockedVisible(false)}
+      >
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+          <View className="px-6 pt-4 pb-4 flex-row items-center justify-between border-b border-gray-100">
+            <TouchableOpacity
+              onPress={() => setBlockedVisible(false)}
+              className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+            >
+              <Ionicons name="chevron-back" size={24} color="#000" />
+            </TouchableOpacity>
+            <Text
+              className="text-lg text-black"
+              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+            >
+              blocked users
+            </Text>
+            <View className="w-10" />
+          </View>
+
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {!blockedUsers || blockedUsers.length === 0 ? (
+              <View className="items-center py-20 px-6">
+                <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
+                  <Ionicons name="ban-outline" size={32} color="#9CA3AF" />
+                </View>
+                <Text
+                  className="text-gray-500 text-center"
+                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                >
+                  no blocked users
+                </Text>
+              </View>
+            ) : (
+              blockedUsers.map((block) => {
+                const user = block.blockedUser;
+                if (!user) return null;
+                return (
+                  <View
+                    key={block._id}
+                    className="flex-row items-center px-6 py-4 border-b border-gray-50"
+                  >
+                    {user.photos?.[0] ? (
+                      <Image
+                        source={{ uri: user.photos[0] }}
+                        className="w-12 h-12 rounded-full"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View className="w-12 h-12 rounded-full bg-gray-200 items-center justify-center">
+                        <Ionicons name="person" size={24} color="#9CA3AF" />
+                      </View>
+                    )}
+                    <View className="flex-1 ml-3">
+                      <Text
+                        className="text-black"
+                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                      >
+                        {user.name}
+                      </Text>
+                      {user.username && (
+                        <Text
+                          className="text-gray-400 text-sm"
+                          style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                        >
+                          @{user.username}
+                        </Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleUnblock(user._id, user.name)}
+                      className="px-4 py-2 bg-gray-100 rounded-full"
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        className="text-black text-sm"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        unblock
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }

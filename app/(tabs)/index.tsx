@@ -581,9 +581,14 @@ export default function NearbyScreen() {
     return mockUsers.map((u) => mockUserToProfile(u, userLocation));
   }, [convexUsers, userLocation]);
 
-  // Filter profiles by preferences and locally-swiped
+  // Current user's interests for hobby-weighted sorting
+  const userInterests = useMemo(() => {
+    return new Set(convexUser?.interests || data.interests || []);
+  }, [convexUser?.interests, data.interests]);
+
+  // Filter profiles by preferences and locally-swiped, then sort by shared interests
   const filteredProfiles = useMemo(() => {
-    return profiles.filter((p) => {
+    const filtered = profiles.filter((p) => {
       if (localSwipedIds.has(p.id)) return false;
 
       // Age filter
@@ -607,7 +612,18 @@ export default function NearbyScreen() {
 
       return true;
     });
-  }, [profiles, localSwipedIds, ageMin, ageMax, prefDistance, hereForDating, hereForFriends]);
+
+    // Sort by shared interest count (most shared first)
+    if (userInterests.size > 0) {
+      filtered.sort((a, b) => {
+        const aShared = a.interests.filter((i) => userInterests.has(i)).length;
+        const bShared = b.interests.filter((i) => userInterests.has(i)).length;
+        return bShared - aShared;
+      });
+    }
+
+    return filtered;
+  }, [profiles, localSwipedIds, ageMin, ageMax, prefDistance, hereForDating, hereForFriends, userInterests]);
 
   const isLoading = userId && convexUsers === undefined;
 

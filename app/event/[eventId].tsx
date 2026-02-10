@@ -1,11 +1,13 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, Share } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, Share, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { mockActivities, mockUsers } from '@/data/mockData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useEvents } from '@/context/EventsContext';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -31,61 +33,68 @@ const interestLabels: Record<string, string> = {
   'make-content': 'make content', 'build-stuff': 'build stuff',
   'watch-sunsets': 'watch sunsets', 'play-board-games': 'play board games',
   'meditate': 'meditate', 'spa-days': 'spa days',
+  'hiking': 'hiking', 'climbing': 'climbing', 'community': 'community',
+  'coworking': 'coworking', 'dancing': 'dancing', 'other': 'other',
 };
-
-// Generate deterministic attendees for an activity based on its id
-function getAttendees(activityId: string, count: number) {
-  let hash = 0;
-  for (let i = 0; i < activityId.length; i++) {
-    hash = ((hash << 5) - hash) + activityId.charCodeAt(i);
-    hash |= 0;
-  }
-  const start = Math.abs(hash) % mockUsers.length;
-  const attendees = [];
-  for (let i = 0; i < Math.min(count, mockUsers.length); i++) {
-    const user = mockUsers[(start + i) % mockUsers.length];
-    attendees.push({ name: user.name, photo: user.photos[0] });
-  }
-  return attendees;
-}
 
 export default function EventDetailScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useCurrentUser();
-  const { isJoined, isSaved, toggleJoin, toggleSave } = useEvents();
-  const joined = eventId ? isJoined(eventId) : false;
+  const { isSaved, toggleSave } = useEvents();
   const saved = eventId ? isSaved(eventId) : false;
 
-  const activity = useMemo(() => {
-    return mockActivities.find((a) => a.id === eventId) || null;
-  }, [eventId]);
+  const activity = useQuery(
+    api.activities.getById,
+    eventId ? { id: eventId as Id<"activities"> } : "skip"
+  );
+  const joinMutation = useMutation(api.activities.join);
+  const leaveMutation = useMutation(api.activities.leave);
 
-  const baseAttendees = useMemo(() => {
-    if (!activity) return [];
-    return getAttendees(activity.id, activity.attendees);
-  }, [activity]);
+  const isLoading = activity === undefined;
+  const userId = user?._id;
+  const joined = activity && userId ? activity.attendeeIds.includes(userId) : false;
+  const totalAttendees = activity ? activity.attendeeIds.length : 0;
+  const attendees = activity?.attendees || [];
 
-  // Include current user in attendees when joined
-  const attendees = useMemo(() => {
-    if (!joined) return baseAttendees;
-    const me = {
-      name: user?.name || 'You',
-      photo: user?.photos?.[0] || '',
-    };
-    return [me, ...baseAttendees];
-  }, [baseAttendees, joined, user]);
-
-  const totalAttendees = activity ? activity.attendees + (joined ? 1 : 0) : 0;
-
-  // Preview names for the "event details" card
   const previewNames = useMemo(() => {
     if (attendees.length === 0) return '';
     if (attendees.length === 1) return attendees[0].name;
     if (attendees.length === 2) return `${attendees[0].name} and ${attendees[1].name}`;
     return `${attendees[0].name}, ${attendees[1].name} and more`;
   }, [attendees]);
+
+  const handleToggleJoin = async () => {
+    if (!eventId) return;
+    try {
+      if (joined) {
+        await leaveMutation({ activityId: eventId as Id<"activities"> });
+      } else {
+        await joinMutation({ activityId: eventId as Id<"activities"> });
+      }
+    } catch {
+      // silently handle
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+        <View className="px-6 pt-4 pb-6 flex-row items-center">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+          >
+            <Ionicons name="chevron-back" size={24} color="#000" />
+          </TouchableOpacity>
+        </View>
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#fd6b03" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!activity) {
     return (
@@ -122,7 +131,7 @@ export default function EventDetailScreen() {
         {/* Hero image */}
         <View className="relative">
           <Image
-            source={{ uri: activity.image }}
+            source={{ uri: activity.image || 'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=600&h=400&fit=crop' }}
             style={{ width: SCREEN_WIDTH, height: 280 }}
             resizeMode="cover"
           />
@@ -193,7 +202,7 @@ export default function EventDetailScreen() {
             <View className="flex-row items-center" style={{ marginLeft: 8 }}>
               {attendees.slice(0, 3).map((a, i) => (
                 <Image
-                  key={i}
+                  key={a._id}
                   source={{ uri: a.photo }}
                   style={{
                     width: 32,
@@ -317,36 +326,38 @@ export default function EventDetailScreen() {
           </View>
 
           {/* Host */}
-          <View className="flex-row items-center py-3 border-b border-gray-50">
-            <Image
-              source={{ uri: activity.host.avatar }}
-              className="w-12 h-12 rounded-full"
-              resizeMode="cover"
-            />
-            <View className="ml-3 flex-1">
-              <View className="flex-row items-center">
-                <Text
-                  className="text-black text-base"
-                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                >
-                  {activity.host.name}
-                </Text>
-                <View className="bg-orange-100 rounded-full px-2 py-0.5 ml-2">
+          {activity.host && (
+            <View className="flex-row items-center py-3 border-b border-gray-50">
+              <Image
+                source={{ uri: activity.host.photo }}
+                className="w-12 h-12 rounded-full"
+                resizeMode="cover"
+              />
+              <View className="ml-3 flex-1">
+                <View className="flex-row items-center">
                   <Text
-                    className="text-orange-600 text-xs"
+                    className="text-black text-base"
                     style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
                   >
-                    host
+                    {activity.host.name}
                   </Text>
+                  <View className="bg-orange-100 rounded-full px-2 py-0.5 ml-2">
+                    <Text
+                      className="text-orange-600 text-xs"
+                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                    >
+                      host
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
+          )}
 
           {/* Attendees list */}
           {attendees.map((attendee, index) => (
             <View
-              key={index}
+              key={attendee._id}
               className={`flex-row items-center py-3 ${index < attendees.length - 1 ? 'border-b border-gray-50' : ''}`}
             >
               <Image
@@ -382,7 +393,7 @@ export default function EventDetailScreen() {
         <View className="flex-row items-center justify-between px-6 pt-3">
           {/* Left actions */}
           <View className="flex-row items-center gap-2">
-<TouchableOpacity
+            <TouchableOpacity
               onPress={() => Share.share({ message: `Check out "${activity.title}" on Detour!` })}
               className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
               activeOpacity={0.7}
@@ -403,7 +414,7 @@ export default function EventDetailScreen() {
             className="flex-row items-center px-6 py-3 rounded-full"
             style={{ backgroundColor: joined ? '#F3F4F6' : '#fd6b03' }}
             activeOpacity={0.8}
-            onPress={() => eventId && toggleJoin(eventId)}
+            onPress={handleToggleJoin}
           >
             <Ionicons
               name={joined ? 'checkmark' : 'add'}

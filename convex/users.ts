@@ -237,6 +237,21 @@ export const getDiscoverUsers = query({
   },
 });
 
+export const getAllApprovedUsers = query({
+  args: { currentUserId: v.optional(v.id("users")) },
+  handler: async (ctx, args) => {
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_status", (q) => q.eq("userStatus", "approved"))
+      .collect();
+
+    if (args.currentUserId) {
+      return users.filter((u) => u._id !== args.currentUserId);
+    }
+    return users;
+  },
+});
+
 export const checkUsernameAvailable = query({
   args: { username: v.string() },
   handler: async (ctx, args) => {

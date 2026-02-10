@@ -99,7 +99,7 @@ export default function AuthLandingScreen() {
       />
       <SafeAreaView className="flex-1">
         <View className="flex-1 px-6 pt-12">
-          <View className="flex-1 items-center justify-end" style={{ paddingBottom: 100 }}>
+          <View className="flex-1 items-center justify-end" style={{ paddingBottom: 120 }}>
             <Text
               className="text-white"
               style={{ fontFamily: 'InstrumentSerif_400Regular', fontSize: 96, marginBottom: -20 }}

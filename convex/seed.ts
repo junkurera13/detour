@@ -275,12 +275,6 @@ const testUsers = [
 export const seedUsers = mutation({
   args: {},
   handler: async (ctx) => {
-    // Check if users already seeded (more than 5 users means seeded)
-    const existingUsers = await ctx.db.query("users").take(10);
-    if (existingUsers.length >= 10) {
-      return { message: "Users already seeded", count: existingUsers.length };
-    }
-
     const now = Date.now();
     let seededCount = 0;
 
@@ -638,6 +632,60 @@ export const seedMatches = mutation({
   },
 });
 
+export const seedProfileViews = mutation({
+  args: { myUsername: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const myUsername = args.myUsername || "junz";
+    const me = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", myUsername))
+      .first();
+
+    if (!me) {
+      return { message: `User '${myUsername}' not found.` };
+    }
+
+    // Check if already seeded
+    const existing = await ctx.db
+      .query("profileViews")
+      .withIndex("by_viewed", (q) => q.eq("viewedId", me._id))
+      .first();
+    if (existing) {
+      return { message: "Profile views already seeded" };
+    }
+
+    const viewerUsernames = [
+      "clara.sails",
+      "ryan.surfs",
+      "mia.writes",
+      "emma.explores",
+      "priya.yoga",
+    ];
+
+    const now = Date.now();
+    let count = 0;
+
+    for (let i = 0; i < viewerUsernames.length; i++) {
+      const viewer = await ctx.db
+        .query("users")
+        .withIndex("by_username", (q) => q.eq("username", viewerUsernames[i]))
+        .first();
+
+      if (!viewer) continue;
+
+      const hoursAgo = [0.5, 3, 8, 24, 72][i] || 1;
+      await ctx.db.insert("profileViews", {
+        viewerId: viewer._id,
+        viewedId: me._id,
+        createdAt: now - hoursAgo * 3600000,
+      });
+      count++;
+    }
+
+    return { message: `Seeded ${count} profile views for @${myUsername}` };
+  },
+});
+
 export const seedInviteCodes = mutation({
   args: {},
   handler: async (ctx) => {
@@ -666,5 +714,196 @@ export const seedInviteCodes = mutation({
     }
 
     return { message: "Seeded invite codes successfully" };
+  },
+});
+
+// Realistic van-lifer activities for demo
+// Uses usernames from the existing seed users (clara.sails, ryan.surfs, etc.)
+const testActivities = [
+  {
+    hostUsername: "ryan.surfs",
+    title: "sunrise surf session",
+    description: "early morning surf at echo beach. all levels welcome — i have an extra board if you need one. we'll grab coffee after at deus.",
+    image: "https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=600&h=400&fit=crop",
+    date: "tomorrow",
+    time: "6:00 AM",
+    location: "Echo Beach, Canggu, Bali",
+    category: "surfing",
+    tags: ["go-surfing", "beach-days", "grab-coffee"],
+    maxAttendees: 8,
+    attendeeUsernames: ["priya.yoga", "clara.sails"],
+  },
+  {
+    hostUsername: "dan.eth",
+    title: "co-working & coffee hangout",
+    description: "working from one of bangkok's best cafes. good wifi, great vibes. join if you want to co-work and meet other remote workers.",
+    image: "https://images.unsplash.com/photo-1521017432531-fbd92d768814?w=600&h=400&fit=crop",
+    date: "today",
+    time: "10:00 AM",
+    location: "Rocket Coffeebar, Bangkok, Thailand",
+    category: "coworking",
+    tags: ["cowork-at-cafes", "grab-coffee"],
+    maxAttendees: 12,
+    attendeeUsernames: ["mia.writes"],
+  },
+  {
+    hostUsername: "priya.yoga",
+    title: "sunset yoga on the beach",
+    description: "free yoga flow on the beach as the sun goes down. bring your own mat if you have one, otherwise we'll share. all levels — just come as you are.",
+    image: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&h=400&fit=crop",
+    date: "saturday",
+    time: "5:30 PM",
+    location: "Palolem Beach, Goa, India",
+    category: "yoga",
+    tags: ["do-yoga", "beach-days", "watch-sunsets", "meditate"],
+    maxAttendees: 15,
+    attendeeUsernames: ["luna.free", "emma.explores", "nina.vibes"],
+  },
+  {
+    hostUsername: "emma.explores",
+    title: "street food tour — el born",
+    description: "hitting the best tapas and street food spots in el born. patatas bravas, jamón, pintxos — the works. meet at the santa caterina market entrance.",
+    image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=400&fit=crop",
+    date: "friday",
+    time: "6:00 PM",
+    location: "El Born, Barcelona, Spain",
+    category: "food",
+    tags: ["try-street-food", "find-hidden-gems", "explore-the-city"],
+    maxAttendees: 10,
+    attendeeUsernames: ["lucas.builds"],
+  },
+  {
+    hostUsername: "mia.writes",
+    title: "photography walk through ribeira",
+    description: "exploring porto's riverside neighborhood with cameras. colorful buildings, narrow streets, incredible light. we'll end at a miradouro for sunset shots.",
+    image: "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=600&h=400&fit=crop",
+    date: "sunday",
+    time: "4:00 PM",
+    location: "Ribeira, Porto, Portugal",
+    category: "photography",
+    tags: ["take-photos", "explore-the-city", "watch-sunsets"],
+    maxAttendees: 8,
+    attendeeUsernames: ["emma.explores", "nina.vibes"],
+  },
+  {
+    hostUsername: "tom.adventures",
+    title: "nomad meetup & potluck",
+    description: "monthly meetup for digital nomads in melbourne. bring a dish to share and your best travel stories. we'll have the rooftop to ourselves.",
+    image: "https://images.unsplash.com/photo-1529543544282-ea25407407fd?w=600&h=400&fit=crop",
+    date: "next saturday",
+    time: "7:00 PM",
+    location: "Fitzroy, Melbourne, Australia",
+    category: "community",
+    tags: ["cook-together", "grab-drinks", "find-hidden-gems"],
+    maxAttendees: 20,
+    attendeeUsernames: ["alex.vanlife", "ryan.surfs"],
+  },
+  {
+    hostUsername: "lucas.builds",
+    title: "salsa night for beginners",
+    description: "always wanted to try salsa? come learn the basics at a beginner-friendly class. no partner needed — we rotate. then we hit the dance floor after.",
+    image: "https://images.unsplash.com/photo-1504609813442-a8924e83f76e?w=600&h=400&fit=crop",
+    date: "thursday",
+    time: "8:00 PM",
+    location: "Parque Lleras, Medellín, Colombia",
+    category: "dancing",
+    tags: ["go-dancing", "grab-drinks"],
+    maxAttendees: 16,
+    attendeeUsernames: ["luna.free"],
+  },
+  {
+    hostUsername: "clara.sails",
+    title: "island hopping day trip",
+    description: "heading to the nearby islands for a full day of swimming and snorkeling. boat leaves at 8am sharp. lunch included. about €30 per person for the boat.",
+    image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=400&fit=crop",
+    date: "wednesday",
+    time: "8:00 AM",
+    location: "Split Harbor, Split, Croatia",
+    category: "diving",
+    tags: ["go-diving", "beach-days"],
+    maxAttendees: 10,
+    attendeeUsernames: ["tom.adventures"],
+  },
+  {
+    hostUsername: "luna.free",
+    title: "cenote swim & picnic",
+    description: "renting bikes to ride to a hidden cenote outside town. crystal clear water, jungle vibes. bringing snacks and drinks — just bring a towel.",
+    image: "https://images.unsplash.com/photo-1557872943-16a5ac26437e?w=600&h=400&fit=crop",
+    date: "tomorrow",
+    time: "10:00 AM",
+    location: "Tulum, Mexico",
+    category: "other",
+    tags: ["go-cycling", "beach-days", "find-hidden-gems"],
+    maxAttendees: 6,
+    attendeeUsernames: ["dan.eth"],
+  },
+  {
+    hostUsername: "alex.vanlife",
+    title: "morning run along sea point",
+    description: "easy 5k along the sea point promenade with ocean views. we'll run at a chill pace — no pressure. coffee after at the promenade cafe.",
+    image: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&h=400&fit=crop",
+    date: "monday",
+    time: "6:30 AM",
+    location: "Sea Point Promenade, Cape Town, South Africa",
+    category: "fitness",
+    tags: ["go-running", "grab-coffee", "beach-days"],
+    maxAttendees: 10,
+    attendeeUsernames: ["nina.vibes"],
+  },
+];
+
+export const seedActivities = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Check if already seeded
+    const existing = await ctx.db.query("activities").take(1);
+    if (existing.length > 0) {
+      return { message: "Activities already seeded", count: existing.length };
+    }
+
+    const now = Date.now();
+    let seededCount = 0;
+
+    for (const activity of testActivities) {
+      // Look up the host by username
+      const host = await ctx.db
+        .query("users")
+        .withIndex("by_username", (q) => q.eq("username", activity.hostUsername))
+        .first();
+
+      if (!host) continue;
+
+      // Look up attendees by username
+      const attendeeIds = [];
+      for (const username of activity.attendeeUsernames) {
+        const attendee = await ctx.db
+          .query("users")
+          .withIndex("by_username", (q) => q.eq("username", username))
+          .first();
+        if (attendee) {
+          attendeeIds.push(attendee._id);
+        }
+      }
+
+      await ctx.db.insert("activities", {
+        hostId: host._id,
+        title: activity.title,
+        description: activity.description,
+        image: activity.image,
+        date: activity.date,
+        time: activity.time,
+        location: activity.location,
+        category: activity.category,
+        tags: activity.tags,
+        maxAttendees: activity.maxAttendees,
+        attendeeIds,
+        status: "active",
+        createdAt: now - Math.floor(Math.random() * 86400000),
+        updatedAt: now,
+      });
+      seededCount++;
+    }
+
+    return { message: `Seeded ${seededCount} activities`, count: seededCount };
   },
 });

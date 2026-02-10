@@ -1,12 +1,13 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Platform, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Platform, ActivityIndicator, Dimensions, Alert, Modal, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { mockUsers, mockActivities } from '@/data/mockData';
-import { useMemo, useState } from 'react';
+import { mockUsers } from '@/data/mockData';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { useMemo, useState, useEffect, useRef } from 'react';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PHOTO_SIZE = (SCREEN_WIDTH - 48 - 8) / 2; // px-6 padding (48) + gap (8)
@@ -106,6 +107,14 @@ export default function UserProfileScreen() {
   // Find mock user if applicable
   const mockUser = isMockUser ? mockUsers.find((u) => u.id === userId) : null;
 
+  // Record profile view for real users
+  const recordView = useMutation(api.profileViews.record);
+  useEffect(() => {
+    if (!isMockUser && userId) {
+      recordView({ viewedId: userId as Id<"users"> }).catch(() => {});
+    }
+  }, [userId, isMockUser, recordView]);
+
   // Normalize data to match own profile page structure
   const profileData = useMemo(() => {
     if (convexUser) {
@@ -138,30 +147,86 @@ export default function UserProfileScreen() {
   }, [convexUser, mockUser]);
 
   const [activeTab, setActiveTab] = useState<'about' | 'events' | 'builder'>('about');
+  const [menuVisible, setMenuVisible] = useState(false);
+  const menuSlideAnim = useRef(new Animated.Value(400)).current;
+  const { convexUser: currentUser } = useAuthenticatedUser();
 
-  // Get events this user is attending or hosting (deterministic based on name)
-  const userEvents = useMemo(() => {
-    if (!profileData) return [];
-    const name = profileData.name.toLowerCase();
-    // Include events they host
-    const hosted = mockActivities.filter(a => a.host.name.toLowerCase() === name);
-    // Deterministically assign some events based on name hash
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = ((hash << 5) - hash) + name.charCodeAt(i);
-      hash |= 0;
-    }
-    const start = Math.abs(hash) % mockActivities.length;
-    const count = 1 + (Math.abs(hash) % 3); // 1-3 extra events
-    const attending: typeof mockActivities = [];
-    for (let i = 0; i < count; i++) {
-      const act = mockActivities[(start + i) % mockActivities.length];
-      if (!hosted.some(h => h.id === act.id)) {
-        attending.push(act);
+  // Crossing paths detection
+  const crossingPath = useMemo(() => {
+    if (!currentUser || !profileData) return null;
+    const myTrips = currentUser.futureTrips || [];
+    const theirTrips = profileData.futureTrips || [];
+    if (myTrips.length === 0 || theirTrips.length === 0) return null;
+    const myCities = myTrips.map((t: { location: string }) => t.location.split(',')[0].trim().toLowerCase());
+    for (const trip of theirTrips) {
+      const city = trip.location.split(',')[0].trim().toLowerCase();
+      if (myCities.includes(city)) {
+        return trip.location.split(',')[0].trim();
       }
     }
-    return [...hosted, ...attending];
-  }, [profileData]);
+    return null;
+  }, [currentUser, profileData]);
+  const blockUser = useMutation(api.blocks.blockUser);
+  const reportUser = useMutation(api.reports.create);
+
+  const openMenu = () => {
+    setMenuVisible(true);
+    Animated.spring(menuSlideAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+  };
+
+  const closeMenu = () => {
+    Animated.timing(menuSlideAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start(() => setMenuVisible(false));
+  };
+
+  const handleBlock = () => {
+    closeMenu();
+    Alert.alert('block user?', `${profileData?.name || 'this user'} won't be able to see your profile or message you.`, [
+      { text: 'cancel', style: 'cancel' },
+      {
+        text: 'block',
+        style: 'destructive',
+        onPress: async () => {
+          if (!currentUser || !userId || isMockUser) return;
+          try {
+            await blockUser({ blockerId: currentUser._id, blockedId: userId as Id<"users"> });
+            router.back();
+          } catch {
+            Alert.alert('error', 'failed to block user');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleReport = () => {
+    closeMenu();
+    Alert.alert('report user?', 'this will flag the account for review by our team.', [
+      { text: 'cancel', style: 'cancel' },
+      {
+        text: 'report',
+        style: 'destructive',
+        onPress: async () => {
+          if (!userId || isMockUser) {
+            Alert.alert('reported', 'thanks for letting us know. we\'ll review this account.');
+            return;
+          }
+          try {
+            await reportUser({ reportedId: userId as Id<"users">, reason: 'reported from profile' });
+            Alert.alert('reported', 'thanks for letting us know. we\'ll review this account.');
+          } catch {
+            Alert.alert('reported', 'thanks for letting us know. we\'ll review this account.');
+          }
+        },
+      },
+    ]);
+  };
+
+  // Fetch events this user is hosting or attending from Convex
+  const userEventsQuery = useQuery(
+    api.activities.getByUserId,
+    !isMockUser && userId ? { userId: userId as Id<"users"> } : "skip"
+  );
+  const userEvents = userEventsQuery || [];
 
   if (!profileData) {
     return (
@@ -203,7 +268,12 @@ export default function UserProfileScreen() {
         >
           profile
         </Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          onPress={openMenu}
+          className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+        >
+          <Ionicons name="ellipsis-vertical" size={20} color="#000" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -254,6 +324,18 @@ export default function UserProfileScreen() {
               </Text>
             </View>
           )}
+
+          {crossingPath && (
+            <View className="flex-row items-center mt-3 bg-orange-50 px-4 py-2 rounded-full">
+              <Ionicons name="git-compare-outline" size={16} color="#EA580C" />
+              <Text
+                className="text-orange-600 ml-2"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 }}
+              >
+                crossing paths in {crossingPath}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Tab Toggle */}
@@ -284,16 +366,22 @@ export default function UserProfileScreen() {
                 const isHost = activity.host.name.toLowerCase() === profileData.name.toLowerCase();
                 return (
                   <TouchableOpacity
-                    key={activity.id}
+                    key={activity._id}
                     className="flex-row items-center py-3 border-b border-gray-50"
                     activeOpacity={0.7}
-                    onPress={() => router.push(`/event/${activity.id}` as any)}
+                    onPress={() => router.push(`/event/${activity._id}` as any)}
                   >
-                    <Image
-                      source={{ uri: activity.image }}
-                      className="w-14 h-14 rounded-xl"
-                      resizeMode="cover"
-                    />
+                    {activity.image ? (
+                      <Image
+                        source={{ uri: activity.image }}
+                        className="w-14 h-14 rounded-xl"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View className="w-14 h-14 rounded-xl bg-orange-100 items-center justify-center">
+                        <Ionicons name="calendar" size={24} color="#EA580C" />
+                      </View>
+                    )}
                     <View className="ml-3 flex-1">
                       <View className="flex-row items-center">
                         <Text
@@ -521,6 +609,58 @@ export default function UserProfileScreen() {
         </>
         )}
       </ScrollView>
+
+      {/* Report / Block menu */}
+      <Modal
+        visible={menuVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={closeMenu}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <TouchableOpacity className="flex-1" activeOpacity={1} onPress={closeMenu} />
+          <Animated.View
+            style={{ transform: [{ translateY: menuSlideAnim }] }}
+            className="bg-white rounded-t-3xl px-6 pb-10 pt-4"
+          >
+            <View className="w-10 h-1 bg-gray-300 rounded-full self-center mb-6" />
+
+            <TouchableOpacity
+              className="flex-row items-center px-4 py-4 bg-gray-50 rounded-t-2xl border-b border-gray-100"
+              activeOpacity={0.7}
+              onPress={handleReport}
+            >
+              <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
+                <Ionicons name="flag-outline" size={20} color="#000" />
+              </View>
+              <Text
+                className="flex-1 text-black ml-3"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                report
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="flex-row items-center px-4 py-4 bg-gray-50 rounded-b-2xl"
+              activeOpacity={0.7}
+              onPress={handleBlock}
+            >
+              <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
+                <Ionicons name="ban-outline" size={20} color="#EF4444" />
+              </View>
+              <Text
+                className="flex-1 text-red-500 ml-3"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                block
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

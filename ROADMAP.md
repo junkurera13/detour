@@ -37,6 +37,7 @@
 | User profile page | View other users' profiles (matches own profile layout) | ✅ |
 | Profile navigation | Tap photo in matches to view profile | ✅ |
 | Block users | Block from chat/profile | ✅ |
+| Who viewed my profile | Real profile view tracking + viewers modal | ✅ |
 
 ---
 
@@ -72,8 +73,41 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 
 ---
 
-## Phase 4: Demo Polish ⬜
-**Goal:** Judges can experience the app quickly
+## Phase 4: Audience Fit — Score Full Marks (Quin Gable) 🟡
+**Goal:** Every feature Quin described in her brief is real and functional. A judge using the app as a van lifer hits zero dead ends.
+
+### P0 — Critical (these gaps will cost 1st place) ✅
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| 1 | Route-based discovery | Explore People page uses real Convex users with `futureTrips` overlap for "Heading Your Way" section. Also shows recent crossings, same lifestyle, same interests. | ✅ |
+| 2 | Activities backend | `activities` table in Convex schema + `convex/activities.ts` with list, getById, create, join, leave queries/mutations. | ✅ |
+| 3 | Host Activity flow | "Host Event" form wired to `activities.create` mutation. Persisted events appear for all users with filtering by interest/location. | ✅ |
+| 4 | Join Activity flow | Join/leave buttons wired to `activities.join`/`activities.leave` mutations. Attendee count updates in real-time via Convex reactivity. Event detail page uses real data. | ✅ |
+| 5 | Seed activity data | 10 realistic van-lifer activities in `convex/seed.ts` (sunrise surf, co-working, yoga, street food tour, photography walk, nomad meetup, salsa night, snorkeling, ramen crawl, morning run). | ✅ |
+
+### P1 — High Impact (strong differentiators) ✅
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| 6 | Hobby-weighted discovery | In Nearby tab, prioritize users with shared interests higher in the card stack (not just distance/age). | ✅ |
+| 7 | Report user backend | Wire the existing report UI to a real `reports` table + mutation. Store reporter, reported, reason, timestamp. | ✅ |
+| 8 | Expand builder categories | Add solar, insulation, water systems, flooring, cabinetry, windows/ventilation to builder specialties. Real van build topics. | ✅ |
+| 9 | "Crossing paths" indicator | On match cards and profiles, show when two users will be in the same area based on futureTrips overlap. | ✅ |
+
+### P2 — Polish (shows depth of understanding)
+
+| # | Task | Description | Status |
+|---|------|-------------|--------|
+| 10 | Safety blurb in onboarding | Add a short screen or banner during onboarding: "Detour is invite-only to keep our community safe. All profiles are reviewed." | ⬜ |
+| 11 | Blocked users screen | Wire the "Blocked Users" settings item (currently says "coming soon") to a real list with unblock option. | ⬜ |
+| 12 | Van lifer validation evidence | Post in r/vandwellers or van life FB group asking for feedback. Screenshot responses. Reference in submission writeup. | ⬜ |
+| 13 | Reference Quin's pain points in submission | In the hackathon writeup, directly quote Quin's "needle in a haystack" and map each feature to her stated pain. | ⬜ |
+
+---
+
+## Phase 5: Demo Polish ⬜
+**Goal:** Judges can experience the app quickly with no dead ends
 
 | Task | Description | Status |
 |------|-------------|--------|
@@ -102,6 +136,7 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 | Swipe Gestures | Pan gestures with Reanimated + haptics |
 | Help Marketplace | Request/offer help with categories, offers, chat |
 | Seed Data | Users, matches, messages, help requests, help offers in Convex |
+| Who Viewed My Profile | Real profile view tracking, viewers modal with timestamps |
 
 ---
 
@@ -134,10 +169,11 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 | `app/user/[userId].tsx` | User profile page |
 | `app/(tabs)/messages.tsx` | Help marketplace feed |
 | `convex/seed.ts` | Seed data (users, matches, messages, help requests, offers) |
+| `convex/profileViews.ts` | Profile view tracking (record + getRecentViewers) |
 
 ---
 
-*Last updated: February 9, 2026*
+*Last updated: February 10, 2026*
 
 ---
 

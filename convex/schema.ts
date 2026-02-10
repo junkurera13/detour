@@ -163,6 +163,49 @@ export default defineSchema({
     .index("by_conversation", ["conversationId"])
     .index("by_sender", ["senderId"]),
 
+  // Profile views
+  profileViews: defineTable({
+    viewerId: v.id("users"),
+    viewedId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_viewed", ["viewedId", "createdAt"])
+    .index("by_pair", ["viewerId", "viewedId"]),
+
+  // Activities / events
+  activities: defineTable({
+    hostId: v.id("users"),
+    title: v.string(),
+    description: v.string(),
+    image: v.optional(v.string()),
+    date: v.string(),
+    time: v.string(),
+    endDate: v.optional(v.string()),
+    endTime: v.optional(v.string()),
+    location: v.string(),
+    category: v.string(),
+    tags: v.optional(v.array(v.string())),
+    maxAttendees: v.optional(v.number()),
+    attendeeIds: v.array(v.id("users")),
+    status: v.string(), // "active", "cancelled", "completed"
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_host", ["hostId"])
+    .index("by_status", ["status"])
+    .index("by_category", ["category"])
+    .index("by_created", ["createdAt"]),
+
+  // Reports
+  reports: defineTable({
+    reporterId: v.id("users"),
+    reportedId: v.id("users"),
+    reason: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_reporter", ["reporterId"])
+    .index("by_reported", ["reportedId"]),
+
   // Blocked users
   blockedUsers: defineTable({
     blockerId: v.id("users"), // user who blocked

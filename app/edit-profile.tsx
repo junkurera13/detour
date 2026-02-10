@@ -680,6 +680,12 @@ export default function EditProfileScreen() {
                     { id: 'electrical', label: 'electrical', emoji: '⚡' },
                     { id: 'build', label: 'build', emoji: '🪚' },
                     { id: 'plumbing', label: 'plumbing', emoji: '🚿' },
+                    { id: 'solar', label: 'solar', emoji: '☀️' },
+                    { id: 'insulation', label: 'insulation', emoji: '🧱' },
+                    { id: 'water-systems', label: 'water systems', emoji: '💧' },
+                    { id: 'flooring', label: 'flooring', emoji: '🪵' },
+                    { id: 'cabinetry', label: 'cabinetry', emoji: '🗄️' },
+                    { id: 'windows-ventilation', label: 'windows & ventilation', emoji: '🪟' },
                     { id: 'other', label: 'other', emoji: '📦' },
                   ].map((option) => (
                     <SelectionChip

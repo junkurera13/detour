@@ -435,6 +435,13 @@ export default function MatchesScreen() {
 
   const isLoading = userId && matchesData === undefined;
 
+  // Current user's future trip locations for crossing paths detection
+  const myTripLocations = useMemo(() => {
+    if (!convexUser) return [];
+    const trips = convexUser.futureTrips || [];
+    return trips.map((t: { location: string }) => t.location.split(',')[0].trim().toLowerCase());
+  }, [convexUser]);
+
   // Transform matches for display, fall back to mock data
   const matches = useMemo(() => {
     // If we have real matches from Convex, use them
@@ -442,6 +449,20 @@ export default function MatchesScreen() {
       return matchesData.map((match) => {
         const otherUser = match.otherUser;
         const isNew = match.matchedAt && (Date.now() - match.matchedAt) < 24 * 60 * 60 * 1000;
+
+        // Detect crossing paths from futureTrips overlap
+        let crossingPath: string | null = null;
+        if (otherUser && myTripLocations.length > 0) {
+          const otherTrips = otherUser.futureTrips || [];
+          for (const trip of otherTrips) {
+            const city = trip.location.split(',')[0].trim().toLowerCase();
+            if (myTripLocations.includes(city)) {
+              crossingPath = trip.location.split(',')[0].trim();
+              break;
+            }
+          }
+        }
+
         return {
           id: match._id,
           userId: otherUser?._id,
@@ -450,6 +471,7 @@ export default function MatchesScreen() {
           matchedAt: formatRelativeTime(match.matchedAt),
           photo: otherUser?.photos?.[0] ?? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
           isNew,
+          crossingPath,
         };
       });
     }
@@ -462,8 +484,9 @@ export default function MatchesScreen() {
       matchedAt: formatRelativeTime(new Date(match.matchedAt).getTime()),
       photo: match.user.photos[0],
       isNew: match.hasNewMessage,
+      crossingPath: null as string | null,
     }));
-  }, [matchesData]);
+  }, [matchesData, myTripLocations]);
 
   // Combine real/mock matches with liked-back matches from the Likes You section
   const allMatches = useMemo(() => {
@@ -683,6 +706,17 @@ export default function MatchesScreen() {
                       >
                         matched {match.matchedAt}
                       </Text>
+                      {match.crossingPath && (
+                        <View className="flex-row items-center mt-1">
+                          <Ionicons name="git-compare-outline" size={12} color="#EA580C" />
+                          <Text
+                            className="text-orange-600 text-xs ml-1"
+                            style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                          >
+                            crossing paths in {match.crossingPath}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                     <TouchableOpacity
                       className="w-10 h-10 bg-white rounded-full items-center justify-center"

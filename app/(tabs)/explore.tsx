@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, Image, Platform, Modal, Switch, TextInput, Share, KeyboardAvoidingView, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Platform, Modal, Switch, TextInput, Share, KeyboardAvoidingView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
@@ -6,7 +6,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useEvents } from '@/context/EventsContext';
-import { mockActivities as importedMockActivities } from '@/data/mockData';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 
 // Interest ID to label mapping
 const interestLabels: Record<string, string> = {
@@ -67,6 +69,23 @@ const interestLabels: Record<string, string> = {
   'chill-at-the-beach': 'chill at the beach',
   'meditate': 'meditate',
   'spa-days': 'spa days',
+  // Activity categories
+  'surfing': 'surfing',
+  'coffee': 'coffee',
+  'yoga': 'yoga',
+  'food': 'food',
+  'fitness': 'fitness',
+  'photography': 'photography',
+  'music': 'music',
+  'entrepreneur': 'entrepreneur',
+  'diving': 'diving',
+  'cooking': 'cooking',
+  'hiking': 'hiking',
+  'climbing': 'climbing',
+  'community': 'community',
+  'coworking': 'coworking',
+  'dancing': 'dancing',
+  'other': 'other',
 };
 
 interface Activity {
@@ -80,21 +99,8 @@ interface Activity {
   location: string;
   attendees: number;
   maxAttendees: number;
+  tags: string[];
 }
-
-// Use the comprehensive mock activities
-const mockActivities: Activity[] = importedMockActivities.map((activity) => ({
-  id: activity.id,
-  title: activity.title.toLowerCase(),
-  category: activity.category,
-  photo: activity.image,
-  host: { name: activity.host.name, photo: activity.host.avatar },
-  date: activity.date,
-  time: activity.time,
-  location: activity.location,
-  attendees: activity.attendees,
-  maxAttendees: activity.maxAttendees,
-}));
 
 const dayFilters = [
   { id: 'any', label: 'any day' },
@@ -115,7 +121,6 @@ function matchesDayFilter(dateStr: string, filter: string): boolean {
   if (filter === 'this-weekend') return d === 'saturday' || d === 'sunday';
   if (filter === 'next-week') return d.startsWith('next');
   if (filter === 'this-week') {
-    // "this week" = today, tomorrow, or a plain weekday name (no "next" prefix)
     return d === 'today' || d === 'tomorrow' || (weekdays.includes(d) && !d.startsWith('next'));
   }
   return true;
@@ -135,6 +140,7 @@ function dateSortValue(dateStr: string): number {
 export default function ExploreScreen() {
   const { data } = useOnboarding();
   const router = useRouter();
+  const { convexUser } = useAuthenticatedUser();
   const [selectedInterest, setSelectedInterest] = useState<string | null>(null);
   const [prefsVisible, setPrefsVisible] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
@@ -157,28 +163,87 @@ export default function ExploreScreen() {
     endTime: '',
     tags: [] as string[],
   });
-  const { joinedIds, savedIds, toggleSave, isSaved } = useEvents();
+  const { savedIds, toggleSave, isSaved } = useEvents();
 
-  // Events for "my events" tabs
-  const joinedEvents = useMemo(() => mockActivities.filter(a => joinedIds.includes(a.id)), [joinedIds]);
-  const savedEvents = useMemo(() => mockActivities.filter(a => savedIds.includes(a.id)), [savedIds]);
+  // Real Convex data
+  const convexActivities = useQuery(api.activities.list);
+  const createActivity = useMutation(api.activities.create);
+  const userId = convexUser?._id;
+
+  // Map Convex activities to local Activity interface
+  const activities: Activity[] = useMemo(() => {
+    if (!convexActivities) return [];
+    return convexActivities.map((a) => ({
+      id: a._id,
+      title: a.title.toLowerCase(),
+      category: a.category,
+      photo: a.image || 'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=600&h=400&fit=crop',
+      host: { name: a.host.name, photo: a.host.photo },
+      date: a.date,
+      time: a.time,
+      location: a.location,
+      attendees: a.attendeeIds.length,
+      maxAttendees: a.maxAttendees || 20,
+      tags: a.tags || [],
+    }));
+  }, [convexActivities]);
+
+  // My events
+  const joinedEvents = useMemo(() => {
+    if (!convexActivities || !userId) return [];
+    return convexActivities
+      .filter((a) => a.attendeeIds.includes(userId))
+      .map((a) => ({
+        id: a._id,
+        title: a.title.toLowerCase(),
+        category: a.category,
+        photo: a.image || 'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=600&h=400&fit=crop',
+        host: { name: a.host.name, photo: a.host.photo },
+        date: a.date,
+        time: a.time,
+        location: a.location,
+        attendees: a.attendeeIds.length,
+        maxAttendees: a.maxAttendees || 20,
+        tags: a.tags || [],
+      }));
+  }, [convexActivities, userId]);
+
+  const hostedEvents = useMemo(() => {
+    if (!convexActivities || !userId) return [];
+    return convexActivities
+      .filter((a) => a.hostId === userId)
+      .map((a) => ({
+        id: a._id,
+        title: a.title.toLowerCase(),
+        category: a.category,
+        photo: a.image || 'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=600&h=400&fit=crop',
+        host: { name: a.host.name, photo: a.host.photo },
+        date: a.date,
+        time: a.time,
+        location: a.location,
+        attendees: a.attendeeIds.length,
+        maxAttendees: a.maxAttendees || 20,
+        tags: a.tags || [],
+      }));
+  }, [convexActivities, userId]);
+
+  const savedEvents = useMemo(() => activities.filter(a => savedIds.includes(a.id)), [activities, savedIds]);
 
   // Get user's interests for filter pills
   const userInterests = useMemo(() => data.interests || [], [data.interests]);
 
-  // Search results — match against title, host name, location, category
+  // Search results
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return { activities: [] as Activity[], hosts: [] as { name: string; photo: string; activityCount: number }[] };
 
-    const matchedActivities = mockActivities.filter((a) =>
+    const matchedActivities = activities.filter((a) =>
       a.title.toLowerCase().includes(q) ||
       a.host.name.toLowerCase().includes(q) ||
       a.location.toLowerCase().includes(q) ||
       (interestLabels[a.category] || a.category).toLowerCase().includes(q)
     );
 
-    // Unique hosts from matched activities
     const hostMap = new Map<string, { name: string; photo: string; activityCount: number }>();
     for (const a of matchedActivities) {
       const existing = hostMap.get(a.host.name);
@@ -189,13 +254,10 @@ export default function ExploreScreen() {
       }
     }
 
-    // Also search all activities for host name matches (even if activity title didn't match)
     if (q.length >= 2) {
-      for (const a of mockActivities) {
+      for (const a of activities) {
         if (a.host.name.toLowerCase().includes(q) && !hostMap.has(a.host.name)) {
           hostMap.set(a.host.name, { name: a.host.name, photo: a.host.photo, activityCount: 1 });
-        } else if (a.host.name.toLowerCase().includes(q) && hostMap.has(a.host.name)) {
-          // already counted
         }
       }
     }
@@ -204,25 +266,31 @@ export default function ExploreScreen() {
       activities: matchedActivities,
       hosts: Array.from(hostMap.values()),
     };
-  }, [searchQuery]);
+  }, [searchQuery, activities]);
 
-  // Filter activities based on interest, day, nearby, and recommended mode
+  // Filter activities
   const userLocation = data.currentLocation || '';
   const filteredActivities = useMemo(() => {
-    let result = mockActivities;
+    let result = activities;
 
-    // When not showing all, filter to user's interests (recommended)
     if (!showAllActivities && userInterests.length > 0) {
       result = result.filter(activity =>
         userInterests.some(interest =>
           activity.category.toLowerCase().includes(interest.toLowerCase()) ||
-          interest.toLowerCase().includes(activity.category.toLowerCase())
+          interest.toLowerCase().includes(activity.category.toLowerCase()) ||
+          activity.tags.some(tag =>
+            tag.toLowerCase().includes(interest.toLowerCase()) ||
+            interest.toLowerCase().includes(tag.toLowerCase())
+          )
         )
       );
     }
 
     if (selectedInterest) {
-      result = result.filter(activity => activity.category === selectedInterest);
+      result = result.filter(activity =>
+        activity.category === selectedInterest ||
+        activity.tags.includes(selectedInterest)
+      );
     }
     if (dayFilter !== 'any') {
       result = result.filter(activity => matchesDayFilter(activity.date, dayFilter));
@@ -236,7 +304,35 @@ export default function ExploreScreen() {
       });
     }
     return result;
-  }, [selectedInterest, dayFilter, showAllActivities, showNearbyOnly, userLocation, userInterests]);
+  }, [activities, selectedInterest, dayFilter, showAllActivities, showNearbyOnly, userLocation, userInterests]);
+
+  const isLoading = convexActivities === undefined;
+
+  const handlePublishEvent = async () => {
+    if (!newEvent.title.trim()) {
+      Alert.alert('Missing title', 'Please give your event a name.');
+      return;
+    }
+    try {
+      await createActivity({
+        title: newEvent.title,
+        description: newEvent.description || 'No description provided.',
+        date: newEvent.startDate || 'TBD',
+        time: newEvent.startTime || 'TBD',
+        endDate: newEvent.endDate || undefined,
+        endTime: newEvent.endTime || undefined,
+        location: newEvent.location || 'TBD',
+        category: newEvent.tags[0] || 'other',
+        tags: newEvent.tags.length > 0 ? newEvent.tags : undefined,
+        image: newEvent.coverImage || undefined,
+      });
+      Alert.alert('Event published!', `"${newEvent.title}" has been created.`, [
+        { text: 'OK', onPress: () => setCreateVisible(false) },
+      ]);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to create event. Please try again.');
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
@@ -326,7 +422,17 @@ export default function ExploreScreen() {
 
         {/* Activity cards */}
         <View className="px-6">
-          {filteredActivities.length > 0 ? (
+          {isLoading ? (
+            <View className="py-12 items-center">
+              <ActivityIndicator size="large" color="#fd6b03" />
+              <Text
+                className="text-gray-400 mt-4"
+                style={{ fontFamily: 'InstrumentSans_400Regular' }}
+              >
+                loading activities...
+              </Text>
+            </View>
+          ) : filteredActivities.length > 0 ? (
             filteredActivities.map((activity) => (
               <TouchableOpacity
                 key={activity.id}
@@ -618,7 +724,6 @@ export default function ExploreScreen() {
         onRequestClose={() => setSearchVisible(false)}
       >
         <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-          {/* Search header */}
           <View className="px-6 pt-4 pb-3 flex-row items-center gap-3">
             <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 py-3">
               <Ionicons name="search-outline" size={18} color="#9CA3AF" />
@@ -665,7 +770,6 @@ export default function ExploreScreen() {
               </View>
             ) : (
               <>
-                {/* People results */}
                 {searchResults.hosts.length > 0 && (
                   <View className="px-6 mb-6">
                     <Text
@@ -703,7 +807,6 @@ export default function ExploreScreen() {
                   </View>
                 )}
 
-                {/* Activity results */}
                 {searchResults.activities.length > 0 && (
                   <View className="px-6">
                     <Text
@@ -751,7 +854,6 @@ export default function ExploreScreen() {
                   </View>
                 )}
 
-                {/* No results */}
                 {searchResults.activities.length === 0 && searchResults.hosts.length === 0 && (
                   <View className="items-center pt-20 px-6">
                     <Ionicons name="search" size={48} color="#E5E7EB" />
@@ -792,7 +894,6 @@ export default function ExploreScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Tabs */}
           <View className="px-6 pb-4">
             <View className="flex-row gap-2">
               {(['upcoming', 'hosting', 'saved', 'happened'] as const).map((tab) => (
@@ -813,7 +914,6 @@ export default function ExploreScreen() {
             </View>
           </View>
 
-          {/* Tab content */}
           <ScrollView
             className="flex-1"
             showsVerticalScrollIndicator={false}
@@ -822,6 +922,7 @@ export default function ExploreScreen() {
             {(() => {
               const events =
                 myEventsTab === 'upcoming' ? joinedEvents :
+                myEventsTab === 'hosting' ? hostedEvents :
                 myEventsTab === 'saved' ? savedEvents :
                 [];
               const emptyIcon =
@@ -905,7 +1006,6 @@ export default function ExploreScreen() {
         onRequestClose={() => setCreateVisible(false)}
       >
         <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-          {/* Header */}
           <View className="px-6 pt-4 pb-4 flex-row items-center justify-between">
             <TouchableOpacity onPress={() => setCreateVisible(false)}>
               <Text
@@ -1017,7 +1117,6 @@ export default function ExploreScreen() {
                   details
                 </Text>
 
-                {/* Location */}
                 <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-3.5 mb-3">
                   <Ionicons name="location-outline" size={20} color="#fd6b03" />
                   <TextInput
@@ -1030,7 +1129,6 @@ export default function ExploreScreen() {
                   />
                 </View>
 
-                {/* Starts */}
                 <View className="bg-gray-50 rounded-xl px-4 py-3.5 mb-3">
                   <View className="flex-row items-center mb-2">
                     <Ionicons name="calendar-outline" size={20} color="#fd6b03" />
@@ -1061,7 +1159,6 @@ export default function ExploreScreen() {
                   </View>
                 </View>
 
-                {/* Ends */}
                 <View className="bg-gray-50 rounded-xl px-4 py-3.5">
                   <View className="flex-row items-center mb-2">
                     <Ionicons name="time-outline" size={20} color="#fd6b03" />
@@ -1143,15 +1240,7 @@ export default function ExploreScreen() {
                 className="w-full py-4 rounded-full items-center justify-center"
                 style={{ backgroundColor: newEvent.title.trim() ? '#fd6b03' : '#FDBA74' }}
                 activeOpacity={0.8}
-                onPress={() => {
-                  if (!newEvent.title.trim()) {
-                    Alert.alert('Missing title', 'Please give your event a name.');
-                    return;
-                  }
-                  Alert.alert('Event published!', `"${newEvent.title}" has been created.`, [
-                    { text: 'OK', onPress: () => setCreateVisible(false) },
-                  ]);
-                }}
+                onPress={handlePublishEvent}
               >
                 <Text
                   className="text-white text-base"

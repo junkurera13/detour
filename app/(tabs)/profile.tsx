@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, Alert, Platform, TextInput } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, Alert, Platform, TextInput, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { mockProfileViewers, mockActivities } from '@/data/mockData';
+import { mockActivities } from '@/data/mockData';
 import { useRevenueCat } from '@/context/RevenueCatContext';
 import { useEvents } from '@/context/EventsContext';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
@@ -90,6 +90,12 @@ const helpCategoryLabels: Record<string, { label: string; emoji: string }> = {
   'electrical': { label: 'electrical', emoji: '⚡' },
   'build': { label: 'build', emoji: '🪚' },
   'plumbing': { label: 'plumbing', emoji: '🚿' },
+  'solar': { label: 'solar', emoji: '☀️' },
+  'insulation': { label: 'insulation', emoji: '🧱' },
+  'water-systems': { label: 'water systems', emoji: '💧' },
+  'flooring': { label: 'flooring', emoji: '🪵' },
+  'cabinetry': { label: 'cabinetry', emoji: '🗄️' },
+  'windows-ventilation': { label: 'windows & ventilation', emoji: '🪟' },
   'other': { label: 'other', emoji: '📦' },
 };
 
@@ -101,12 +107,16 @@ const settingsItems = [
   { id: 'subscription', label: 'manage subscription', icon: 'card-outline' },
 ];
 
-// Use mock profile viewers from centralized data
-const recentViewers = mockProfileViewers.slice(0, 4).map(user => ({
-  id: user.id,
-  photo: user.photos[0],
-  name: user.name,
-}));
+function timeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 export default function ProfileScreen() {
   const { data: onboardingData } = useOnboarding();
@@ -126,7 +136,10 @@ export default function ProfileScreen() {
   const [editBuilderBio, setEditBuilderBio] = useState('');
   const [editBuilderSpecialties, setEditBuilderSpecialties] = useState<string[]>([]);
   const [savingBuilder, setSavingBuilder] = useState(false);
+  const [viewersModalVisible, setViewersModalVisible] = useState(false);
+  const profileViewers = useQuery(api.profileViews.getRecentViewers, convexAuthenticated ? {} : "skip");
   const slideAnim = useRef(new Animated.Value(400)).current;
+  const viewersSlideAnim = useRef(new Animated.Value(400)).current;
 
   // Use Convex user data if available, fallback to onboarding data
   const profileData = useMemo(() => {
@@ -173,6 +186,23 @@ export default function ProfileScreen() {
       duration: 200,
       useNativeDriver: true,
     }).start(() => setMenuVisible(false));
+  };
+
+  const handleShareProfile = async () => {
+    const name = profileData.name || 'a detour user';
+    const location = profileData.currentLocation ? ` currently in ${profileData.currentLocation}` : '';
+    const username = profileData.username ? ` (@${profileData.username})` : '';
+    const trips = profileData.futureTrips.length > 0
+      ? `\nnext stop: ${profileData.futureTrips[0].location}`
+      : '';
+
+    try {
+      await Share.share({
+        message: `check out ${name}${username} on detour${location}${trips}\n\nhttps://detour.app`,
+      });
+    } catch {
+      // user cancelled or share failed — no action needed
+    }
   };
 
   const handleSettingsAction = async (id: string) => {
@@ -256,23 +286,38 @@ export default function ProfileScreen() {
           profile
         </Text>
         <View className="flex-row items-center gap-3" style={{ marginTop: -8 }}>
-          <TouchableOpacity className="flex-row items-center bg-gray-100 rounded-full px-2 py-1">
-            {recentViewers.map((viewer, index) => (
-              <Image
-                key={viewer.id}
-                source={{ uri: viewer.photo }}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 12,
-                  borderWidth: 2,
-                  borderColor: '#F3F4F6',
-                  marginLeft: index > 0 ? -8 : 0,
-                }}
-              />
-            ))}
-          </TouchableOpacity>
-          <TouchableOpacity>
+          {profileViewers && profileViewers.length > 0 ? (
+            <TouchableOpacity
+              className="flex-row items-center bg-gray-100 rounded-full px-2 py-1"
+              onPress={() => {
+                setViewersModalVisible(true);
+                Animated.spring(viewersSlideAnim, {
+                  toValue: 0,
+                  useNativeDriver: true,
+                  tension: 65,
+                  friction: 11,
+                }).start();
+              }}
+            >
+              {profileViewers.slice(0, 4).map((viewer, index) => (
+                <Image
+                  key={viewer!._id}
+                  source={{ uri: viewer!.photos[0] }}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor: '#F3F4F6',
+                    marginLeft: index > 0 ? -8 : 0,
+                  }}
+                />
+              ))}
+            </TouchableOpacity>
+          ) : (
+            <Ionicons name="footsteps-outline" size={24} color="#000" />
+          )}
+          <TouchableOpacity onPress={handleShareProfile}>
             <Ionicons name="share-outline" size={24} color="#000" />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setMenuVisible(true)}>
@@ -299,9 +344,6 @@ export default function ProfileScreen() {
                 <Ionicons name="person" size={48} color="#9CA3AF" />
               </View>
             )}
-            <TouchableOpacity className="absolute bottom-0 right-0 w-9 h-9 rounded-full items-center justify-center border-3 border-white" style={{ backgroundColor: '#fd6b03' }}>
-              <Ionicons name="camera" size={18} color="#fff" />
-            </TouchableOpacity>
           </View>
 
           <Text
@@ -1003,6 +1045,100 @@ export default function ProfileScreen() {
         )}
 
       </ScrollView>
+
+      {/* Viewers Modal */}
+      <Modal
+        visible={viewersModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => {
+          Animated.timing(viewersSlideAnim, {
+            toValue: 400,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => setViewersModalVisible(false));
+        }}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <TouchableOpacity
+            className="flex-1"
+            activeOpacity={1}
+            onPress={() => {
+              Animated.timing(viewersSlideAnim, {
+                toValue: 400,
+                duration: 200,
+                useNativeDriver: true,
+              }).start(() => setViewersModalVisible(false));
+            }}
+          />
+          <Animated.View
+            style={{ transform: [{ translateY: viewersSlideAnim }] }}
+            className="bg-white rounded-t-3xl px-6 pb-10 pt-4"
+          >
+            <View className="w-10 h-1 bg-gray-300 rounded-full self-center mb-4" />
+            <Text
+              className="text-xl text-black mb-4"
+              style={{ fontFamily: 'InstrumentSans_700Bold' }}
+            >
+              profile viewers
+            </Text>
+
+            {profileViewers && profileViewers.length > 0 ? (
+              <View>
+                {profileViewers.map((viewer) => (
+                  <TouchableOpacity
+                    key={viewer!._id}
+                    className="flex-row items-center py-3 border-b border-gray-50"
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      setViewersModalVisible(false);
+                      viewersSlideAnim.setValue(400);
+                      router.push(`/user/${viewer!._id}` as any);
+                    }}
+                  >
+                    {viewer!.photos.length > 0 ? (
+                      <Image
+                        source={{ uri: viewer!.photos[0] }}
+                        className="w-12 h-12 rounded-full"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View className="w-12 h-12 rounded-full bg-gray-200 items-center justify-center">
+                        <Ionicons name="person" size={20} color="#9CA3AF" />
+                      </View>
+                    )}
+                    <View className="ml-3 flex-1">
+                      <Text
+                        className="text-black text-base"
+                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                      >
+                        {viewer!.name.toLowerCase()}
+                      </Text>
+                      <Text
+                        className="text-gray-400 text-sm"
+                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                      >
+                        {timeAgo(viewer!.viewedAt)}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View className="items-center py-8">
+                <Ionicons name="eye-outline" size={40} color="#E5E7EB" />
+                <Text
+                  className="text-gray-400 mt-3"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  no profile views yet
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        </View>
+      </Modal>
 
       <Modal
         visible={menuVisible}

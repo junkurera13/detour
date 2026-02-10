@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as activities from "../activities.js";
 import type * as admin from "../admin.js";
 import type * as blocks from "../blocks.js";
 import type * as files from "../files.js";
@@ -19,6 +20,8 @@ import type * as inviteCodes from "../inviteCodes.js";
 import type * as matches from "../matches.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
+import type * as profileViews from "../profileViews.js";
+import type * as reports from "../reports.js";
 import type * as seed from "../seed.js";
 import type * as swipes from "../swipes.js";
 import type * as users from "../users.js";
@@ -30,6 +33,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  activities: typeof activities;
   admin: typeof admin;
   blocks: typeof blocks;
   files: typeof files;
@@ -41,6 +45,8 @@ declare const fullApi: ApiFromModules<{
   matches: typeof matches;
   messages: typeof messages;
   notifications: typeof notifications;
+  profileViews: typeof profileViews;
+  reports: typeof reports;
   seed: typeof seed;
   swipes: typeof swipes;
   users: typeof users;
