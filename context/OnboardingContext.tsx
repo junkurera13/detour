@@ -22,6 +22,8 @@ export interface OnboardingData {
   photos: string[];
   instagram: string;
   currentLocation: string;
+  latitude?: number;
+  longitude?: number;
   futureTrips: TripStop[];
   hasCompletedOnboarding: boolean;
   joinPath: 'apply' | 'invite' | null;

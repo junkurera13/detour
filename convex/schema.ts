@@ -18,6 +18,7 @@ export default defineSchema({
     // Preferences
     lookingFor: v.array(v.string()), // ["friends", "dating"]
     datingPreference: v.optional(v.array(v.string())),
+    friendsPreference: v.optional(v.array(v.string())),
 
     // Nomad info
     lifestyle: v.array(v.string()),
@@ -30,6 +31,8 @@ export default defineSchema({
 
     // Location
     currentLocation: v.string(),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
     futureTrip: v.optional(v.string()), // Legacy field for backward compatibility
     futureTrips: v.optional(v.array(v.object({
       location: v.string(),
@@ -37,6 +40,9 @@ export default defineSchema({
       startDate: v.optional(v.string()),
       endDate: v.optional(v.string()),
     }))),
+
+    // Pets
+    pets: v.optional(v.array(v.object({ type: v.string(), name: v.string() }))),
 
     // Builder profile
     builderBio: v.optional(v.string()),

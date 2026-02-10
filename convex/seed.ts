@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, internalMutation, internalAction, internalQuery } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 // Realistic seed profiles for demo
 const testUsers = [
@@ -19,7 +20,10 @@ const testUsers = [
     ],
     instagram: "hana.k_",
     currentLocation: "Lisbon, Portugal",
+    latitude: 38.7223,
+    longitude: -9.1393,
     futureTrip: "Barcelona, Spain",
+    pets: [{ type: "cat", name: "mochi" }],
   },
   {
     name: "Marco",
@@ -37,7 +41,10 @@ const testUsers = [
     ],
     instagram: "marcodelucci",
     currentLocation: "Canggu, Bali",
+    latitude: -8.6478,
+    longitude: 115.1385,
     futureTrip: "Chiang Mai, Thailand",
+    pets: [{ type: "dog", name: "biscuit" }],
   },
   {
     name: "Jess",
@@ -54,6 +61,8 @@ const testUsers = [
       "https://images.unsplash.com/photo-1763765970643-8ecf39d13ad2?w=400&h=500&fit=crop",
     ],
     currentLocation: "Chiang Mai, Thailand",
+    latitude: 18.7883,
+    longitude: 98.9853,
     futureTrip: "Vietnam",
   },
   {
@@ -72,6 +81,8 @@ const testUsers = [
     ],
     instagram: "tomasux",
     currentLocation: "Barcelona, Spain",
+    latitude: 41.3874,
+    longitude: 2.1686,
     futureTrip: "Lisbon, Portugal",
   },
   {
@@ -90,7 +101,10 @@ const testUsers = [
     ],
     instagram: "aisha.o",
     currentLocation: "Cape Town, South Africa",
+    latitude: -33.9249,
+    longitude: 18.4241,
     futureTrip: "Bali, Indonesia",
+    pets: [{ type: "dog", name: "koda" }, { type: "cat", name: "nala" }],
   },
   {
     name: "Nate",
@@ -108,6 +122,8 @@ const testUsers = [
     ],
     instagram: "natethompson_",
     currentLocation: "Bangkok, Thailand",
+    latitude: 13.7563,
+    longitude: 100.5018,
     futureTrip: "Da Nang, Vietnam",
   },
   {
@@ -126,6 +142,8 @@ const testUsers = [
     ],
     instagram: "camille.jpg",
     currentLocation: "Mexico City, Mexico",
+    latitude: 19.4326,
+    longitude: -99.1332,
     futureTrip: "Guatemala",
   },
   {
@@ -144,7 +162,10 @@ const testUsers = [
     ],
     instagram: "ravi.codes",
     currentLocation: "Tbilisi, Georgia",
+    latitude: 41.7151,
+    longitude: 44.8271,
     futureTrip: "Istanbul, Turkey",
+    pets: [{ type: "cat", name: "pixel" }],
   },
   {
     name: "Linnea",
@@ -161,6 +182,8 @@ const testUsers = [
       "https://images.unsplash.com/photo-1519046904884-53103b34b206?w=400&h=500&fit=crop",
     ],
     currentLocation: "Da Nang, Vietnam",
+    latitude: 16.0544,
+    longitude: 108.2022,
     futureTrip: "Philippines",
   },
   {
@@ -179,6 +202,8 @@ const testUsers = [
     ],
     instagram: "seb_writes",
     currentLocation: "Medellin, Colombia",
+    latitude: 6.2476,
+    longitude: -75.5658,
     futureTrip: "Mexico City, Mexico",
   },
   {
@@ -197,6 +222,8 @@ const testUsers = [
     ],
     instagram: "meimei.draws",
     currentLocation: "Tokyo, Japan",
+    latitude: 35.6762,
+    longitude: 139.6503,
     futureTrip: "Seoul, South Korea",
   },
   {
@@ -214,6 +241,8 @@ const testUsers = [
       "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=400&h=500&fit=crop",
     ],
     currentLocation: "Porto, Portugal",
+    latitude: 41.1579,
+    longitude: -8.6291,
     futureTrip: "Morocco",
   },
   {
@@ -232,7 +261,10 @@ const testUsers = [
     ],
     instagram: "thaliayoga",
     currentLocation: "Ubud, Bali",
+    latitude: -8.5069,
+    longitude: 115.2625,
     futureTrip: "Goa, India",
+    pets: [{ type: "rabbit", name: "bun" }],
   },
   {
     name: "Diego",
@@ -250,6 +282,8 @@ const testUsers = [
     ],
     instagram: "diegoshoots",
     currentLocation: "Seoul, South Korea",
+    latitude: 37.5665,
+    longitude: 126.9780,
     futureTrip: "Tokyo, Japan",
   },
   {
@@ -268,7 +302,10 @@ const testUsers = [
     ],
     instagram: "zoenz",
     currentLocation: "Split, Croatia",
+    latitude: 43.5081,
+    longitude: 16.4402,
     futureTrip: "Montenegro",
+    pets: [{ type: "dog", name: "finn" }],
   },
 ];
 
@@ -299,6 +336,33 @@ export const seedUsers = mutation({
     }
 
     return { message: `Seeded ${seededCount} test users`, count: seededCount };
+  },
+});
+
+// Update existing seed users with latest data (coordinates, pets, etc.)
+export const reseedUsers = mutation({
+  args: {},
+  handler: async (ctx) => {
+    let updatedCount = 0;
+
+    for (const user of testUsers) {
+      const existing = await ctx.db
+        .query("users")
+        .withIndex("by_username", (q) => q.eq("username", user.username))
+        .first();
+
+      if (existing) {
+        await ctx.db.patch(existing._id, {
+          latitude: user.latitude,
+          longitude: user.longitude,
+          pets: (user as any).pets,
+          updatedAt: Date.now(),
+        });
+        updatedCount++;
+      }
+    }
+
+    return { message: `Updated ${updatedCount} seed users`, count: updatedCount };
   },
 });
 
@@ -963,5 +1027,74 @@ export const seedSwipes = mutation({
     }
 
     return { message: `Seeded ${count} likes for @${myUsername}` };
+  },
+});
+
+// Internal mutation to patch a single user's coordinates
+export const patchUserCoords = internalMutation({
+  args: {
+    id: v.id("users"),
+    latitude: v.number(),
+    longitude: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      latitude: args.latitude,
+      longitude: args.longitude,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Backfill coordinates for all users missing lat/lng by geocoding their currentLocation
+export const backfillCoordinates = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const token = process.env.MAPBOX_TOKEN;
+    if (!token) throw new Error("MAPBOX_TOKEN not set");
+
+    // Get all users
+    const allUsers: any[] = await ctx.runQuery(internal.seed.getUsersMissingCoords);
+    let updated = 0;
+
+    for (const user of allUsers) {
+      try {
+        const res = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(user.currentLocation)}.json?access_token=${token}&types=place,locality&limit=1`
+        );
+        const data = await res.json();
+        if (data.features && data.features.length > 0) {
+          const [lng, lat] = data.features[0].center;
+          await ctx.runMutation(internal.seed.patchUserCoords, {
+            id: user._id,
+            latitude: lat,
+            longitude: lng,
+          });
+          updated++;
+        }
+      } catch (e) {
+        console.error(`Failed to geocode ${user.username} (${user.currentLocation}):`, e);
+      }
+    }
+
+    return { message: `Backfilled coordinates for ${updated}/${allUsers.length} users` };
+  },
+});
+
+// Trigger the backfill from CLI
+export const triggerBackfillCoordinates = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await ctx.scheduler.runAfter(0, internal.seed.backfillCoordinates, {});
+    return { message: "Backfill scheduled" };
+  },
+});
+
+// Helper query to get users missing coordinates
+export const getUsersMissingCoords = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    return users.filter((u) => u.latitude == null || u.longitude == null);
   },
 });

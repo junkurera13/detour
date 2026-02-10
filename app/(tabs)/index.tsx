@@ -1,4 +1,4 @@
-import { View, Text, Image, TouchableOpacity, Dimensions, StyleSheet, Modal, ScrollView, ActivityIndicator, Switch, PanResponder, Platform } from 'react-native';
+import { View, Text, Image, TouchableOpacity, Dimensions, StyleSheet, Modal, ScrollView, ActivityIndicator, PanResponder, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
@@ -13,6 +13,8 @@ import { useRouter } from 'expo-router';
 import { mockUsers, MockUser } from '@/data/mockData';
 import { isDemoUser } from '@/utils/isDemoUser';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
+import { computeCompatibility, CompatibilityBreakdown } from '@/utils/compatibility';
+import { CompatibilityBadge } from '@/components/ui/CompatibilityBadge';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -34,18 +36,22 @@ interface Profile {
   id: string;
   name: string;
   age: number;
+  gender: string;
   location: string;
   lifestyle: string[];
   photos: string[];
   distance: string;
+  distanceKm: number | null; // null = no coordinates available
   interests: string[];
   bio: string;
   timeNomadic: string;
   lookingFor: string;
   instagram?: string;
+  compatibility?: number;
+  compatibilityBreakdown?: CompatibilityBreakdown;
 }
 
-const DISTANCE_OPTIONS = [5, 10, 15, 20, 25, 50, 100];
+const DISTANCE_OPTIONS = [5, 10, 15, 20, 25, 50, 100, Infinity];
 const AGE_MIN = 18;
 const AGE_MAX = 70;
 
@@ -61,54 +67,68 @@ function calculateAge(birthday: string): number {
   return age;
 }
 
-// Generate a stable distance label from profile id and location comparison
-function getDistanceLabel(profileId: string, profileLocation: string, userLocation: string): string {
-  // Simple hash from profile id for a consistent pseudo-random distance
-  let hash = 0;
-  for (let i = 0; i < profileId.length; i++) {
-    hash = ((hash << 5) - hash) + profileId.charCodeAt(i);
-    hash |= 0;
-  }
+// Haversine distance in km between two lat/lng points
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
-  const sameCity = profileLocation.toLowerCase().split(',')[0] === userLocation.toLowerCase().split(',')[0];
-
-  if (sameCity) {
-    const km = (Math.abs(hash % 20) + 1) / 10; // 0.1 - 2.1 km
-    return km < 1 ? `${Math.round(km * 1000)}m away` : `${km.toFixed(1)}km away`;
-  }
-  // Keep distances short — this is the "nearby" page
-  const km = (Math.abs(hash % 140) + 5) / 10; // 0.5 - 14.5 km
-  return km < 1 ? `${Math.round(km * 1000)}m away` : `${km.toFixed(1)}km away`;
+function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)}m away`;
+  if (km < 10) return `${km.toFixed(1)}km away`;
+  return `${Math.round(km)}km away`;
 }
 
 // Convert Convex user to Profile interface
-function convexUserToProfile(user: Doc<"users">, userLocation: string): Profile {
+function convexUserToProfile(
+  user: Doc<"users">,
+  refCoords: { latitude: number; longitude: number } | null,
+  currentUser?: Doc<"users"> | null,
+): Profile {
+  const km = (refCoords && user.latitude != null && user.longitude != null)
+    ? haversineKm(refCoords.latitude, refCoords.longitude, user.latitude, user.longitude)
+    : null;
+
   return {
     id: user._id,
     name: user.name,
     age: calculateAge(user.birthday),
+    gender: user.gender,
     location: user.currentLocation,
     lifestyle: user.lifestyle,
     photos: user.photos.length > 0 ? user.photos : ['https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800'],
-    distance: getDistanceLabel(user._id, user.currentLocation, userLocation),
+    distance: km != null ? formatDistance(km) : user.currentLocation.split(',')[0].trim(),
+    distanceKm: km,
     interests: user.interests,
-    bio: '', // Schema doesn't have bio field
+    bio: '',
     timeNomadic: user.timeNomadic,
     lookingFor: user.lookingFor.join(', '),
     instagram: user.instagram,
+    ...(currentUser ? (() => {
+      const { score, breakdown } = computeCompatibility(currentUser, user);
+      return { compatibility: score, compatibilityBreakdown: breakdown };
+    })() : {}),
   };
 }
 
 // Convert MockUser to Profile interface
-function mockUserToProfile(user: MockUser, userLocation: string): Profile {
+function mockUserToProfile(user: MockUser): Profile {
   return {
     id: user.id,
     name: user.name,
     age: user.age,
+    gender: user.gender,
     location: user.location,
     lifestyle: user.lifestyle,
     photos: user.photos,
-    distance: getDistanceLabel(user.id, user.location, userLocation),
+    distance: user.location.split(',')[0].trim(),
+    distanceKm: null,
     interests: user.interests,
     bio: user.bio,
     timeNomadic: user.timeNomadic,
@@ -246,6 +266,11 @@ function SwipeableCard({ profile, isFirst, onSwipeLeft, onSwipeRight, swipeDirec
                 <Text style={styles.nameText}>
                   {profile.name}, {profile.age}
                 </Text>
+                {profile.compatibility != null && (
+                  <View style={{ marginLeft: 8 }}>
+                    <CompatibilityBadge score={profile.compatibility} size="md" breakdown={profile.compatibilityBreakdown} />
+                  </View>
+                )}
               </TouchableOpacity>
 
               <View style={styles.locationRow}>
@@ -536,7 +561,7 @@ function RangeSlider({
 export default function NearbyScreen() {
   const router = useRouter();
   const { data } = useOnboarding();
-  const { convexUser } = useAuthenticatedUser();
+  const { convexUser, isLoading: isAuthLoading } = useAuthenticatedUser();
   const userId = convexUser?._id;
   const isDemo = isDemoUser(convexUser?.email);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
@@ -546,9 +571,8 @@ export default function NearbyScreen() {
   const [ageMin, setAgeMin] = useState(18);
   const [ageMax, setAgeMax] = useState(70);
   const [prefDistance, setPrefDistance] = useState(25);
-  const [hereForDating, setHereForDating] = useState(true);
-  const [hereForFriends, setHereForFriends] = useState(true);
   const [prefLocation, setPrefLocation] = useState('');
+  const [prefCoords, setPrefCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const locationInitialized = useRef(false);
   const swipeProgress = useSharedValue(0);
@@ -562,57 +586,66 @@ export default function NearbyScreen() {
   // Create swipe mutation
   const createSwipe = useMutation(api.swipes.create);
 
-  // Convert Convex users to Profile interface, fall back to mock data
+  // Base location for reset button comparison
   const baseLocation = convexUser?.currentLocation || data.currentLocation || '';
-  const userLocation = prefLocation || baseLocation;
 
-  // Initialize prefLocation from user data once
+  // Initialize prefLocation and coordinates from user data once
   useEffect(() => {
     if (!locationInitialized.current && baseLocation) {
       setPrefLocation(baseLocation);
+      if (convexUser?.latitude != null && convexUser?.longitude != null) {
+        setPrefCoords({ latitude: convexUser.latitude, longitude: convexUser.longitude });
+      }
       locationInitialized.current = true;
     }
-  }, [baseLocation]);
+  }, [baseLocation, convexUser?.latitude, convexUser?.longitude]);
+
+  // DEBUG: log query state to help diagnose empty nearby page
+  useEffect(() => {
+    console.log('[Nearby] convexUser:', convexUser ? `${convexUser.name} (${convexUser.userStatus})` : convexUser);
+    console.log('[Nearby] userId:', userId);
+    console.log('[Nearby] convexUsers count:', convexUsers === undefined ? 'skipped/loading' : convexUsers?.length);
+    console.log('[Nearby] datingPreference:', convexUser?.datingPreference);
+  }, [convexUser, userId, convexUsers]);
 
   const profiles = useMemo(() => {
     // If we have Convex users, use them
     if (convexUsers && convexUsers.length > 0) {
-      return convexUsers.map((u) => convexUserToProfile(u, userLocation));
+      return convexUsers.map((u) => convexUserToProfile(u, prefCoords, convexUser));
     }
     // Fall back to mock data only for demo user
     if (isDemo) {
-      return mockUsers.map((u) => mockUserToProfile(u, userLocation));
+      return mockUsers.map((u) => mockUserToProfile(u));
     }
     return [];
-  }, [convexUsers, userLocation, isDemo]);
+  }, [convexUsers, prefCoords, isDemo, convexUser]);
 
   // Current user's interests for hobby-weighted sorting
   const userInterests = useMemo(() => {
     return new Set(convexUser?.interests || data.interests || []);
   }, [convexUser?.interests, data.interests]);
 
-  // Filter profiles by preferences and locally-swiped, then sort by shared interests
+  // Filter profiles by distance, age, gender preferences, then sort by shared interests
   const filteredProfiles = useMemo(() => {
     const filtered = profiles.filter((p) => {
       if (localSwipedIds.has(p.id)) return false;
 
+      // Distance filter — only show profiles within prefDistance km
+      // "everyone" (Infinity) shows all profiles regardless of distance
+      if (prefDistance !== Infinity) {
+        if (p.distanceKm == null) return false;
+        if (p.distanceKm > prefDistance) return false;
+      }
+
       // Age filter
       if (p.age < ageMin || p.age > ageMax) return false;
 
-      // Distance filter — parse km from strings like "64km away" or "800m away"
-      const kmMatch = p.distance.match(/([\d.]+)\s*km/);
-      const mMatch = p.distance.match(/([\d.]+)\s*m\b/);
-      const distKm = kmMatch ? parseFloat(kmMatch[1]) : mMatch ? parseFloat(mMatch[1]) / 1000 : 0;
-      if (distKm > prefDistance) return false;
-
-      // Here-for filter
-      if (!hereForDating && !hereForFriends) return true; // safety: show all if both off
-      const lf = p.lookingFor.toLowerCase();
-      if (hereForDating && !hereForFriends) {
-        return lf.includes('dating') || lf.includes('both');
-      }
-      if (hereForFriends && !hereForDating) {
-        return lf.includes('friends') || lf.includes('both');
+      // Gender filter — nearby is dating only, filter by datingPreference
+      const datingPref = convexUser?.datingPreference || data.datingPreference || [];
+      if (datingPref.length > 0 && !datingPref.includes('everyone')) {
+        const prefToGender: Record<string, string> = { women: 'woman', men: 'man' };
+        const profileGender = p.gender.toLowerCase();
+        if (!datingPref.some((g) => profileGender === (prefToGender[g] || g))) return false;
       }
 
       return true;
@@ -628,9 +661,9 @@ export default function NearbyScreen() {
     }
 
     return filtered;
-  }, [profiles, localSwipedIds, ageMin, ageMax, prefDistance, hereForDating, hereForFriends, userInterests]);
+  }, [profiles, localSwipedIds, ageMin, ageMax, prefDistance, userInterests, convexUser?.datingPreference, data.datingPreference]);
 
-  const isLoading = userId && convexUsers === undefined;
+  const isLoading = isAuthLoading || (userId && convexUsers === undefined);
 
   // Animated style for X button - scales up when swiping left
   const passButtonAnimatedStyle = useAnimatedStyle(() => {
@@ -866,7 +899,14 @@ export default function NearbyScreen() {
                 </Text>
                 {prefLocation !== baseLocation && !isEditingLocation && (
                   <TouchableOpacity
-                    onPress={() => setPrefLocation(baseLocation)}
+                    onPress={() => {
+                      setPrefLocation(baseLocation);
+                      setPrefCoords(
+                        convexUser?.latitude != null && convexUser?.longitude != null
+                          ? { latitude: convexUser.latitude, longitude: convexUser.longitude }
+                          : null
+                      );
+                    }}
                     activeOpacity={0.7}
                   >
                     <Text
@@ -883,6 +923,7 @@ export default function NearbyScreen() {
                   value={prefLocation}
                   onSelect={(location) => {
                     setPrefLocation(location.fullName);
+                    setPrefCoords(location.coordinates || null);
                     setIsEditingLocation(false);
                   }}
                   placeholder="search for a city..."
@@ -966,7 +1007,7 @@ export default function NearbyScreen() {
                       className="mx-4 text-black min-w-[50px] text-center"
                       style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
                     >
-                      {prefDistance} km
+                      {prefDistance === Infinity ? 'everyone' : `${prefDistance} km`}
                     </Text>
                     <TouchableOpacity
                       onPress={() => {
@@ -987,51 +1028,6 @@ export default function NearbyScreen() {
               </View>
             </View>
 
-            {/* Here For */}
-            <View className="pb-6">
-              <Text
-                className="text-sm text-gray-500 uppercase mb-3"
-                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-              >
-                here for
-              </Text>
-              <View className="bg-gray-50 rounded-2xl overflow-hidden">
-                <View className="flex-row items-center justify-between px-4 py-4 border-b border-gray-100">
-                  <Text
-                    className="text-black"
-                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                  >
-                    dating
-                  </Text>
-                  <Switch
-                    value={hereForDating}
-                    onValueChange={(val) => {
-                      if (!val && !hereForFriends) return;
-                      setHereForDating(val);
-                    }}
-                    trackColor={{ false: '#E5E7EB', true: '#fdba74' }}
-                    thumbColor={hereForDating ? '#fd6b03' : '#f4f3f4'}
-                  />
-                </View>
-                <View className="flex-row items-center justify-between px-4 py-4">
-                  <Text
-                    className="text-black"
-                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                  >
-                    friends
-                  </Text>
-                  <Switch
-                    value={hereForFriends}
-                    onValueChange={(val) => {
-                      if (!val && !hereForDating) return;
-                      setHereForFriends(val);
-                    }}
-                    trackColor={{ false: '#E5E7EB', true: '#fdba74' }}
-                    thumbColor={hereForFriends ? '#fd6b03' : '#f4f3f4'}
-                  />
-                </View>
-              </View>
-            </View>
           </ScrollView>
         </SafeAreaView>
       </Modal>

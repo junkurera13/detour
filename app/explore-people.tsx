@@ -222,7 +222,18 @@ export default function ExplorePeopleScreen() {
   const firstTripLocation = futureTrips?.[0]?.location || legacyFutureTrip || '';
 
   const isLoading = allUsers === undefined;
-  const users = allUsers || [];
+
+  // Filter by dating preference (nearby is dating only)
+  const datingPref = convexUser?.datingPreference || data.datingPreference || [];
+  const users = useMemo(() => {
+    const all = allUsers || [];
+    if (datingPref.length === 0 || datingPref.includes('everyone')) return all;
+    const prefToGender: Record<string, string> = { women: 'woman', men: 'man' };
+    return all.filter((u) => {
+      const g = u.gender.toLowerCase();
+      return datingPref.some((p) => g === (prefToGender[p] || p));
+    });
+  }, [allUsers, datingPref]);
 
   // 1. Heading your way — people whose futureTrips match the user's current location
   const headingYourWay = useMemo(() => {

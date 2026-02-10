@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator, Modal, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator, Modal, Image, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -9,6 +9,7 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { useRevenueCat } from '@/context/RevenueCatContext';
 
 const DISTANCE_OPTIONS = [5, 10, 15, 20, 25];
 
@@ -17,6 +18,7 @@ export default function SettingsScreen() {
   const { signOut } = useClerk();
   const { resetData } = useOnboarding();
   const { convexUser } = useAuthenticatedUser();
+  const { openCustomerCenter } = useRevenueCat();
   const deleteAccountMutation = useMutation(api.users.deleteAccount);
   const unblockUser = useMutation(api.blocks.unblockUser);
 
@@ -294,6 +296,120 @@ export default function SettingsScreen() {
                 )}
                 <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
               </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Support Section */}
+        <View className="px-6 pt-6">
+          <Text
+            className="text-sm text-gray-500 uppercase mb-3"
+            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+          >
+            support
+          </Text>
+          <View className="bg-gray-50 rounded-2xl overflow-hidden">
+            <TouchableOpacity
+              className="flex-row items-center justify-between px-4 py-4"
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL('mailto:support@detour.app?subject=Issue%20Report')}
+            >
+              <Text
+                className="text-black"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                report an issue
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Legal Section */}
+        <View className="px-6 pt-6">
+          <Text
+            className="text-sm text-gray-500 uppercase mb-3"
+            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+          >
+            legal
+          </Text>
+          <View className="bg-gray-50 rounded-2xl overflow-hidden">
+            <TouchableOpacity
+              className="flex-row items-center justify-between px-4 py-4 border-b border-gray-100"
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL('https://junkurera13.github.io/detour/community-guidelines')}
+            >
+              <Text
+                className="text-black"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                community guidelines
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="flex-row items-center justify-between px-4 py-4 border-b border-gray-100"
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL('https://junkurera13.github.io/detour/terms-and-conditions')}
+            >
+              <Text
+                className="text-black"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                terms and conditions
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="flex-row items-center justify-between px-4 py-4 border-b border-gray-100"
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL('https://junkurera13.github.io/detour/privacy-policy.html')}
+            >
+              <Text
+                className="text-black"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                privacy policy
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="flex-row items-center justify-between px-4 py-4"
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL('https://junkurera13.github.io/detour/safety-tips')}
+            >
+              <Text
+                className="text-black"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                safety tips & event etiquette
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Subscription Section */}
+        <View className="px-6 pt-6">
+          <Text
+            className="text-sm text-gray-500 uppercase mb-3"
+            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+          >
+            subscription
+          </Text>
+          <View className="bg-gray-50 rounded-2xl overflow-hidden">
+            <TouchableOpacity
+              className="flex-row items-center justify-between px-4 py-4"
+              activeOpacity={0.7}
+              onPress={() => openCustomerCenter()}
+            >
+              <Text
+                className="text-black"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                manage subscription
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
             </TouchableOpacity>
           </View>
         </View>

@@ -76,6 +76,7 @@ export default function FutureTripScreen() {
         gender: data.gender,
         lookingFor: data.lookingFor,
         datingPreference: data.datingPreference.length > 0 ? data.datingPreference : undefined,
+        friendsPreference: data.friendsPreference.length > 0 ? data.friendsPreference : undefined,
         lifestyle: data.lifestyle,
         timeNomadic: data.timeNomadic,
         interests: data.interests,

@@ -10,6 +10,8 @@ import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useRevenueCat } from '@/context/RevenueCatContext';
 import { mockLikesYou, mockMatches, mockConversations } from '@/data/mockData';
 import { isDemoUser } from '@/utils/isDemoUser';
+import { computeCompatibility, CompatibilityBreakdown } from '@/utils/compatibility';
+import { CompatibilityBadge } from '@/components/ui/CompatibilityBadge';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -392,7 +394,7 @@ export default function MatchesScreen() {
   const [previewUser, setPreviewUser] = useState<LikeUser | null>(null);
   const [previewSwipeDir, setPreviewSwipeDir] = useState<'left' | 'right' | null>(null);
   const [dismissedLikeIds, setDismissedLikeIds] = useState<Set<string>>(new Set());
-  const [likedBackMatches, setLikedBackMatches] = useState<{ id: string; userId: string; name: string; age: number; photo: string; matchedAt: string; crossingPath: string | null }[]>([]);
+  const [likedBackMatches, setLikedBackMatches] = useState<{ id: string; userId: string; name: string; age: number; photo: string; matchedAt: string; crossingPath: string | null; compatibility?: number; compatibilityBreakdown?: CompatibilityBreakdown }[]>([]);
   const [deletedConvoIds, setDeletedConvoIds] = useState<Set<string>>(new Set());
   const createSwipe = useMutation(api.swipes.create);
   const previewSwipeProgress = useSharedValue(0);
@@ -548,6 +550,10 @@ export default function MatchesScreen() {
           }
         }
 
+        const compatResult = (otherUser && convexUser)
+          ? computeCompatibility(convexUser, otherUser)
+          : undefined;
+
         return {
           id: match._id,
           userId: otherUser?._id,
@@ -557,6 +563,8 @@ export default function MatchesScreen() {
           photo: otherUser?.photos?.[0] ?? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
           isNew,
           crossingPath,
+          compatibility: compatResult?.score,
+          compatibilityBreakdown: compatResult?.breakdown,
         };
       });
     }
@@ -571,10 +579,12 @@ export default function MatchesScreen() {
         photo: match.user.photos[0],
         isNew: match.hasNewMessage,
         crossingPath: null as string | null,
+        compatibility: undefined as number | undefined,
+        compatibilityBreakdown: undefined as CompatibilityBreakdown | undefined,
       }));
     }
     return [];
-  }, [matchesData, myTripLocations, isDemo]);
+  }, [matchesData, myTripLocations, isDemo, convexUser]);
 
   // Combine real/mock matches with liked-back matches from the Likes You section
   const allMatches = useMemo(() => {
@@ -785,12 +795,19 @@ export default function MatchesScreen() {
                       />
                     </TouchableOpacity>
                     <View className="flex-1 ml-4">
-                      <Text
-                        className="text-black text-lg"
-                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                      >
-                        {match.name}, {match.age}
-                      </Text>
+                      <View className="flex-row items-center">
+                        <Text
+                          className="text-black text-lg"
+                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                        >
+                          {match.name}, {match.age}
+                        </Text>
+                        {match.compatibility != null && (
+                          <View style={{ marginLeft: 6 }}>
+                            <CompatibilityBadge score={match.compatibility} breakdown={match.compatibilityBreakdown} />
+                          </View>
+                        )}
+                      </View>
                       <Text
                         className="text-gray-500 text-sm"
                         style={{ fontFamily: 'InstrumentSans_400Regular' }}

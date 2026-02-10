@@ -41,7 +41,7 @@ export function useFinalizeAuth() {
         const result = await getOrCreateUser({});
 
         if (result.isNew || !result.user) {
-          router.replace('/onboarding/name');
+          router.replace('/onboarding/join-path');
           return { ok: true };
         }
 

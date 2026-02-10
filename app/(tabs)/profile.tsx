@@ -124,8 +124,6 @@ const helpCategoryLabels: Record<string, { label: string; emoji: string }> = {
 const settingsItems = [
   { id: 'edit', label: 'edit profile', icon: 'create-outline' },
   { id: 'settings', label: 'settings', icon: 'settings-outline' },
-  { id: 'privacy', label: 'privacy', icon: 'shield-outline' },
-  { id: 'help', label: 'help & support', icon: 'help-circle-outline' },
   { id: 'subscription', label: 'manage subscription', icon: 'card-outline' },
 ];
 
@@ -155,6 +153,7 @@ export default function ProfileScreen() {
     if (isDemo) return mockActivities.filter(a => joinedIds.includes(a.id));
     return [];
   }, [joinedIds, isDemo]);
+  const [editingCurrentLocation, setEditingCurrentLocation] = useState(false);
   const [editingLocationIndex, setEditingLocationIndex] = useState<number | null>(null);
   const [editingStopText, setEditingStopText] = useState('');
   const [datePickerTarget, setDatePickerTarget] = useState<{ index: number; field: 'start' | 'end' } | null>(null);
@@ -188,6 +187,7 @@ export default function ProfileScreen() {
         lifestyle: user.lifestyle,
         interests: user.interests,
         futureTrips: user.futureTrips || [],
+        pets: user.pets || [],
       };
     }
     return {
@@ -200,6 +200,7 @@ export default function ProfileScreen() {
       lifestyle: onboardingData.lifestyle,
       interests: onboardingData.interests,
       futureTrips: onboardingData.futureTrips || [],
+      pets: [],
     };
   }, [user, onboardingData, age]);
 
@@ -263,6 +264,24 @@ export default function ProfileScreen() {
       return trip;
     });
 
+  const handleSaveCurrentLocation = async (location: { fullName: string; coordinates?: { latitude: number; longitude: number } }) => {
+    if (!user) return;
+    const text = location.fullName.trim();
+    if (!text) return;
+    try {
+      await updateUser({
+        id: user._id,
+        currentLocation: text,
+        latitude: location.coordinates?.latitude,
+        longitude: location.coordinates?.longitude,
+      });
+    } catch (e) {
+      console.error('handleSaveCurrentLocation:', e);
+      Alert.alert('error', 'failed to update location');
+    }
+    setEditingCurrentLocation(false);
+  };
+
   const handleSaveStopLocation = async (index: number, locationText: string) => {
     if (!user) return;
     const text = locationText.trim();
@@ -310,13 +329,27 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       <View className="px-6 pt-4 pb-6 flex-row items-center justify-between">
-        <Text
-          className="text-5xl text-black"
-          style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
-        >
-          profile
-        </Text>
-        <View className="flex-row items-center gap-3" style={{ marginTop: -8 }}>
+        <View className="flex-row items-center">
+          <Text
+            className="text-5xl text-black"
+            style={{ fontFamily: 'InstrumentSerif_400Regular', lineHeight: Platform.OS === 'android' ? 60 : undefined }}
+          >
+            profile
+          </Text>
+          <TouchableOpacity
+            className="ml-3 flex-row items-center rounded-full px-3 py-1.5"
+            style={{ borderWidth: 1.5, borderColor: '#fd6b03' }}
+          >
+            <Ionicons name="ticket-outline" size={16} color="#fd6b03" />
+            <Text
+              className="text-orange-primary text-sm ml-1.5"
+              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+            >
+              3
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View className="flex-row items-center gap-3">
           {profileViewers && profileViewers.length > 0 ? (
             <TouchableOpacity
               className="flex-row items-center bg-gray-100 rounded-full px-2 py-1"
@@ -514,21 +547,44 @@ export default function ProfileScreen() {
                         <Ionicons name="navigate" size={18} color="#fff" />
                       </View>
                     </View>
-                    <View className="ml-3 flex-1">
-                      <Text
-                        className="text-xs text-gray-400 uppercase"
-                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                      >
-                        now
-                      </Text>
-                      <Text
-                        className="text-black text-lg"
-                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                        numberOfLines={1}
-                      >
-                        {profileData.currentLocation || 'location not set'}
-                      </Text>
-                    </View>
+                    {editingCurrentLocation ? (
+                      <View className="ml-3 flex-1">
+                        <LocationAutocomplete
+                          value={profileData.currentLocation}
+                          placeholder="search for a city..."
+                          onSelect={(location) => handleSaveCurrentLocation(location)}
+                        />
+                        <TouchableOpacity onPress={() => setEditingCurrentLocation(false)} style={{ paddingVertical: 4, marginTop: 4 }}>
+                          <Text style={{ color: '#9CA3AF', fontSize: 12, fontFamily: 'InstrumentSans_500Medium' }}>cancel</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View className="ml-3 flex-1" style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            className="text-xs text-gray-400 uppercase"
+                            style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                          >
+                            now
+                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text
+                              className="text-black text-lg"
+                              style={{ fontFamily: 'InstrumentSans_600SemiBold', flexShrink: 1 }}
+                              numberOfLines={1}
+                            >
+                              {profileData.currentLocation || 'location not set'}
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() => setEditingCurrentLocation(true)}
+                              style={{ marginLeft: 6, padding: 2 }}
+                            >
+                              <Ionicons name="pencil" size={12} color="#D1D5DB" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </View>
+                    )}
                   </View>
                   {profileData.futureTrips.length > 0 && (
                     <View className="items-center" style={{ width: 40, paddingVertical: 2 }}>
@@ -729,6 +785,40 @@ export default function ProfileScreen() {
               </View>
             )}
 
+            <View className="px-6 mb-6">
+              <Text
+                className="text-lg text-black mb-3"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                travelling with
+              </Text>
+              {profileData.pets.length > 0 ? (
+                <View className="flex-row flex-wrap gap-2">
+                  {profileData.pets.map((pet, idx) => {
+                    const emojiMap: Record<string, string> = { dog: '🐕', cat: '🐈', bird: '🐦', rabbit: '🐰', fish: '🐟', reptile: '🦎', other: '🐾' };
+                    return (
+                      <View key={idx} className="bg-gray-100 px-3 py-2 rounded-full flex-row items-center">
+                        <Text className="mr-1">{emojiMap[pet.type] || '🐾'}</Text>
+                        <Text
+                          className="text-gray-700"
+                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        >
+                          {pet.name} ({pet.type})
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : (
+                <Text
+                  className="text-gray-400"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  no pets
+                </Text>
+              )}
+            </View>
+
             {profileData.interests.length > 0 && (
               <View className="px-6 mb-6">
                 <Text
@@ -895,21 +985,7 @@ export default function ProfileScreen() {
                         </Text>
                       </View>
                     ) : (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setEditBuilderBio('');
-                          setEditBuilderSpecialties(user?.builderSpecialties || []);
-                          setEditingBuilder(true);
-                        }}
-                        className="mb-5"
-                      >
-                        <Text
-                          className="text-gray-400 text-lg"
-                          style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                        >
-                          tap to add a builder bio...
-                        </Text>
-                      </TouchableOpacity>
+                      <View className="mb-5" />
                     )}
 
                     {/* Specialties */}
@@ -938,23 +1014,7 @@ export default function ProfileScreen() {
                           })}
                         </View>
                       </View>
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setEditBuilderBio(user?.builderBio || '');
-                          setEditBuilderSpecialties([]);
-                          setEditingBuilder(true);
-                        }}
-                        className="mb-5"
-                      >
-                        <Text
-                          className="text-gray-400 text-base"
-                          style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                        >
-                          tap to add specialties...
-                        </Text>
-                      </TouchableOpacity>
-                    )}
+                    ) : null}
 
                   </>
                 )}

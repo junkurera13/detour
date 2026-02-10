@@ -11,6 +11,8 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { isDemoUser } from '@/utils/isDemoUser';
+import { computeCompatibility } from '@/utils/compatibility';
+import { CompatibilityBadge } from '@/components/ui/CompatibilityBadge';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PHOTO_SIZE = (SCREEN_WIDTH - 48 - 8) / 2; // px-6 padding (48) + gap (8)
@@ -109,6 +111,16 @@ export default function UserProfileScreen() {
     !isMockUser && userId ? { id: userId as Id<"users"> } : "skip"
   );
 
+  // Check if already matched with this user
+  const myMatches = useQuery(
+    api.matches.getByUser,
+    currentUser?._id ? { userId: currentUser._id } : "skip"
+  );
+  const isAlreadyMatched = useMemo(() => {
+    if (!myMatches || !userId) return false;
+    return myMatches.some((m) => m.otherUser?._id === userId);
+  }, [myMatches, userId]);
+
   // Find mock user if applicable (demo only)
   const mockUser = (isMockUser && isDemo) ? mockUsers.find((u) => u.id === userId) : null;
 
@@ -136,10 +148,13 @@ export default function UserProfileScreen() {
         username: convexUser.username,
         photos: convexUser.photos,
         currentLocation: convexUser.currentLocation,
+        latitude: convexUser.latitude,
+        longitude: convexUser.longitude,
         instagram: convexUser.instagram,
         lifestyle: convexUser.lifestyle,
         interests: convexUser.interests,
         futureTrips: convexUser.futureTrips || (convexUser.futureTrip ? [{ location: convexUser.futureTrip }] : []),
+        pets: convexUser.pets || [],
       };
     }
     if (mockUser) {
@@ -153,10 +168,24 @@ export default function UserProfileScreen() {
         lifestyle: mockUser.lifestyle,
         interests: mockUser.interests,
         futureTrips: mockUser.futureTrip ? [{ location: mockUser.futureTrip, startDate: getMockTripDate(mockUser.id, 0), endDate: getMockTripEndDate(mockUser.id, 0) }] : [],
+        pets: [],
       };
     }
     return null;
   }, [convexUser, mockUser]);
+
+  const compatibilityResult = useMemo(() => {
+    if (!currentUser || !profileData) return null;
+    return computeCompatibility(currentUser, {
+      interests: profileData.interests,
+      currentLocation: profileData.currentLocation,
+      latitude: profileData.latitude,
+      longitude: profileData.longitude,
+      futureTrips: profileData.futureTrips,
+      lifestyle: profileData.lifestyle,
+      pets: profileData.pets,
+    });
+  }, [currentUser, profileData]);
 
   const [activeTab, setActiveTab] = useState<'about' | 'events' | 'builder'>('about');
   const [menuVisible, setMenuVisible] = useState(false);
@@ -338,12 +367,19 @@ export default function UserProfileScreen() {
             )}
           </View>
 
-          <Text
-            className="text-2xl text-black mt-4"
-            style={{ fontFamily: 'InstrumentSans_700Bold' }}
-          >
-            {profileData.name.toLowerCase()}, {profileData.age}
-          </Text>
+          <View className="flex-row items-center mt-4">
+            <Text
+              className="text-2xl text-black"
+              style={{ fontFamily: 'InstrumentSans_700Bold' }}
+            >
+              {profileData.name.toLowerCase()}, {profileData.age}
+            </Text>
+            {compatibilityResult != null && (
+              <View style={{ marginLeft: 8 }}>
+                <CompatibilityBadge score={compatibilityResult.score} size="md" breakdown={compatibilityResult.breakdown} />
+              </View>
+            )}
+          </View>
 
           {profileData.username && (
             <Text
@@ -603,6 +639,41 @@ export default function UserProfileScreen() {
           </View>
         )}
 
+        {/* Travelling with (pets) */}
+        <View className="px-6 mb-6">
+          <Text
+            className="text-lg text-black mb-3"
+            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+          >
+            travelling with
+          </Text>
+          {profileData.pets.length > 0 ? (
+            <View className="flex-row flex-wrap gap-2">
+              {profileData.pets.map((pet, index) => {
+                const emojiMap: Record<string, string> = { dog: '🐕', cat: '🐈', bird: '🐦', rabbit: '🐰', fish: '🐟', reptile: '🦎' };
+                return (
+                  <View key={index} className="bg-gray-100 px-3 py-2 rounded-full flex-row items-center">
+                    <Text className="mr-1">{emojiMap[pet.type] || '🐾'}</Text>
+                    <Text
+                      className="text-gray-700"
+                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                    >
+                      {pet.name}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <Text
+              className="text-gray-400"
+              style={{ fontFamily: 'InstrumentSans_400Regular' }}
+            >
+              no pets
+            </Text>
+          )}
+        </View>
+
         {/* Interests tags with emojis (same as own profile) */}
         {profileData.interests.length > 0 && (
           <View className="px-6 mb-6">
@@ -709,7 +780,7 @@ export default function UserProfileScreen() {
       </Modal>
 
       {/* Floating like button — matches nearby page style */}
-      <TouchableOpacity
+      {!isAlreadyMatched && <TouchableOpacity
         onPress={handleLike}
         disabled={liked || likeLoading}
         activeOpacity={0.8}
@@ -735,7 +806,7 @@ export default function UserProfileScreen() {
         ) : (
           <Ionicons name="heart" size={32} color="#fff" />
         )}
-      </TouchableOpacity>
+      </TouchableOpacity>}
     </SafeAreaView>
   );
 }

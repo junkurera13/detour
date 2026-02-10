@@ -12,6 +12,9 @@ export default function LocationScreen() {
   const router = useRouter();
   const { data, updateData } = useOnboarding();
   const [location, setLocation] = useState(data.currentLocation);
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | undefined>(
+    data.latitude && data.longitude ? { latitude: data.latitude, longitude: data.longitude } : undefined
+  );
   const [loading, setLoading] = useState(false);
 
   const getCurrentLocation = async () => {
@@ -35,6 +38,10 @@ export default function LocationScreen() {
           .join(', ')
           .toLowerCase();
         setLocation(locationString);
+        setCoords({
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude,
+        });
       }
     } catch (error) {
       console.error('Error getting location:', error);
@@ -43,7 +50,7 @@ export default function LocationScreen() {
   };
 
   const handleContinue = () => {
-    updateData({ currentLocation: location });
+    updateData({ currentLocation: location, latitude: coords?.latitude, longitude: coords?.longitude });
     router.push('/onboarding/future-trip');
   };
 
@@ -105,7 +112,10 @@ export default function LocationScreen() {
 
         <LocationAutocomplete
           value={location}
-          onSelect={(loc) => setLocation(loc.fullName)}
+          onSelect={(loc) => {
+            setLocation(loc.fullName);
+            setCoords(loc.coordinates);
+          }}
           placeholder="e.g. lisbon, portugal"
         />
 
