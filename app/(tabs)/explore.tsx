@@ -1,7 +1,8 @@
 import { View, Text, ScrollView, TouchableOpacity, Image, Platform, Modal, Switch, TextInput, Share, KeyboardAvoidingView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useOnboarding } from '@/context/OnboardingContext';
@@ -149,11 +150,12 @@ export default function ExploreScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dayFilter, setDayFilter] = useState('any');
-  const [showAllActivities, setShowAllActivities] = useState(false);
+  const [showOnlyInterests, setShowOnlyInterests] = useState(true);
   const [showNearbyOnly, setShowNearbyOnly] = useState(true);
   const [activityDistance, setActivityDistance] = useState(25);
   const [prefLocation, setPrefLocation] = useState('');
   const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [myEventsVisible, setMyEventsVisible] = useState(false);
   const [myEventsTab, setMyEventsTab] = useState<'upcoming' | 'hosting' | 'saved' | 'happened'>('upcoming');
@@ -170,6 +172,31 @@ export default function ExploreScreen() {
     tags: [] as string[],
   });
   const { savedIds, toggleSave, isSaved } = useEvents();
+
+  // Load saved preferences on mount
+  useEffect(() => {
+    AsyncStorage.getItem('activityPrefs').then((val) => {
+      if (val) {
+        try {
+          const prefs = JSON.parse(val);
+          if (prefs.showNearbyOnly !== undefined) setShowNearbyOnly(prefs.showNearbyOnly);
+          if (prefs.showOnlyInterests !== undefined) setShowOnlyInterests(prefs.showOnlyInterests);
+          if (prefs.activityDistance !== undefined) setActivityDistance(prefs.activityDistance);
+          if (prefs.dayFilter !== undefined) setDayFilter(prefs.dayFilter);
+          if (prefs.prefLocation !== undefined) setPrefLocation(prefs.prefLocation);
+        } catch {}
+      }
+      setPrefsLoaded(true);
+    });
+  }, []);
+
+  // Save preferences when they change
+  useEffect(() => {
+    if (!prefsLoaded) return;
+    AsyncStorage.setItem('activityPrefs', JSON.stringify({
+      showNearbyOnly, showOnlyInterests, activityDistance, dayFilter, prefLocation,
+    }));
+  }, [showNearbyOnly, showOnlyInterests, activityDistance, dayFilter, prefLocation, prefsLoaded]);
 
   // Real Convex data
   const convexActivities = useQuery(api.activities.list);
@@ -236,7 +263,7 @@ export default function ExploreScreen() {
   const savedEvents = useMemo(() => activities.filter(a => savedIds.includes(a.id)), [activities, savedIds]);
 
   // Get user's interests for filter pills
-  const userInterests = useMemo(() => data.interests || [], [data.interests]);
+  const userInterests = useMemo(() => convexUser?.interests || data.interests || [], [convexUser?.interests, data.interests]);
 
   // Search results
   const searchResults = useMemo(() => {
@@ -280,7 +307,7 @@ export default function ExploreScreen() {
   const filteredActivities = useMemo(() => {
     let result = activities;
 
-    if (!showAllActivities && userInterests.length > 0) {
+    if (showOnlyInterests && userInterests.length > 0) {
       result = result.filter(activity =>
         userInterests.some(interest =>
           activity.category.toLowerCase().includes(interest.toLowerCase()) ||
@@ -311,7 +338,7 @@ export default function ExploreScreen() {
       });
     }
     return result;
-  }, [activities, selectedInterest, dayFilter, showAllActivities, showNearbyOnly, activityDistance, userLocation, userInterests]);
+  }, [activities, selectedInterest, dayFilter, showOnlyInterests, showNearbyOnly, activityDistance, userLocation, userInterests]);
 
   const isLoading = convexActivities === undefined;
 
@@ -381,15 +408,6 @@ export default function ExploreScreen() {
         contentContainerStyle={{ paddingBottom: 20 }}
       >
         {/* Section header */}
-        <View className="px-6 mb-4">
-          <Text
-            className="text-lg text-black"
-            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-          >
-            {showAllActivities ? 'all activities' : 'recommended for you'}
-          </Text>
-        </View>
-
         {/* Interest filter pills */}
         {userInterests.length > 0 && (
           <ScrollView
@@ -603,7 +621,7 @@ export default function ExploreScreen() {
                 className="text-gray-500 text-center"
                 style={{ fontFamily: 'InstrumentSans_400Regular' }}
               >
-                {showAllActivities ? 'no activities found' : 'no activities match your interests yet'}
+                {showOnlyInterests ? 'no activities match your interests yet' : 'no activities found'}
               </Text>
             </View>
           )}
@@ -790,6 +808,22 @@ export default function ExploreScreen() {
                 </View>
               </View>
             )}
+
+            {/* Show only interests toggle */}
+            <View className="flex-row items-center justify-between py-4">
+              <Text
+                className="text-lg text-black"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                show only my interests
+              </Text>
+              <Switch
+                value={showOnlyInterests}
+                onValueChange={setShowOnlyInterests}
+                trackColor={{ false: '#E5E7EB', true: '#fd6b03' }}
+                thumbColor="#fff"
+              />
+            </View>
           </View>
         </SafeAreaView>
       </Modal>

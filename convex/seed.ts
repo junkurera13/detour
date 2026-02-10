@@ -789,7 +789,7 @@ const testActivities = [
     hostUsername: "tom.adventures",
     title: "nomad meetup & potluck",
     description: "monthly meetup for digital nomads in melbourne. bring a dish to share and your best travel stories. we'll have the rooftop to ourselves.",
-    image: "https://images.unsplash.com/photo-1529543544282-ea25407407fd?w=600&h=400&fit=crop",
+    image: "https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=600&h=400&fit=crop",
     date: "next saturday",
     time: "7:00 PM",
     location: "Fitzroy, Melbourne, Australia",
