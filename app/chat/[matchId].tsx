@@ -456,6 +456,45 @@ export default function ChatScreen() {
             <View className="w-12 h-1 bg-gray-300 rounded-full self-center my-4" />
 
             <TouchableOpacity
+              onPress={() => {
+                setShowMenu(false);
+                Alert.alert(
+                  `Report ${otherUser?.name?.toLowerCase() || 'this user'}?`,
+                  'We\'ll review this account. You can also block them to stop all contact.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Report',
+                      style: 'destructive',
+                      onPress: () => {
+                        Alert.alert('Reported', 'Thanks for letting us know. We\'ll review this account.');
+                      },
+                    },
+                  ]
+                );
+              }}
+              className="flex-row items-center px-6 py-4"
+            >
+              <View className="w-10 h-10 rounded-full bg-red-50 items-center justify-center">
+                <Ionicons name="flag-outline" size={20} color="#EF4444" />
+              </View>
+              <View className="ml-4">
+                <Text
+                  className="text-red-500 text-base"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  report {otherUser?.name?.toLowerCase() || 'user'}
+                </Text>
+                <Text
+                  className="text-gray-400 text-sm"
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                >
+                  {"report inappropriate behavior"}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={handleBlock}
               className="flex-row items-center px-6 py-4"
             >

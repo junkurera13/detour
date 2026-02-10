@@ -5,6 +5,7 @@ import { useState, useMemo } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 import { useEvents } from '@/context/EventsContext';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -102,6 +103,8 @@ interface Activity {
   tags: string[];
 }
 
+const DISTANCE_OPTIONS = [5, 10, 15, 20, 25, 50, 100];
+
 const dayFilters = [
   { id: 'any', label: 'any day' },
   { id: 'today', label: 'today' },
@@ -147,7 +150,10 @@ export default function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [dayFilter, setDayFilter] = useState('any');
   const [showAllActivities, setShowAllActivities] = useState(false);
-  const [showNearbyOnly, setShowNearbyOnly] = useState(false);
+  const [showNearbyOnly, setShowNearbyOnly] = useState(true);
+  const [activityDistance, setActivityDistance] = useState(25);
+  const [prefLocation, setPrefLocation] = useState('');
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [myEventsVisible, setMyEventsVisible] = useState(false);
   const [myEventsTab, setMyEventsTab] = useState<'upcoming' | 'hosting' | 'saved' | 'happened'>('upcoming');
@@ -269,7 +275,8 @@ export default function ExploreScreen() {
   }, [searchQuery, activities]);
 
   // Filter activities
-  const userLocation = data.currentLocation || '';
+  const baseLocation = convexUser?.currentLocation || data.currentLocation || '';
+  const userLocation = prefLocation || baseLocation;
   const filteredActivities = useMemo(() => {
     let result = activities;
 
@@ -304,7 +311,7 @@ export default function ExploreScreen() {
       });
     }
     return result;
-  }, [activities, selectedInterest, dayFilter, showAllActivities, showNearbyOnly, userLocation, userInterests]);
+  }, [activities, selectedInterest, dayFilter, showAllActivities, showNearbyOnly, activityDistance, userLocation, userInterests]);
 
   const isLoading = convexActivities === undefined;
 
@@ -601,21 +608,6 @@ export default function ExploreScreen() {
             </View>
           )}
 
-          {/* See all activities button when in recommended mode */}
-          {!showAllActivities && filteredActivities.length > 0 && (
-            <TouchableOpacity
-              onPress={() => { setShowAllActivities(true); setSelectedInterest(null); }}
-              className="mt-2 mb-4 py-4 rounded-2xl bg-gray-100 items-center"
-              activeOpacity={0.7}
-            >
-              <Text
-                className="text-black"
-                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-              >
-                see all activities
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
       </ScrollView>
 
@@ -656,6 +648,56 @@ export default function ExploreScreen() {
           </View>
 
           <View className="px-6 pt-4">
+            {/* Location */}
+            <View className="pb-6">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text
+                  className="text-lg text-black"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  location
+                </Text>
+                {prefLocation !== '' && prefLocation !== baseLocation && !isEditingLocation && (
+                  <TouchableOpacity
+                    onPress={() => setPrefLocation('')}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      className="text-sm"
+                      style={{ fontFamily: 'InstrumentSans_500Medium', color: '#fd6b03' }}
+                    >
+                      reset
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {isEditingLocation ? (
+                <LocationAutocomplete
+                  value={prefLocation || baseLocation}
+                  onSelect={(location) => {
+                    setPrefLocation(location.fullName);
+                    setIsEditingLocation(false);
+                  }}
+                  placeholder="search for a city..."
+                />
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setIsEditingLocation(true)}
+                  activeOpacity={0.7}
+                  className="flex-row items-center"
+                >
+                  <Ionicons name="location" size={18} color="#fd6b03" />
+                  <Text
+                    className="ml-3 text-black flex-1"
+                    style={{ fontFamily: 'InstrumentSans_500Medium', fontSize: 15 }}
+                  >
+                    {userLocation || 'Tap to set location'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+
             {/* Day filter */}
             <Text
               className="text-lg text-black mb-3"
@@ -681,22 +723,6 @@ export default function ExploreScreen() {
               ))}
             </View>
 
-            {/* Show all activities toggle */}
-            <View className="flex-row items-center justify-between py-4">
-              <Text
-                className="text-lg text-black"
-                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-              >
-                show all activities
-              </Text>
-              <Switch
-                value={showAllActivities}
-                onValueChange={setShowAllActivities}
-                trackColor={{ false: '#E5E7EB', true: '#fd6b03' }}
-                thumbColor="#fff"
-              />
-            </View>
-
             {/* Show nearby only toggle */}
             <View className="flex-row items-center justify-between py-4">
               <Text
@@ -712,6 +738,58 @@ export default function ExploreScreen() {
                 thumbColor="#fff"
               />
             </View>
+
+            {/* Distance selector - only when nearby is on */}
+            {showNearbyOnly && (
+              <View className="pb-6 pt-2">
+                <View className="bg-gray-50 rounded-2xl overflow-hidden px-4 py-4">
+                  <View className="flex-row items-center justify-between">
+                    <Text
+                      className="text-black"
+                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                    >
+                      max distance
+                    </Text>
+                    <View className="flex-row items-center">
+                      <TouchableOpacity
+                        onPress={() => {
+                          const idx = DISTANCE_OPTIONS.indexOf(activityDistance);
+                          if (idx > 0) setActivityDistance(DISTANCE_OPTIONS[idx - 1]);
+                        }}
+                        className="w-8 h-8 rounded-full bg-gray-200 items-center justify-center"
+                        disabled={activityDistance === DISTANCE_OPTIONS[0]}
+                      >
+                        <Ionicons
+                          name="remove"
+                          size={18}
+                          color={activityDistance === DISTANCE_OPTIONS[0] ? '#D1D5DB' : '#000'}
+                        />
+                      </TouchableOpacity>
+                      <Text
+                        className="mx-4 text-black min-w-[50px] text-center"
+                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                      >
+                        {activityDistance} km
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          const idx = DISTANCE_OPTIONS.indexOf(activityDistance);
+                          if (idx < DISTANCE_OPTIONS.length - 1) setActivityDistance(DISTANCE_OPTIONS[idx + 1]);
+                        }}
+                        className="w-8 h-8 rounded-full bg-gray-200 items-center justify-center"
+                        disabled={activityDistance === DISTANCE_OPTIONS[DISTANCE_OPTIONS.length - 1]}
+                      >
+                        <Ionicons
+                          name="add"
+                          size={18}
+                          color={activityDistance === DISTANCE_OPTIONS[DISTANCE_OPTIONS.length - 1] ? '#D1D5DB' : '#000'}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
         </SafeAreaView>
       </Modal>
@@ -957,7 +1035,7 @@ export default function ExploreScreen() {
                       key={activity.id}
                       className="flex-row items-center py-3 border-b border-gray-50"
                       activeOpacity={0.7}
-                      onPress={() => { setMyEventsVisible(false); router.push(`/event/${activity.id}`); }}
+                      onPress={() => router.push(`/event/${activity.id}`)}
                     >
                       <Image
                         source={{ uri: activity.photo }}
