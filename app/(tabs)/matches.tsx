@@ -392,7 +392,7 @@ export default function MatchesScreen() {
   const [previewUser, setPreviewUser] = useState<LikeUser | null>(null);
   const [previewSwipeDir, setPreviewSwipeDir] = useState<'left' | 'right' | null>(null);
   const [dismissedLikeIds, setDismissedLikeIds] = useState<Set<string>>(new Set());
-  const [likedBackMatches, setLikedBackMatches] = useState<Array<{ id: string; userId: string; name: string; age: number; photo: string; matchedAt: string }>>([]);
+  const [likedBackMatches, setLikedBackMatches] = useState<{ id: string; userId: string; name: string; age: number; photo: string; matchedAt: string; crossingPath: string | null }[]>([]);
   const [deletedConvoIds, setDeletedConvoIds] = useState<Set<string>>(new Set());
   const createSwipe = useMutation(api.swipes.create);
   const previewSwipeProgress = useSharedValue(0);
@@ -449,6 +449,7 @@ export default function MatchesScreen() {
             age: dismissedUser.age,
             photo: dismissedUser.photos[0],
             matchedAt: 'just now',
+            crossingPath: null,
           },
           ...prev,
         ]);
@@ -489,7 +490,7 @@ export default function MatchesScreen() {
     if (isDemo) {
       const realIds = new Set(realLikeUsers.map((u) => u.id));
       const matchedUserIds = new Set(
-        (matchesData || []).map((m) => m.otherUser?._id).filter(Boolean)
+        (matchesData || []).map((m) => m.otherUser?._id as string).filter(Boolean)
       );
       const mockFiltered = mockLikesYou
         .filter((u) => !realIds.has(u.id) && !matchedUserIds.has(u.id))
