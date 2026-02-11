@@ -201,7 +201,7 @@ export default function UserProfileScreen() {
         text: 'block',
         style: 'destructive',
         onPress: async () => {
-          if (!currentUser || !userId || isMockUser) return;
+          if (!currentUser || !userId) return;
           try {
             await blockUser({ blockerId: currentUser._id, blockedId: userId as Id<"users"> });
             router.back();
@@ -221,7 +221,7 @@ export default function UserProfileScreen() {
         text: 'report',
         style: 'destructive',
         onPress: async () => {
-          if (!userId || isMockUser) {
+          if (!userId) {
             Alert.alert('reported', 'thanks for letting us know. we\'ll review this account.');
             return;
           }
@@ -239,7 +239,7 @@ export default function UserProfileScreen() {
   // Fetch events this user is hosting or attending from Convex
   const userEventsQuery = useQuery(
     api.activities.getByUserId,
-    !isMockUser && userId ? { userId: userId as Id<"users"> } : "skip"
+    userId ? { userId: userId as Id<"users"> } : "skip"
   );
   const userEvents = userEventsQuery || [];
 
