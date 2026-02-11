@@ -66,6 +66,7 @@ export const getMyConversations = query({
                 title: request.title,
                 category: request.category,
                 status: request.status,
+                progressStep: request.progressStep,
               }
             : null,
           otherUser: otherUser
@@ -146,6 +147,7 @@ export const getConversation = query({
             description: request.description,
             category: request.category,
             status: request.status,
+            progressStep: request.progressStep,
           }
         : null,
       otherUser: otherUser

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -12,7 +12,7 @@ const statusTabs = [
   { id: 'rejected', label: 'rejected' },
 ];
 
-const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+const formatPrice = (cents: number) => `$${(cents / 100).toFixed(0)}`;
 
 const formatTime = (timestamp: number) => {
   const diff = Date.now() - timestamp;
@@ -25,6 +25,16 @@ const formatTime = (timestamp: number) => {
   return `${days}d ago`;
 };
 
+const stepLabel = (step?: string) => {
+  switch (step) {
+    case 'negotiation': return 'negotiation';
+    case 'working': return 'in progress';
+    case 'payment': return 'payment';
+    case 'completed': return 'completed';
+    default: return '';
+  }
+};
+
 export default function MyOffersScreen() {
   const router = useRouter();
   const [selectedStatus, setSelectedStatus] = useState('pending');
@@ -33,8 +43,13 @@ export default function MyOffersScreen() {
     status: selectedStatus,
   });
 
-  const handleOfferPress = (requestId: string) => {
-    router.push(`/help/${requestId}` as any);
+  const handleOfferPress = (offer: any) => {
+    // If accepted, go directly to chat
+    if (offer.status === 'accepted' && offer.conversationId) {
+      router.push(`/help/chat/${offer.conversationId}` as any);
+    } else if (offer.request) {
+      router.push(`/help/${offer.request._id}` as any);
+    }
   };
 
   return (
@@ -48,7 +63,7 @@ export default function MyOffersScreen() {
           className="flex-1 text-lg text-black ml-2"
           style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
         >
-          my offers
+          offers
         </Text>
       </View>
 
@@ -106,71 +121,133 @@ export default function MyOffersScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
         >
-          {offers.map((offer) => (
+          {offers.map((offer) => {
+            const requester = (offer as any).requester;
+            const progressStep = offer.request?.progressStep;
+
+            return (
               <TouchableOpacity
                 key={offer._id}
-                onPress={() => offer.request && handleOfferPress(offer.request._id)}
+                onPress={() => handleOfferPress(offer)}
                 className="mx-6 mb-4 p-5 bg-gray-50 rounded-2xl"
                 activeOpacity={0.7}
               >
                 {offer.request && (
                   <>
-                    <Text
-                      className="text-black text-lg mb-1"
-                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                    >
-                      {offer.request.title}
-                    </Text>
-
+                    {/* Title row */}
                     <View className="flex-row items-center mb-2">
-                      <View className="bg-gray-200 px-2 py-1 rounded-full mr-2">
+                      <Text
+                        className="text-black text-lg flex-1"
+                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                        numberOfLines={1}
+                      >
+                        {offer.request.title}
+                      </Text>
+                      {offer.request.isUrgent && (
+                        <Ionicons name="warning" size={18} color="#DC2626" style={{ marginLeft: 6 }} />
+                      )}
+                      <Text
+                        className="text-gray-400 text-xs ml-2"
+                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                      >
+                        {formatTime(offer.createdAt)}
+                      </Text>
+                    </View>
+
+                    {/* Requester row */}
+                    {requester && (
+                      <View className="flex-row items-center mb-2">
+                        {requester.photos?.[0] ? (
+                          <Image source={{ uri: requester.photos[0] }} className="w-7 h-7 rounded-full" />
+                        ) : (
+                          <View className="w-7 h-7 rounded-full bg-gray-200 items-center justify-center">
+                            <Ionicons name="person" size={14} color="#9CA3AF" />
+                          </View>
+                        )}
                         <Text
-                          className="text-gray-700 text-xs"
+                          className="text-gray-700 text-sm ml-2 flex-1"
                           style={{ fontFamily: 'InstrumentSans_500Medium' }}
                         >
-                          {offer.request.category}
+                          {requester.name}
                         </Text>
-                      </View>
-                      {offer.request.isUrgent && (
-                        <View className="bg-red-100 px-2 py-1 rounded-full">
+                        {offer.request.location && (
                           <Text
-                            className="text-red-600 text-xs"
-                            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                            className="text-gray-400 text-xs"
+                            style={{ fontFamily: 'InstrumentSans_400Regular' }}
                           >
-                            urgent
+                            {offer.request.location}
                           </Text>
-                        </View>
-                      )}
-                    </View>
+                        )}
+                      </View>
+                    )}
                   </>
                 )}
 
+                {/* Your offer message */}
                 <Text
-                  className="text-gray-600 text-sm mb-2"
+                  className="text-gray-500 text-sm mb-2"
                   style={{ fontFamily: 'InstrumentSans_400Regular' }}
                   numberOfLines={2}
                 >
                   {offer.message}
                 </Text>
 
+                {/* Footer: badges + price */}
                 <View className="flex-row items-center justify-between">
-                  <Text
-                    className="text-gray-400 text-sm"
-                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                  >
-                    offered {formatTime(offer.createdAt)}
-                  </Text>
-                  <View className="bg-green-100 px-3 py-1 rounded-full">
-                    <Text
-                      className="text-green-700"
-                      style={{ fontFamily: 'InstrumentSans_700Bold' }}
-                    >
-                      {formatPrice(offer.price)}
-                    </Text>
+                  <View className="flex-row items-center">
+                    {/* Progress step badge for accepted offers */}
+                    {offer.status === 'accepted' && progressStep && (
+                      <View
+                        className="px-2.5 py-1 rounded-full mr-2"
+                        style={{
+                          backgroundColor: progressStep === 'completed' ? '#DCFCE7' : '#FEF3C7',
+                        }}
+                      >
+                        <Text
+                          className="text-xs"
+                          style={{
+                            fontFamily: 'InstrumentSans_500Medium',
+                            color: progressStep === 'completed' ? '#166534' : '#92400E',
+                          }}
+                        >
+                          {stepLabel(progressStep)}
+                        </Text>
+                      </View>
+                    )}
+                    {offer.request && (
+                      <View className="bg-gray-200 px-2 py-1 rounded-full">
+                        <Text
+                          className="text-gray-600 text-xs"
+                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        >
+                          {offer.request.category}
+                        </Text>
+                      </View>
+                    )}
                   </View>
+                  {offer.price ? (
+                    <View className="bg-green-100 px-2.5 py-1 rounded-full">
+                      <Text
+                        className="text-green-700 text-sm"
+                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                      >
+                        {formatPrice(offer.price)}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View className="bg-gray-100 px-2.5 py-1 rounded-full">
+                      <Text
+                        className="text-gray-500 text-xs"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        free
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </TouchableOpacity>
-          ))}
+            );
+          })}
         </ScrollView>
       )}
     </SafeAreaView>

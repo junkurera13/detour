@@ -1113,14 +1113,7 @@ export default function ProfileScreen() {
                               </Text>
                             </View>
                             {req.isUrgent && (
-                              <View className="bg-red-100 px-2 py-1 rounded-full">
-                                <Text
-                                  className="text-red-600 text-sm"
-                                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                                >
-                                  urgent
-                                </Text>
-                              </View>
+                              <Ionicons name="warning" size={18} color="#DC2626" />
                             )}
                           </View>
                         );

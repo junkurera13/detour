@@ -2,6 +2,15 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 
+// Delete a help request by ID (admin)
+export const deleteHelpRequest = mutation({
+  args: { id: v.id("helpRequests") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+    return { success: true };
+  },
+});
+
 // List all pending users for admin review
 export const listPendingUsers = query({
   args: {},

@@ -124,8 +124,10 @@ export default defineSchema({
     category: v.string(), // "repairs", "electrical", "build", "plumbing", "other"
     location: v.optional(v.string()),
     photos: v.optional(v.array(v.string())),
+    budget: v.optional(v.number()), // cents, optional suggested budget
     isUrgent: v.boolean(),
     status: v.string(), // "open", "in_progress", "completed", "cancelled"
+    progressStep: v.optional(v.string()), // "negotiation", "working", "payment", "completed"
     acceptedOfferId: v.optional(v.id("helpOffers")),
     acceptedAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -139,7 +141,7 @@ export default defineSchema({
   helpOffers: defineTable({
     requestId: v.id("helpRequests"),
     offererId: v.id("users"),
-    price: v.number(), // cents to avoid floating point issues
+    price: v.optional(v.number()), // cents, optional
     message: v.string(),
     status: v.string(), // "pending", "accepted", "rejected", "withdrawn"
     createdAt: v.number(),

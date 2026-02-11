@@ -436,6 +436,7 @@ const testHelpRequests = [
     description: "just got a 200w solar panel for my van but have no clue how to wire it to the battery. looking for someone with electrical experience to help me set it up properly.",
     category: "electrical",
     location: "Canggu, Bali",
+    budget: 5000,
     isUrgent: false,
     hoursAgo: 2,
   },
@@ -445,6 +446,7 @@ const testHelpRequests = [
     description: "want to build a small fold-out desk that mounts to the wall of my sprinter. need someone handy with woodworking or who has done a similar build. happy to pay for time + materials.",
     category: "build",
     location: "Barcelona, Spain",
+    budget: 7500,
     isUrgent: false,
     hoursAgo: 5,
   },
@@ -558,6 +560,7 @@ export const seedHelpRequests = mutation({
         description: request.description,
         category: request.category,
         location: request.location,
+        budget: (request as any).budget,
         isUrgent: request.isUrgent,
         status: "open",
         createdAt: now - request.hoursAgo * 3600000,
@@ -567,6 +570,46 @@ export const seedHelpRequests = mutation({
     }
 
     return { message: `Seeded ${seededCount} help requests`, count: seededCount };
+  },
+});
+
+// Add specific help requests by title (for adding new ones when DB already seeded)
+export const addMissingHelpRequests = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    let added = 0;
+
+    for (const request of testHelpRequests) {
+      // Check if this request already exists
+      const existing = await ctx.db
+        .query("helpRequests")
+        .filter((q) => q.eq(q.field("title"), request.title))
+        .first();
+      if (existing) continue;
+
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_username", (q) => q.eq("username", request.username))
+        .first();
+      if (!user) continue;
+
+      await ctx.db.insert("helpRequests", {
+        authorId: user._id,
+        title: request.title,
+        description: request.description,
+        category: request.category,
+        location: request.location,
+        budget: (request as any).budget,
+        isUrgent: request.isUrgent,
+        status: "open",
+        createdAt: now - request.hoursAgo * 3600000,
+        updatedAt: now - request.hoursAgo * 3600000,
+      });
+      added++;
+    }
+
+    return { message: `Added ${added} new help requests` };
   },
 });
 
@@ -631,6 +674,475 @@ export const seedHelpOffers = mutation({
     }
 
     return { message: `Seeded ${seededCount} help offers`, count: seededCount };
+  },
+});
+
+// Seed help data for the demo account (1 request with offers + 2 pending offers on other requests)
+export const seedDemoHelp = mutation({
+  args: { myUsername: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const myUsername = args.myUsername || "jju1ce";
+    const me = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", myUsername))
+      .first();
+
+    if (!me) {
+      return { message: `User '${myUsername}' not found.` };
+    }
+
+    const now = Date.now();
+    let created = 0;
+
+    // 1. Create a help request from the demo user
+    const existingRequest = await ctx.db
+      .query("helpRequests")
+      .withIndex("by_author", (q) => q.eq("authorId", me._id))
+      .first();
+
+    if (!existingRequest) {
+      const requestId = await ctx.db.insert("helpRequests", {
+        authorId: me._id,
+        title: "bathroom sink pipe leaking under cabinet",
+        description: "the pipe under the bathroom sink in my airbnb is dripping. theres a small puddle forming every few hours. i think its a loose connection but im not sure which part to tighten. anyone nearby who can take a quick look?",
+        category: "plumbing",
+        location: me.currentLocation,
+        budget: 3000,
+        isUrgent: false,
+        status: "open",
+        createdAt: now - 2 * 3600000,
+        updatedAt: now - 2 * 3600000,
+      });
+
+      // Add 3 offers from seed users
+      const offerers = ["clara.sails", "ryan.surfs", "nina.vibes"];
+      const offerData = [
+        { message: "i've fixed loads of sink pipes in hostels. can come by this afternoon if you're free.", price: 2000 },
+        { message: "plumbing is my thing — happy to take a look. probably just needs a new washer.", price: undefined },
+        { message: "i can help! i've got a wrench set and some plumber's tape. free tomorrow morning.", price: 2500 },
+      ];
+
+      for (let i = 0; i < offerers.length; i++) {
+        const offerer = await ctx.db
+          .query("users")
+          .withIndex("by_username", (q) => q.eq("username", offerers[i]))
+          .first();
+        if (!offerer) continue;
+
+        await ctx.db.insert("helpOffers", {
+          requestId,
+          offererId: offerer._id,
+          price: offerData[i].price,
+          message: offerData[i].message,
+          status: "pending",
+          createdAt: now - (1.5 - i * 0.5) * 3600000,
+          updatedAt: now - (1.5 - i * 0.5) * 3600000,
+        });
+        created++;
+      }
+      created++; // count the request
+    }
+
+    // 2. Create 2 pending offers from the demo user on existing requests
+    const existingOffers = await ctx.db
+      .query("helpOffers")
+      .withIndex("by_offerer", (q) => q.eq("offererId", me._id))
+      .collect();
+
+    if (existingOffers.length === 0) {
+      // Find 2 open requests not authored by me
+      const openRequests = await ctx.db
+        .query("helpRequests")
+        .withIndex("by_status", (q) => q.eq("status", "open"))
+        .collect();
+
+      const othersRequests = openRequests
+        .filter((r) => r.authorId !== me._id)
+        .slice(0, 2);
+
+      const myOfferData = [
+        { message: "i can help with this — i've done similar fixes before. free this weekend.", price: undefined },
+        { message: "hey, i have experience with this. happy to swing by and take a look!", price: 3500 },
+      ];
+
+      for (let i = 0; i < othersRequests.length; i++) {
+        await ctx.db.insert("helpOffers", {
+          requestId: othersRequests[i]._id,
+          offererId: me._id,
+          price: myOfferData[i].price,
+          message: myOfferData[i].message,
+          status: "pending",
+          createdAt: now - (1 + i) * 3600000,
+          updatedAt: now - (1 + i) * 3600000,
+        });
+        created++;
+      }
+    }
+
+    return { message: `Seeded ${created} help items for ${myUsername}` };
+  },
+});
+
+// Seed a completed request authored by the demo user
+export const seedDemoCompletedRequest = mutation({
+  args: { myUsername: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const myUsername = args.myUsername || "jju1ce";
+    const me = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", myUsername))
+      .first();
+    if (!me) return { message: `User '${myUsername}' not found.` };
+
+    const ravi = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", "ravi.codes"))
+      .first();
+    if (!ravi) return { message: "Seed user ravi.codes not found." };
+
+    const now = Date.now();
+
+    const reqId = await ctx.db.insert("helpRequests", {
+      authorId: me._id,
+      title: "toilet keeps running after flushing",
+      description: "the toilet in my rental won't stop running after you flush it. pretty sure its the flapper valve but i don't have the right tools to replace it. would really appreciate some help.",
+      category: "plumbing",
+      location: me.currentLocation,
+      budget: 2000,
+      isUrgent: false,
+      status: "completed",
+      progressStep: "completed",
+      acceptedAt: now - 120 * 3600000,
+      createdAt: now - 168 * 3600000,
+      updatedAt: now - 96 * 3600000,
+    });
+
+    const offerId = await ctx.db.insert("helpOffers", {
+      requestId: reqId,
+      offererId: ravi._id,
+      price: 1500,
+      message: "i replaced a flapper last month actually. quick job — i can come by tomorrow.",
+      status: "accepted",
+      createdAt: now - 140 * 3600000,
+      updatedAt: now - 120 * 3600000,
+    });
+
+    await ctx.db.patch(reqId, { acceptedOfferId: offerId });
+
+    const convId = await ctx.db.insert("helpConversations", {
+      requestId: reqId,
+      offerId,
+      requesterId: me._id,
+      offererId: ravi._id,
+      lastMessageAt: now - 96 * 3600000,
+      createdAt: now - 120 * 3600000,
+    });
+
+    const msgs = [
+      { sender: ravi._id, text: "hey! when works for you?", minsAgo: 7100 },
+      { sender: me._id, text: "anytime tomorrow morning would be great", minsAgo: 7050 },
+      { sender: ravi._id, text: "cool i'll come around 10. whats the address?", minsAgo: 7000 },
+      { sender: me._id, text: "sent you the pin!", minsAgo: 6950 },
+      { sender: ravi._id, text: "all fixed! it was the flapper like you thought. replaced it in about 10 min", minsAgo: 5900 },
+      { sender: me._id, text: "amazing it works perfectly now. thanks so much!", minsAgo: 5850 },
+      { sender: ravi._id, text: "no worries, happy to help 🤙", minsAgo: 5800 },
+    ];
+
+    for (const msg of msgs) {
+      await ctx.db.insert("helpMessages", {
+        conversationId: convId,
+        senderId: msg.sender,
+        content: msg.text,
+        messageType: "text",
+        createdAt: now - msg.minsAgo * 60000,
+      });
+    }
+
+    return { message: "Seeded 1 completed request for " + myUsername };
+  },
+});
+
+// Seed help conversations at different progress stages for demo account
+export const seedDemoHelpProgress = mutation({
+  args: { myUsername: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const myUsername = args.myUsername || "jju1ce";
+    const me = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", myUsername))
+      .first();
+
+    if (!me) {
+      return { message: `User '${myUsername}' not found.` };
+    }
+
+    const now = Date.now();
+    let created = 0;
+
+    // Helper to look up user by username
+    const findUser = async (username: string) =>
+      ctx.db.query("users").withIndex("by_username", (q) => q.eq("username", username)).first();
+
+    // --- 1. WORKING stage: I'm the requester, Marco is the helper (I can tap "confirm work done") ---
+    const marco = await findUser("marcodelucci");
+    if (marco) {
+      const reqId = await ctx.db.insert("helpRequests", {
+        authorId: me._id,
+        title: "kitchen faucet dripping nonstop",
+        description: "the kitchen faucet in my airbnb won't stop dripping. tried tightening the handle but it didn't help. probably needs a new washer or cartridge.",
+        category: "plumbing",
+        location: me.currentLocation,
+        budget: 2500,
+        isUrgent: false,
+        status: "in_progress",
+        progressStep: "working",
+        acceptedAt: now - 3 * 3600000,
+        createdAt: now - 8 * 3600000,
+        updatedAt: now - 3 * 3600000,
+      });
+
+      const offerId = await ctx.db.insert("helpOffers", {
+        requestId: reqId,
+        offererId: marco._id,
+        price: 2000,
+        message: "i've fixed tons of faucets. can come by later today if that works.",
+        status: "accepted",
+        createdAt: now - 5 * 3600000,
+        updatedAt: now - 3 * 3600000,
+      });
+
+      await ctx.db.patch(reqId, { acceptedOfferId: offerId });
+
+      const convId = await ctx.db.insert("helpConversations", {
+        requestId: reqId,
+        offerId: offerId,
+        requesterId: me._id,
+        offererId: marco._id,
+        lastMessageAt: now - 2 * 3600000,
+        createdAt: now - 3 * 3600000,
+      });
+
+      const msgs = [
+        { sender: marco._id, text: "hey! just accepted. what time works for you today?", minsAgo: 170 },
+        { sender: me._id, text: "anytime after 2pm works!", minsAgo: 165 },
+        { sender: marco._id, text: "perfect. do you know what brand the faucet is?", minsAgo: 155 },
+        { sender: me._id, text: "i think its a grohe but not 100% sure", minsAgo: 150 },
+        { sender: marco._id, text: "no worries i'll bring a few different washers. should be a quick fix", minsAgo: 140 },
+        { sender: me._id, text: "awesome thanks! i'll send you the address", minsAgo: 120 },
+      ];
+
+      for (const msg of msgs) {
+        await ctx.db.insert("helpMessages", {
+          conversationId: convId,
+          senderId: msg.sender,
+          content: msg.text,
+          messageType: "text",
+          createdAt: now - msg.minsAgo * 60000,
+        });
+      }
+      created += 3;
+    }
+
+    // --- 2. WORKING stage: I'm the offerer, Hana is the requester ---
+    const hana = await findUser("hana.k_");
+    if (hana) {
+      const reqId = await ctx.db.insert("helpRequests", {
+        authorId: hana._id,
+        title: "shower head has low water pressure",
+        description: "the shower in my coliving space barely has any pressure. might be a clogged filter or the valve isn't fully open. would appreciate someone taking a look.",
+        category: "plumbing",
+        location: "Lisbon, Portugal",
+        isUrgent: false,
+        status: "in_progress",
+        progressStep: "working",
+        acceptedAt: now - 18 * 3600000,
+        createdAt: now - 24 * 3600000,
+        updatedAt: now - 12 * 3600000,
+      });
+
+      const offerId = await ctx.db.insert("helpOffers", {
+        requestId: reqId,
+        offererId: me._id,
+        price: 1500,
+        message: "i can check the pressure valve and clean the filter. done this before in my van.",
+        status: "accepted",
+        createdAt: now - 20 * 3600000,
+        updatedAt: now - 18 * 3600000,
+      });
+
+      await ctx.db.patch(reqId, { acceptedOfferId: offerId });
+
+      const convId = await ctx.db.insert("helpConversations", {
+        requestId: reqId,
+        offerId: offerId,
+        requesterId: hana._id,
+        offererId: me._id,
+        lastMessageAt: now - 10 * 3600000,
+        createdAt: now - 18 * 3600000,
+      });
+
+      const msgs = [
+        { sender: me._id, text: "hey hana! i can come check the shower out. when are you free?", minsAgo: 1050 },
+        { sender: hana._id, text: "hi! im around all day tomorrow if that works", minsAgo: 1020 },
+        { sender: me._id, text: "sounds good. i'll bring a wrench and a new filter just in case", minsAgo: 990 },
+        { sender: hana._id, text: "amazing thank you so much!", minsAgo: 960 },
+        { sender: me._id, text: "alright started work on it. looks like the filter was really clogged", minsAgo: 720 },
+        { sender: hana._id, text: "oh wow. is it fixable?", minsAgo: 710 },
+        { sender: me._id, text: "yeah cleaning it out now. should be done in about 20 min", minsAgo: 700 },
+        { sender: hana._id, text: "you're a lifesaver!", minsAgo: 690 },
+      ];
+
+      for (const msg of msgs) {
+        await ctx.db.insert("helpMessages", {
+          conversationId: convId,
+          senderId: msg.sender,
+          content: msg.text,
+          messageType: "text",
+          createdAt: now - msg.minsAgo * 60000,
+        });
+      }
+      created += 3;
+    }
+
+    // --- 3. PAYMENT stage: I'm the requester, Tomas is the helper ---
+    const tomas = await findUser("tomasux");
+    if (tomas) {
+      const reqId = await ctx.db.insert("helpRequests", {
+        authorId: me._id,
+        title: "need help rewiring a light switch",
+        description: "the light switch in the bedroom of my rental stopped working. i think a wire came loose. need someone comfortable with basic electrical work.",
+        category: "electrical",
+        location: me.currentLocation,
+        budget: 4000,
+        isUrgent: true,
+        status: "in_progress",
+        progressStep: "payment",
+        acceptedAt: now - 48 * 3600000,
+        createdAt: now - 72 * 3600000,
+        updatedAt: now - 6 * 3600000,
+      });
+
+      const offerId = await ctx.db.insert("helpOffers", {
+        requestId: reqId,
+        offererId: tomas._id,
+        price: 3500,
+        message: "i rewire stuff all the time in my camper. happy to help with this one.",
+        status: "accepted",
+        createdAt: now - 60 * 3600000,
+        updatedAt: now - 48 * 3600000,
+      });
+
+      await ctx.db.patch(reqId, { acceptedOfferId: offerId });
+
+      const convId = await ctx.db.insert("helpConversations", {
+        requestId: reqId,
+        offerId: offerId,
+        requesterId: me._id,
+        offererId: tomas._id,
+        lastMessageAt: now - 5 * 3600000,
+        createdAt: now - 48 * 3600000,
+      });
+
+      const msgs = [
+        { sender: tomas._id, text: "hey! i can come by tomorrow morning to fix the switch", minsAgo: 2800 },
+        { sender: me._id, text: "that would be great! its the second bedroom on the left", minsAgo: 2750 },
+        { sender: tomas._id, text: "got it. do you know if its a single or double switch?", minsAgo: 2700 },
+        { sender: me._id, text: "single switch, just on/off", minsAgo: 2650 },
+        { sender: tomas._id, text: "easy fix then. i'll bring everything i need", minsAgo: 2600 },
+        { sender: tomas._id, text: "all done! tested it a few times and its working perfectly now", minsAgo: 400 },
+        { sender: me._id, text: "works great!! thank you so much", minsAgo: 380 },
+        { sender: tomas._id, text: "no problem! happy to help. you can send payment whenever you're ready", minsAgo: 360 },
+        { sender: me._id, text: "sending it now 👍", minsAgo: 300 },
+      ];
+
+      for (const msg of msgs) {
+        await ctx.db.insert("helpMessages", {
+          conversationId: convId,
+          senderId: msg.sender,
+          content: msg.text,
+          messageType: "text",
+          createdAt: now - msg.minsAgo * 60000,
+        });
+      }
+      created += 3;
+    }
+
+    // --- 4. COMPLETED stage: I'm the offerer, Jess is the requester ---
+    const jess = await findUser("jess_ontheroad");
+    if (jess) {
+      const reqId = await ctx.db.insert("helpRequests", {
+        authorId: jess._id,
+        title: "broken shelf in hostel locker",
+        description: "the wooden shelf inside my hostel locker snapped. need someone to either fix it or build a quick replacement. the hostel doesn't care as long as it looks ok.",
+        category: "build",
+        location: "Chiang Mai, Thailand",
+        isUrgent: false,
+        status: "completed",
+        progressStep: "completed",
+        acceptedAt: now - 96 * 3600000,
+        createdAt: now - 120 * 3600000,
+        updatedAt: now - 72 * 3600000,
+      });
+
+      const offerId = await ctx.db.insert("helpOffers", {
+        requestId: reqId,
+        offererId: me._id,
+        message: "i can build you a new shelf. got some scrap wood from another project. no charge — happy to help!",
+        status: "accepted",
+        createdAt: now - 100 * 3600000,
+        updatedAt: now - 96 * 3600000,
+      });
+
+      await ctx.db.patch(reqId, { acceptedOfferId: offerId });
+
+      const convId = await ctx.db.insert("helpConversations", {
+        requestId: reqId,
+        offerId: offerId,
+        requesterId: jess._id,
+        offererId: me._id,
+        lastMessageAt: now - 72 * 3600000,
+        createdAt: now - 96 * 3600000,
+      });
+
+      const msgs = [
+        { sender: me._id, text: "hey jess! i've got some leftover wood that should work perfectly for this", minsAgo: 5700 },
+        { sender: jess._id, text: "omg really? that would be amazing!", minsAgo: 5650 },
+        { sender: me._id, text: "yeah just need to measure the locker. can you send me the dimensions?", minsAgo: 5600 },
+        { sender: jess._id, text: "its about 40cm wide and 30cm deep", minsAgo: 5550 },
+        { sender: me._id, text: "perfect. i'll cut it and bring it over tomorrow", minsAgo: 5500 },
+        { sender: me._id, text: "all installed! should hold up well. used wood glue and a couple screws", minsAgo: 4500 },
+        { sender: jess._id, text: "it looks amazing!! way better than the original one honestly", minsAgo: 4450 },
+        { sender: me._id, text: "glad you like it! happy to help", minsAgo: 4400 },
+        { sender: jess._id, text: "thank you so much. you're the best 🙏", minsAgo: 4350 },
+      ];
+
+      for (const msg of msgs) {
+        await ctx.db.insert("helpMessages", {
+          conversationId: convId,
+          senderId: msg.sender,
+          content: msg.text,
+          messageType: "text",
+          createdAt: now - msg.minsAgo * 60000,
+        });
+      }
+      created += 3;
+    }
+
+    return { message: `Seeded ${created} help items across 4 progress stages for ${myUsername}` };
+  },
+});
+
+// Patch an existing help request's progress step by title
+export const patchHelpProgress = mutation({
+  args: { title: v.string(), progressStep: v.string() },
+  handler: async (ctx, args) => {
+    const request = await ctx.db
+      .query("helpRequests")
+      .filter((q) => q.eq(q.field("title"), args.title))
+      .first();
+    if (!request) return { message: `Request "${args.title}" not found` };
+    await ctx.db.patch(request._id, { progressStep: args.progressStep });
+    return { message: `Updated "${args.title}" to ${args.progressStep}` };
   },
 });
 

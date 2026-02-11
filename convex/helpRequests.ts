@@ -71,6 +71,18 @@ export const getById = query({
       .filter((q) => q.neq(q.field("status"), "withdrawn"))
       .collect();
 
+    // Find conversation if request is in progress or completed
+    let conversationId = null;
+    if (request.status === "in_progress" || request.status === "completed") {
+      const conversation = await ctx.db
+        .query("helpConversations")
+        .withIndex("by_request", (q) => q.eq("requestId", args.id))
+        .first();
+      if (conversation) {
+        conversationId = conversation._id;
+      }
+    }
+
     return {
       ...request,
       author: author
@@ -82,6 +94,7 @@ export const getById = query({
           }
         : null,
       offerCount: offers.length,
+      conversationId,
     };
   },
 });
@@ -115,7 +128,7 @@ export const getMyRequests = query({
     // Sort by createdAt descending
     requests.sort((a, b) => b.createdAt - a.createdAt);
 
-    // Enrich with offer count
+    // Enrich with offer count, helper info, and conversation ID
     const enriched = await Promise.all(
       requests.map(async (request) => {
         const offers = await ctx.db
@@ -124,9 +137,42 @@ export const getMyRequests = query({
           .filter((q) => q.neq(q.field("status"), "withdrawn"))
           .collect();
 
+        let conversationId = null;
+        let helper = null;
+        let acceptedPrice = null;
+
+        if (request.status === "in_progress" || request.status === "completed") {
+          const conversation = await ctx.db
+            .query("helpConversations")
+            .withIndex("by_request", (q) => q.eq("requestId", request._id))
+            .first();
+          if (conversation) {
+            conversationId = conversation._id;
+          }
+
+          // Get accepted offer and helper info
+          if (request.acceptedOfferId) {
+            const acceptedOffer = await ctx.db.get(request.acceptedOfferId);
+            if (acceptedOffer) {
+              acceptedPrice = acceptedOffer.price || null;
+              const helperUser = await ctx.db.get(acceptedOffer.offererId);
+              if (helperUser) {
+                helper = {
+                  _id: helperUser._id,
+                  name: helperUser.name,
+                  photos: helperUser.photos,
+                };
+              }
+            }
+          }
+        }
+
         return {
           ...request,
           offerCount: offers.length,
+          conversationId,
+          helper,
+          acceptedPrice,
         };
       })
     );
@@ -143,6 +189,7 @@ export const create = mutation({
     category: v.string(),
     location: v.optional(v.string()),
     photos: v.optional(v.array(v.string())),
+    budget: v.optional(v.number()),
     isUrgent: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -173,6 +220,7 @@ export const create = mutation({
       category: args.category,
       location: args.location,
       photos: args.photos,
+      budget: args.budget,
       isUrgent: args.isUrgent,
       status: "open",
       createdAt: now,
@@ -191,6 +239,7 @@ export const update = mutation({
     description: v.optional(v.string()),
     category: v.optional(v.string()),
     location: v.optional(v.string()),
+    budget: v.optional(v.number()),
     isUrgent: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -292,6 +341,7 @@ export const acceptOffer = mutation({
     // Update request
     await ctx.db.patch(args.requestId, {
       status: "in_progress",
+      progressStep: "negotiation",
       acceptedOfferId: args.offerId,
       acceptedAt: now,
       updatedAt: now,
@@ -406,6 +456,54 @@ export const cancel = mutation({
   },
 });
 
+// Delete a help request (only author, only while open)
+export const deleteRequest = mutation({
+  args: { id: v.id("helpRequests") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const request = await ctx.db.get(args.id);
+    if (!request) {
+      throw new Error("Request not found");
+    }
+
+    if (request.authorId !== user._id) {
+      throw new Error("Not authorized");
+    }
+
+    if (request.status !== "open") {
+      throw new Error("Can only delete open requests");
+    }
+
+    // Delete all offers for this request
+    const offers = await ctx.db
+      .query("helpOffers")
+      .withIndex("by_request", (q) => q.eq("requestId", args.id))
+      .collect();
+
+    for (const offer of offers) {
+      await ctx.db.delete(offer._id);
+    }
+
+    // Delete the request
+    await ctx.db.delete(args.id);
+
+    return { success: true };
+  },
+});
+
 // Mark request as completed
 export const complete = mutation({
   args: { id: v.id("helpRequests") },
@@ -443,6 +541,158 @@ export const complete = mutation({
     });
 
     return { success: true };
+  },
+});
+
+// Advance the progress step of a help request
+export const advanceProgress = mutation({
+  args: {
+    requestId: v.id("helpRequests"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) {
+      throw new Error("Request not found");
+    }
+
+    if (request.status !== "in_progress") {
+      throw new Error("Request is not in progress");
+    }
+
+    const isRequester = request.authorId === user._id;
+    const acceptedOffer = request.acceptedOfferId
+      ? await ctx.db.get(request.acceptedOfferId)
+      : null;
+    const isOfferer = acceptedOffer?.offererId === user._id;
+
+    if (!isRequester && !isOfferer) {
+      throw new Error("Not authorized");
+    }
+
+    const now = Date.now();
+    const step = request.progressStep || "negotiation";
+
+    if (step === "negotiation" && isOfferer) {
+      await ctx.db.patch(args.requestId, {
+        progressStep: "working",
+        updatedAt: now,
+      });
+      return { success: true, newStep: "working" };
+    }
+
+    if (step === "working" && isRequester) {
+      await ctx.db.patch(args.requestId, {
+        progressStep: "payment",
+        updatedAt: now,
+      });
+      return { success: true, newStep: "payment" };
+    }
+
+    if (step === "payment" && isOfferer) {
+      await ctx.db.patch(args.requestId, {
+        progressStep: "completed",
+        status: "completed",
+        updatedAt: now,
+      });
+      return { success: true, newStep: "completed" };
+    }
+
+    throw new Error("You cannot advance this step");
+  },
+});
+
+// Get personalized "for you" requests matching user's location + builder specialties
+export const listForYou = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .first();
+
+    if (!user) return [];
+
+    const specialties = user.builderSpecialties ?? [];
+    const location = user.currentLocation?.toLowerCase().trim() ?? "";
+
+    if (specialties.length === 0 && !location) return [];
+
+    // Get all open requests
+    const openRequests = await ctx.db
+      .query("helpRequests")
+      .withIndex("by_status", (q) => q.eq("status", "open"))
+      .collect();
+
+    // Filter: match location AND matching category, exclude own requests
+    const matched = openRequests.filter((r) => {
+      if (r.authorId === user._id) return false;
+
+      const reqLocation = (r.location || "").toLowerCase().trim();
+      const matchesLocation =
+        location !== "" &&
+        reqLocation !== "" &&
+        (reqLocation.includes(location) || location.includes(reqLocation));
+
+      const matchesCategory =
+        specialties.length > 0 && specialties.includes(r.category);
+
+      return matchesLocation && matchesCategory;
+    });
+
+    // Sort: urgent first, then newest
+    matched.sort((a, b) => {
+      if (a.isUrgent && !b.isUrgent) return -1;
+      if (!a.isUrgent && b.isUrgent) return 1;
+      return b.createdAt - a.createdAt;
+    });
+
+    const limited = args.limit ? matched.slice(0, args.limit) : matched;
+
+    // Enrich with author info and offer count
+    const enriched = await Promise.all(
+      limited.map(async (request) => {
+        const author = await ctx.db.get(request.authorId);
+        const offers = await ctx.db
+          .query("helpOffers")
+          .withIndex("by_request", (q) => q.eq("requestId", request._id))
+          .filter((q) => q.neq(q.field("status"), "withdrawn"))
+          .collect();
+
+        return {
+          ...request,
+          author: author
+            ? {
+                _id: author._id,
+                name: author.name,
+                photos: author.photos,
+                currentLocation: author.currentLocation,
+              }
+            : null,
+          offerCount: offers.length,
+        };
+      })
+    );
+
+    return enriched;
   },
 });
 

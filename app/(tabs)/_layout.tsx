@@ -4,11 +4,13 @@ import { View, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { useLocationSync } from '@/hooks/useLocationSync';
 import * as Haptics from 'expo-haptics';
 
 export default function TabLayout() {
   const { data } = useOnboarding();
   const { convexUser } = useAuthenticatedUser();
+  useLocationSync();
   const profilePhoto = convexUser?.photos?.[0] || data.photos[0];
   const insets = useSafeAreaInsets();
   const tabBarHeight = 62 + insets.bottom;

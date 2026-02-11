@@ -1,10 +1,11 @@
 import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 
 const categories = [
@@ -15,6 +16,8 @@ const categories = [
   { id: 'plumbing', label: 'plumbing' },
   { id: 'other', label: 'other' },
 ];
+
+
 
 const formatTime = (timestamp: number) => {
   const diff = Date.now() - timestamp;
@@ -29,12 +32,31 @@ const formatTime = (timestamp: number) => {
 
 export default function HelpScreen() {
   const router = useRouter();
+  const { user } = useCurrentUser();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
 
   const requests = useQuery(api.helpRequests.listOpen, {
     category: selectedCategory === 'all' ? undefined : selectedCategory,
   });
+
+  const hasBuilderProfile = (user?.builderSpecialties?.length ?? 0) > 0;
+
+  const forYouRequests = useQuery(
+    api.helpRequests.listForYou,
+    hasBuilderProfile ? { limit: 5 } : "skip"
+  );
+
+  // Filter out "for you" requests from the main feed to avoid duplicates
+  const forYouIds = useMemo(() => {
+    return new Set((forYouRequests ?? []).map((r) => r._id));
+  }, [forYouRequests]);
+
+  const filteredRequests = useMemo(() => {
+    if (!requests) return undefined;
+    if (!forYouRequests || forYouRequests.length === 0) return requests;
+    return requests.filter((r) => !forYouIds.has(r._id));
+  }, [requests, forYouRequests, forYouIds]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -91,7 +113,7 @@ export default function HelpScreen() {
       </View>
 
       {/* Category Filter */}
-      <View className="pb-4">
+      <View className="pb-6">
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -121,7 +143,7 @@ export default function HelpScreen() {
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#fd6b03" />
         </View>
-      ) : requests.length === 0 ? (
+      ) : requests.length === 0 && (!forYouRequests || forYouRequests.length === 0) ? (
         // Empty state
         <View className="flex-1 items-center justify-center px-6">
           <View className="w-24 h-24 rounded-full bg-gray-100 items-center justify-center mb-4">
@@ -150,97 +172,241 @@ export default function HelpScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fd6b03" />
           }
         >
-          {requests.map((request) => (
-            <TouchableOpacity
-              key={request._id}
-              onPress={() => handleRequestPress(request._id)}
-              className="mx-6 mb-4 p-4 bg-gray-50 rounded-2xl"
-              activeOpacity={0.7}
-            >
-              {/* Author Row */}
-              <View className="flex-row items-center justify-between mb-3">
-                <View className="flex-row items-center flex-1">
-                  <Image
-                    source={{ uri: request.author?.photos?.[0] || 'https://via.placeholder.com/40' }}
-                    className="w-10 h-10 rounded-full"
-                    resizeMode="cover"
-                  />
-                  <View className="ml-3 flex-1">
-                    <Text
-                      className="text-black"
-                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                    >
-                      {request.author?.name || 'Unknown'}
-                    </Text>
-                    {request.location && (
-                      <Text
-                        className="text-gray-500 text-sm"
-                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                      >
-                        {request.location}
-                      </Text>
-                    )}
-                  </View>
-                </View>
+          {/* For You Section */}
+          {hasBuilderProfile && forYouRequests !== undefined && (
+            <View className="mb-4">
+              <View className="px-6 mb-3 flex-row items-center">
+                <Ionicons name="sparkles" size={18} color="#fd6b03" />
                 <Text
-                  className="text-gray-400 text-sm"
+                  className="text-lg text-black ml-2"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  for you
+                </Text>
+                <Text
+                  className="text-gray-400 text-sm ml-2"
                   style={{ fontFamily: 'InstrumentSans_400Regular' }}
                 >
-                  {formatTime(request.createdAt)}
+                  matches your skills & location
                 </Text>
               </View>
-
-              {/* Title */}
-              <Text
-                className="text-black text-lg mb-2"
-                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-              >
-                {request.title}
-              </Text>
-
-              {/* Description */}
-              <Text
-                className="text-gray-600 mb-3"
-                style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                numberOfLines={2}
-              >
-                {request.description}
-              </Text>
-
-              {/* Footer */}
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center">
-                  <View className="bg-gray-200 px-3 py-1 rounded-full mr-2">
-                    <Text
-                      className="text-gray-700"
-                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                    >
-                      {request.category}
-                    </Text>
-                  </View>
-                  {request.isUrgent && (
-                    <View className="bg-red-100 px-3 py-1 rounded-full mr-2">
-                      <Text
-                        className="text-red-600"
-                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                      >
-                        urgent
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <View className="flex-row items-center">
-                  <MaterialCommunityIcons name="hand-wave-outline" size={16} color="#9CA3AF" />
+              {forYouRequests.length === 0 ? (
+                <View className="mx-6 mb-3 p-4 rounded-2xl bg-gray-50 items-center">
                   <Text
-                    className="text-gray-500 text-sm ml-1"
+                    className="text-gray-500 text-center"
                     style={{ fontFamily: 'InstrumentSans_500Medium' }}
                   >
-                    {request.offerCount} {request.offerCount === 1 ? 'offer' : 'offers'}
+                    no requests near you yet
                   </Text>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+              ) : forYouRequests.map((request) => (
+                <TouchableOpacity
+                  key={request._id}
+                  onPress={() => handleRequestPress(request._id)}
+                  className="mx-6 mb-3 p-4 rounded-2xl border"
+                  style={{ backgroundColor: '#FFF7ED', borderColor: '#FDBA74' }}
+                  activeOpacity={0.7}
+                >
+                  {/* Author Row */}
+                  <View className="flex-row items-center justify-between mb-3">
+                    <View className="flex-row items-center flex-1">
+                      {request.author?.photos?.[0] ? (
+                        <Image
+                          source={{ uri: request.author.photos[0] }}
+                          className="w-10 h-10 rounded-full"
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center">
+                          <Ionicons name="person" size={20} color="#9CA3AF" />
+                        </View>
+                      )}
+                      <View className="ml-3 flex-1">
+                        <Text
+                          className="text-black"
+                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                        >
+                          {request.author?.name || 'Unknown'}
+                        </Text>
+                        {request.location && (
+                          <Text
+                            className="text-gray-500 text-sm"
+                            style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                          >
+                            {request.location}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    <Text
+                      className="text-gray-400 text-sm"
+                      style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                    >
+                      {formatTime(request.createdAt)}
+                    </Text>
+                  </View>
+
+                  {/* Title */}
+                  <View className="flex-row items-center mb-2">
+                    <Text
+                      className="text-black text-lg flex-1"
+                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                    >
+                      {request.title}
+                    </Text>
+                    {request.isUrgent && (
+                      <Ionicons name="warning" size={22} color="#DC2626" style={{ marginLeft: 6 }} />
+                    )}
+                  </View>
+
+                  {/* Description */}
+                  <Text
+                    className="text-gray-600 mb-3"
+                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                    numberOfLines={2}
+                  >
+                    {request.description}
+                  </Text>
+
+                  {/* Footer */}
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      <View className="px-3 py-1 rounded-full" style={{ backgroundColor: '#FDBA74' }}>
+                        <Text
+                          className="text-white"
+                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        >
+                          {request.category}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className="flex-row items-center">
+                      <MaterialCommunityIcons name="hand-wave-outline" size={16} color="#9CA3AF" />
+                      <Text
+                        className="text-gray-500 text-sm ml-1"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        {request.offerCount} {request.offerCount === 1 ? 'offer' : 'offers'}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+
+              {/* Divider between for you and all requests */}
+              {forYouRequests.length > 0 && filteredRequests && filteredRequests.length > 0 && (
+                <View className="mx-6 mt-2 mb-1 border-b border-gray-200" />
+              )}
+            </View>
+          )}
+
+          {/* All Requests Section */}
+          {filteredRequests && filteredRequests.length > 0 && (
+            <>
+              {hasBuilderProfile && forYouRequests && forYouRequests.length > 0 && (
+                <View className="px-6 mb-3">
+                  <Text
+                    className="text-lg text-black"
+                    style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                  >
+                    {selectedCategory === 'all' ? 'all requests' : selectedCategory}
+                  </Text>
+                </View>
+              )}
+              {filteredRequests.map((request) => (
+                <TouchableOpacity
+                  key={request._id}
+                  onPress={() => handleRequestPress(request._id)}
+                  className="mx-6 mb-4 p-4 bg-gray-50 rounded-2xl"
+                  activeOpacity={0.7}
+                >
+                  {/* Author Row */}
+                  <View className="flex-row items-center justify-between mb-3">
+                    <View className="flex-row items-center flex-1">
+                      {request.author?.photos?.[0] ? (
+                        <Image
+                          source={{ uri: request.author.photos[0] }}
+                          className="w-10 h-10 rounded-full"
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center">
+                          <Ionicons name="person" size={20} color="#9CA3AF" />
+                        </View>
+                      )}
+                      <View className="ml-3 flex-1">
+                        <Text
+                          className="text-black"
+                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                        >
+                          {request.author?.name || 'Unknown'}
+                        </Text>
+                        {request.location && (
+                          <Text
+                            className="text-gray-500 text-sm"
+                            style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                          >
+                            {request.location}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    <Text
+                      className="text-gray-400 text-sm"
+                      style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                    >
+                      {formatTime(request.createdAt)}
+                    </Text>
+                  </View>
+
+                  {/* Title */}
+                  <View className="flex-row items-center mb-2">
+                    <Text
+                      className="text-black text-lg flex-1"
+                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                    >
+                      {request.title}
+                    </Text>
+                    {request.isUrgent && (
+                      <Ionicons name="warning" size={22} color="#DC2626" style={{ marginLeft: 6 }} />
+                    )}
+                  </View>
+
+                  {/* Description */}
+                  <Text
+                    className="text-gray-600 mb-3"
+                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                    numberOfLines={2}
+                  >
+                    {request.description}
+                  </Text>
+
+                  {/* Footer */}
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      <View className="bg-gray-200 px-3 py-1 rounded-full">
+                        <Text
+                          className="text-gray-700"
+                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                        >
+                          {request.category}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className="flex-row items-center">
+                      <MaterialCommunityIcons name="hand-wave-outline" size={16} color="#9CA3AF" />
+                      <Text
+                        className="text-gray-500 text-sm ml-1"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        {request.offerCount} {request.offerCount === 1 ? 'offer' : 'offers'}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
         </ScrollView>
       )}
 

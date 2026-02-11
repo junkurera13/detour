@@ -82,10 +82,34 @@ export const getMyOffers = query({
     // Sort by createdAt descending (newest first)
     offers.sort((a, b) => b.createdAt - a.createdAt);
 
-    // Enrich with request info
+    // Enrich with request info, requester info, and conversation ID
     const enriched = await Promise.all(
       offers.map(async (offer) => {
         const request = await ctx.db.get(offer.requestId);
+        let requester = null;
+        let conversationId = null;
+
+        if (request) {
+          const requesterUser = await ctx.db.get(request.authorId);
+          if (requesterUser) {
+            requester = {
+              _id: requesterUser._id,
+              name: requesterUser.name,
+              photos: requesterUser.photos,
+            };
+          }
+
+          if (offer.status === "accepted") {
+            const conversation = await ctx.db
+              .query("helpConversations")
+              .withIndex("by_request", (q) => q.eq("requestId", offer.requestId))
+              .first();
+            if (conversation) {
+              conversationId = conversation._id;
+            }
+          }
+        }
+
         return {
           ...offer,
           request: request
@@ -95,8 +119,12 @@ export const getMyOffers = query({
                 category: request.category,
                 status: request.status,
                 isUrgent: request.isUrgent,
+                progressStep: request.progressStep,
+                location: request.location,
               }
             : null,
+          requester,
+          conversationId,
         };
       })
     );
@@ -159,7 +187,7 @@ export const getUserOfferForRequest = query({
 export const create = mutation({
   args: {
     requestId: v.id("helpRequests"),
-    price: v.number(), // in cents
+    price: v.optional(v.number()), // in cents, optional
     message: v.string(),
   },
   handler: async (ctx, args) => {
@@ -203,8 +231,8 @@ export const create = mutation({
       throw new Error("You already have an offer on this request");
     }
 
-    // Validate price
-    if (args.price < 0) {
+    // Validate price if provided
+    if (args.price !== undefined && args.price < 0) {
       throw new Error("Price must be positive");
     }
 
@@ -262,8 +290,16 @@ export const update = mutation({
       throw new Error("Not authorized");
     }
 
-    if (offer.status !== "pending") {
-      throw new Error("Can only update pending offers");
+    // Allow updates when pending, or when accepted and in negotiation step
+    if (offer.status === "pending") {
+      // OK
+    } else if (offer.status === "accepted") {
+      const request = await ctx.db.get(offer.requestId);
+      if (!request || request.progressStep !== "negotiation") {
+        throw new Error("Can only update price during negotiation");
+      }
+    } else {
+      throw new Error("Cannot update this offer");
     }
 
     // Validate price if provided

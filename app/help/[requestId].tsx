@@ -8,7 +8,7 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/Button';
 
-const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+const formatPrice = (cents: number) => `$${(cents / 100).toFixed(0)}`;
 
 const formatTime = (timestamp: number) => {
   const diff = Date.now() - timestamp;
@@ -42,24 +42,34 @@ export default function HelpRequestDetailScreen() {
   const createOffer = useMutation(api.helpOffers.create);
   const acceptOffer = useMutation(api.helpRequests.acceptOffer);
   const withdrawOffer = useMutation(api.helpOffers.withdraw);
-  const cancelRequest = useMutation(api.helpRequests.cancel);
-  const completeRequest = useMutation(api.helpRequests.complete);
-
+  const deleteRequest = useMutation(api.helpRequests.deleteRequest);
+  const updateRequest = useMutation(api.helpRequests.update);
   const [showOfferModal, setShowOfferModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [offerPrice, setOfferPrice] = useState('');
   const [offerMessage, setOfferMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [showMenu, setShowMenu] = useState(false);
+
+  // Edit form state
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editIsUrgent, setEditIsUrgent] = useState(false);
 
   const isAuthor = currentUser?._id === request?.authorId;
   const hasExistingOffer = !!userOffer;
 
   const handleSubmitOffer = async () => {
-    if (!offerPrice || !offerMessage.trim() || isSubmitting) return;
+    if (!offerMessage.trim() || isSubmitting) return;
 
-    const priceInCents = Math.round(parseFloat(offerPrice) * 100);
-    if (isNaN(priceInCents) || priceInCents <= 0) {
-      Alert.alert('Invalid price', 'Please enter a valid price.');
-      return;
+    let priceInCents: number | undefined;
+    if (offerPrice.trim()) {
+      priceInCents = Math.round(parseFloat(offerPrice) * 100);
+      if (isNaN(priceInCents) || priceInCents <= 0) {
+        Alert.alert('Invalid price', 'Please enter a valid price.');
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -125,21 +135,21 @@ export default function HelpRequestDetailScreen() {
     );
   };
 
-  const handleCancelRequest = async () => {
+  const handleDeleteRequest = async () => {
     Alert.alert(
-      'Cancel request',
-      'Are you sure you want to cancel this request?',
+      'Delete request',
+      'Are you sure you want to delete this request? This cannot be undone.',
       [
         { text: 'No', style: 'cancel' },
         {
-          text: 'Yes, cancel',
+          text: 'Yes, delete',
           style: 'destructive',
           onPress: async () => {
             try {
-              await cancelRequest({ id: requestId as Id<"helpRequests"> });
+              await deleteRequest({ id: requestId as Id<"helpRequests"> });
               router.back();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to cancel request.');
+              Alert.alert('Error', error.message || 'Failed to delete request.');
             }
           },
         },
@@ -147,24 +157,31 @@ export default function HelpRequestDetailScreen() {
     );
   };
 
-  const handleCompleteRequest = async () => {
-    Alert.alert(
-      'Mark as complete',
-      'Mark this request as completed?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Complete',
-          onPress: async () => {
-            try {
-              await completeRequest({ id: requestId as Id<"helpRequests"> });
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to complete request.');
-            }
-          },
-        },
-      ]
-    );
+  const openEditModal = () => {
+    if (!request) return;
+    setEditTitle(request.title);
+    setEditDescription(request.description);
+    setEditIsUrgent(request.isUrgent);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editTitle.trim() || !editDescription.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await updateRequest({
+        id: requestId as Id<"helpRequests">,
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        isUrgent: editIsUrgent,
+      });
+      setShowEditModal(false);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update request.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!request) {
@@ -182,29 +199,66 @@ export default function HelpRequestDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} className="p-2">
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text
-          className="flex-1 text-lg text-black ml-2"
-          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-          numberOfLines={1}
-        >
-          {request.title}
-        </Text>
-        {request.isUrgent && (
-          <View className="bg-red-100 px-2 py-1 rounded-full ml-2">
-            <Text className="text-red-600 text-xs" style={{ fontFamily: 'InstrumentSans_600SemiBold' }}>
-              urgent
-            </Text>
+        <View className="flex-1" />
+        {isAuthor && request.status === 'open' && (
+          <View>
+            <TouchableOpacity onPress={() => setShowMenu(!showMenu)} className="p-2 ml-1">
+              <Ionicons name="ellipsis-vertical" size={22} color="#6B7280" />
+            </TouchableOpacity>
+            {showMenu && (
+              <View
+                className="absolute right-0 bg-white rounded-xl py-2 z-50"
+                style={{
+                  top: 40,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 8,
+                  elevation: 5,
+                  minWidth: 160,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => { setShowMenu(false); openEditModal(); }}
+                  className="flex-row items-center px-4 py-3"
+                >
+                  <Ionicons name="create-outline" size={18} color="#374151" />
+                  <Text
+                    className="text-gray-800 ml-3"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    edit request
+                  </Text>
+                </TouchableOpacity>
+                <View className="h-px bg-gray-100 mx-3" />
+                <TouchableOpacity
+                  onPress={() => { setShowMenu(false); handleDeleteRequest(); }}
+                  className="flex-row items-center px-4 py-3"
+                >
+                  <Ionicons name="trash-outline" size={18} color="#DC2626" />
+                  <Text
+                    className="text-red-600 ml-3"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    delete request
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} onScrollBeginDrag={() => setShowMenu(false)}>
         {/* Author Info */}
         <View className="px-6 py-4 flex-row items-center border-b border-gray-100">
-          <Image
-            source={{ uri: request.author?.photos?.[0] || 'https://via.placeholder.com/40' }}
-            className="w-10 h-10 rounded-full"
-          />
+          {request.author?.photos?.[0] ? (
+            <Image source={{ uri: request.author.photos[0] }} className="w-10 h-10 rounded-full" />
+          ) : (
+            <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center">
+              <Ionicons name="person" size={20} color="#9CA3AF" />
+            </View>
+          )}
           <View className="ml-3 flex-1">
             <Text
               className="text-black"
@@ -229,9 +283,24 @@ export default function HelpRequestDetailScreen() {
           </View>
         </View>
 
+        {/* Title */}
+        <View className="px-6 pt-4 pb-2">
+          <View className="flex-row items-start">
+            <Text
+              className="text-black text-xl flex-1"
+              style={{ fontFamily: 'InstrumentSans_700Bold' }}
+            >
+              {request.title}
+            </Text>
+            {request.isUrgent && (
+              <Ionicons name="warning" size={22} color="#DC2626" style={{ marginLeft: 8, marginTop: 3 }} />
+            )}
+          </View>
+        </View>
+
         {/* Description */}
         {request.description ? (
-          <View className="px-6 py-4">
+          <View className="px-6 pb-4">
             <Text
               className="text-black leading-6"
               style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 16 }}
@@ -261,22 +330,104 @@ export default function HelpRequestDetailScreen() {
           </View>
         )}
 
-        {/* Status Banner */}
-        {request.status !== 'open' && (
-          <View className="mx-6 mb-4 p-4 rounded-2xl" style={{
-            backgroundColor: request.status === 'completed' ? '#dcfce7' :
-                            request.status === 'in_progress' ? '#fef3c7' : '#fee2e2'
-          }}>
-            <Text style={{
-              fontFamily: 'InstrumentSans_600SemiBold',
-              color: request.status === 'completed' ? '#166534' :
-                     request.status === 'in_progress' ? '#92400e' : '#991b1b'
-            }}>
-              {request.status === 'completed' ? '✓ Completed' :
-               request.status === 'in_progress' ? '⏳ In Progress' : '✕ Cancelled'}
+        {/* Status Banner — cancelled only */}
+        {request.status === 'cancelled' && (
+          <View className="mx-6 mb-4 p-4 rounded-2xl" style={{ backgroundColor: '#fee2e2' }}>
+            <Text style={{ fontFamily: 'InstrumentSans_600SemiBold', color: '#991b1b' }}>
+              ✕ Cancelled
             </Text>
           </View>
         )}
+
+        {/* Vertical Progress Tracker — in_progress / completed */}
+        {(request.status === 'in_progress' || request.status === 'completed') && (() => {
+          const steps = [
+            { key: 'negotiation', label: 'negotiation', desc: 'discuss details and agree on terms' },
+            { key: 'working', label: 'in progress', desc: 'work is being done' },
+            { key: 'payment', label: 'payment', desc: 'send payment to helper' },
+            { key: 'completed', label: 'closed', desc: 'help completed' },
+          ];
+          const currentStep = request.status === 'completed' ? 'completed' : (request.progressStep || 'negotiation');
+          const stepIndex = steps.findIndex((s) => s.key === currentStep);
+
+          return (
+            <View className="mx-6 mb-4 p-5 bg-gray-50 rounded-2xl">
+              <Text
+                className="text-black mb-4"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 }}
+              >
+                progress
+              </Text>
+              {steps.map((step, i) => {
+                const isCompleted = i < stepIndex;
+                const isCurrent = i === stepIndex;
+                const isLast = i === steps.length - 1;
+
+                return (
+                  <View key={step.key} className="flex-row">
+                    {/* Left column: circle + line */}
+                    <View className="items-center" style={{ width: 28 }}>
+                      <View
+                        className="w-7 h-7 rounded-full items-center justify-center"
+                        style={{
+                          backgroundColor: isCompleted || isCurrent ? '#fd6b03' : '#E5E7EB',
+                        }}
+                      >
+                        {isCompleted ? (
+                          <Ionicons name="checkmark" size={16} color="#fff" />
+                        ) : isCurrent ? (
+                          <View className="w-2.5 h-2.5 rounded-full bg-white" />
+                        ) : null}
+                      </View>
+                      {!isLast && (
+                        <View
+                          style={{
+                            width: 2,
+                            flex: 1,
+                            backgroundColor: i < stepIndex ? '#fd6b03' : '#E5E7EB',
+                          }}
+                        />
+                      )}
+                    </View>
+                    {/* Right column: label + description */}
+                    <View className="ml-3 flex-1" style={{ paddingBottom: isLast ? 0 : 16 }}>
+                      <Text
+                        style={{
+                          fontFamily: isCompleted || isCurrent ? 'InstrumentSans_600SemiBold' : 'InstrumentSans_400Regular',
+                          color: isCompleted || isCurrent ? '#000' : '#9CA3AF',
+                          fontSize: 15,
+                          lineHeight: 28,
+                        }}
+                      >
+                        {step.label}
+                      </Text>
+                      {isCurrent && (
+                        <Text
+                          className="text-gray-500 text-sm mt-0.5"
+                          style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                        >
+                          {step.desc}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+
+              {/* Go to chat button */}
+              {request.conversationId && (
+                <TouchableOpacity
+                  onPress={() => router.push(`/help/chat/${request.conversationId}` as any)}
+                  className="mt-4 py-3 rounded-xl items-center border border-orange-200 bg-orange-50"
+                >
+                  <Text className="text-orange-600" style={{ fontFamily: 'InstrumentSans_600SemiBold' }}>
+                    go to chat
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })()}
 
         {/* Offers Section (Author View) */}
         {isAuthor && request.status === 'open' && (
@@ -295,10 +446,13 @@ export default function HelpRequestDetailScreen() {
                   className="bg-gray-50 rounded-2xl p-4 mb-3"
                 >
                   <View className="flex-row items-center mb-3">
-                    <Image
-                      source={{ uri: offer.offerer?.photos?.[0] || 'https://via.placeholder.com/32' }}
-                      className="w-8 h-8 rounded-full"
-                    />
+                    {offer.offerer?.photos?.[0] ? (
+                      <Image source={{ uri: offer.offerer.photos[0] }} className="w-8 h-8 rounded-full" />
+                    ) : (
+                      <View className="w-8 h-8 rounded-full bg-gray-200 items-center justify-center">
+                        <Ionicons name="person" size={16} color="#9CA3AF" />
+                      </View>
+                    )}
                     <View className="ml-3 flex-1">
                       <Text style={{ fontFamily: 'InstrumentSans_600SemiBold' }}>
                         {offer.offerer?.name || 'Unknown'}
@@ -307,11 +461,19 @@ export default function HelpRequestDetailScreen() {
                         {offer.offerer?.currentLocation} · {formatTime(offer.createdAt)}
                       </Text>
                     </View>
-                    <View className="bg-green-100 px-3 py-1 rounded-full">
-                      <Text className="text-green-700" style={{ fontFamily: 'InstrumentSans_700Bold' }}>
-                        {formatPrice(offer.price)}
-                      </Text>
-                    </View>
+                    {offer.price ? (
+                      <View className="bg-green-100 px-3 py-1 rounded-full">
+                        <Text className="text-green-700" style={{ fontFamily: 'InstrumentSans_700Bold' }}>
+                          {formatPrice(offer.price)}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View className="bg-gray-100 px-3 py-1 rounded-full">
+                        <Text className="text-gray-500" style={{ fontFamily: 'InstrumentSans_500Medium' }}>
+                          free
+                        </Text>
+                      </View>
+                    )}
                   </View>
                   <Text className="text-gray-600 mb-3" style={{ fontFamily: 'InstrumentSans_400Regular' }}>
                     {offer.message}
@@ -338,26 +500,11 @@ export default function HelpRequestDetailScreen() {
           </View>
         )}
 
-        {/* Author Actions */}
+        {/* Spacer for open requests */}
         {isAuthor && request.status === 'open' && (
-          <View className="px-6 pb-6">
-            <TouchableOpacity onPress={handleCancelRequest}>
-              <Text className="text-center text-red-500" style={{ fontFamily: 'InstrumentSans_500Medium' }}>
-                cancel request
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <View className="pb-4" />
         )}
 
-        {isAuthor && request.status === 'in_progress' && (
-          <View className="px-6 pb-6">
-            <Button
-              title="mark as complete"
-              onPress={handleCompleteRequest}
-              variant="accent"
-            />
-          </View>
-        )}
 
         {/* User's Existing Offer */}
         {!isAuthor && hasExistingOffer && userOffer && (
@@ -369,14 +516,16 @@ export default function HelpRequestDetailScreen() {
               your offer
             </Text>
             <View className="bg-orange-50 rounded-2xl p-4 border border-orange-200">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-gray-600" style={{ fontFamily: 'InstrumentSans_500Medium' }}>
-                  price
-                </Text>
-                <Text className="text-orange-600" style={{ fontFamily: 'InstrumentSans_700Bold', fontSize: 18 }}>
-                  {formatPrice(userOffer.price)}
-                </Text>
-              </View>
+              {userOffer.price ? (
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-gray-600" style={{ fontFamily: 'InstrumentSans_500Medium' }}>
+                    price
+                  </Text>
+                  <Text className="text-orange-600" style={{ fontFamily: 'InstrumentSans_700Bold', fontSize: 18 }}>
+                    {formatPrice(userOffer.price)}
+                  </Text>
+                </View>
+              ) : null}
               <Text className="text-gray-600" style={{ fontFamily: 'InstrumentSans_400Regular' }}>
                 {userOffer.message}
               </Text>
@@ -415,6 +564,99 @@ export default function HelpRequestDetailScreen() {
           />
         </View>
       )}
+
+      {/* Edit Request Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View className="bg-white rounded-t-3xl px-6 pb-8 pt-6" style={{ maxHeight: '85%' }}>
+            <View className="flex-row items-center justify-between mb-6">
+              <Text
+                className="text-xl text-black"
+                style={{ fontFamily: 'InstrumentSans_700Bold' }}
+              >
+                edit request
+              </Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                <Ionicons name="close" size={24} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Title */}
+              <Text
+                className="text-sm text-gray-500 mb-2"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                title
+              </Text>
+              <TextInput
+                value={editTitle}
+                onChangeText={setEditTitle}
+                placeholder="what do you need help with?"
+                maxLength={100}
+                className="bg-gray-50 rounded-2xl px-4 py-4 text-black mb-4"
+                style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 16 }}
+              />
+
+              {/* Description */}
+              <Text
+                className="text-sm text-gray-500 mb-2"
+                style={{ fontFamily: 'InstrumentSans_500Medium' }}
+              >
+                description
+              </Text>
+              <TextInput
+                value={editDescription}
+                onChangeText={setEditDescription}
+                placeholder="describe the problem in detail..."
+                multiline
+                maxLength={1000}
+                className="bg-gray-50 rounded-2xl px-4 py-4 text-black mb-4"
+                style={{ fontFamily: 'InstrumentSans_400Regular', minHeight: 100, textAlignVertical: 'top' }}
+              />
+
+              {/* Urgent toggle */}
+              <TouchableOpacity
+                onPress={() => setEditIsUrgent(!editIsUrgent)}
+                className="flex-row items-center mb-6"
+              >
+                <View
+                  className="w-6 h-6 rounded-md border-2 items-center justify-center mr-3"
+                  style={{
+                    borderColor: editIsUrgent ? '#DC2626' : '#D1D5DB',
+                    backgroundColor: editIsUrgent ? '#FEE2E2' : 'transparent',
+                  }}
+                >
+                  {editIsUrgent && <Ionicons name="checkmark" size={16} color="#DC2626" />}
+                </View>
+                <Ionicons name="warning" size={18} color={editIsUrgent ? '#DC2626' : '#9CA3AF'} style={{ marginRight: 6 }} />
+                <Text
+                  className="text-sm"
+                  style={{
+                    fontFamily: 'InstrumentSans_500Medium',
+                    color: editIsUrgent ? '#DC2626' : '#6B7280',
+                  }}
+                >
+                  mark as urgent
+                </Text>
+              </TouchableOpacity>
+
+              <Button
+                title={isSubmitting ? 'saving...' : 'save changes'}
+                onPress={handleSaveEdit}
+                disabled={!editTitle.trim() || !editDescription.trim() || isSubmitting}
+                loading={isSubmitting}
+                variant="accent"
+              />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Offer Modal */}
       <Modal
@@ -477,7 +719,7 @@ export default function HelpRequestDetailScreen() {
             <Button
               title={isSubmitting ? 'submitting...' : 'submit offer'}
               onPress={handleSubmitOffer}
-              disabled={!offerPrice || !offerMessage.trim() || isSubmitting}
+              disabled={!offerMessage.trim() || isSubmitting}
               loading={isSubmitting}
               variant="accent"
             />
