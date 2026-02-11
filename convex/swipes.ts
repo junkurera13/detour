@@ -1,19 +1,29 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { getAuthenticatedUser } from "./auth";
+
+function getMatchPairKey(userAId: string, userBId: string) {
+  return [userAId, userBId].sort().join(":");
+}
 
 export const create = mutation({
   args: {
-    swiperId: v.id("users"),
     swipedId: v.id("users"),
-    action: v.string(), // "like", "pass", "superlike"
+    action: v.union(v.literal("like"), v.literal("pass"), v.literal("superlike")),
   },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    if (user._id === args.swipedId) {
+      throw new Error("Cannot swipe on yourself");
+    }
+
     // Check if swipe already exists
     const existingSwipe = await ctx.db
       .query("swipes")
       .withIndex("by_pair", (q) =>
-        q.eq("swiperId", args.swiperId).eq("swipedId", args.swipedId)
+        q.eq("swiperId", user._id).eq("swipedId", args.swipedId)
       )
       .first();
 
@@ -23,7 +33,9 @@ export const create = mutation({
 
     // Create the swipe
     await ctx.db.insert("swipes", {
-      ...args,
+      swiperId: user._id,
+      swipedId: args.swipedId,
+      action: args.action,
       createdAt: Date.now(),
     });
 
@@ -32,7 +44,7 @@ export const create = mutation({
       const reverseSwipe = await ctx.db
         .query("swipes")
         .withIndex("by_pair", (q) =>
-          q.eq("swiperId", args.swipedId).eq("swipedId", args.swiperId)
+          q.eq("swiperId", args.swipedId).eq("swipedId", user._id)
         )
         .first();
 
@@ -40,32 +52,41 @@ export const create = mutation({
         reverseSwipe &&
         (reverseSwipe.action === "like" || reverseSwipe.action === "superlike")
       ) {
-        // It's a match! Create match record
-        const matchId = await ctx.db.insert("matches", {
-          user1Id: args.swiperId,
-          user2Id: args.swipedId,
-          status: "matched",
-          user1Action: args.action,
-          user2Action: reverseSwipe.action,
-          matchedAt: Date.now(),
-          createdAt: Date.now(),
-        });
+        const pairKey = getMatchPairKey(String(user._id), String(args.swipedId));
+
+        // Reuse existing match if present to avoid duplicate match records.
+        const existingMatch = await ctx.db
+          .query("matches")
+          .withIndex("by_pair", (q) => q.eq("pairKey", pairKey))
+          .first();
+
+        const matchId =
+          existingMatch?._id ??
+          (await ctx.db.insert("matches", {
+            user1Id: user._id,
+            user2Id: args.swipedId,
+            pairKey,
+            status: "matched",
+            user1Action: args.action,
+            user2Action: reverseSwipe.action,
+            matchedAt: Date.now(),
+            createdAt: Date.now(),
+          }));
 
         // Send push notifications to both users
-        const swiper = await ctx.db.get(args.swiperId);
         const swiped = await ctx.db.get(args.swipedId);
 
-        if (swiper && swiped) {
+        if (swiped) {
           // Notify the swiped user
           await ctx.scheduler.runAfter(0, internal.notifications.sendMatchNotification, {
             recipientId: args.swipedId,
-            matcherName: swiper.name,
+            matcherName: user.name,
             matchId,
           });
 
           // Notify the swiper
           await ctx.scheduler.runAfter(0, internal.notifications.sendMatchNotification, {
-            recipientId: args.swiperId,
+            recipientId: user._id,
             matcherName: swiped.name,
             matchId,
           });
@@ -80,36 +101,45 @@ export const create = mutation({
 });
 
 export const getBySwiper = query({
-  args: { swiperId: v.id("users") },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthenticatedUser(ctx);
     return await ctx.db
       .query("swipes")
-      .withIndex("by_swiper", (q) => q.eq("swiperId", args.swiperId))
+      .withIndex("by_swiper", (q) => q.eq("swiperId", user._id))
       .collect();
   },
 });
 
 export const getLikesForUser = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    const swipes = await ctx.db
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    const likeSwipes = await ctx.db
       .query("swipes")
-      .withIndex("by_swiped", (q) => q.eq("swipedId", args.userId))
+      .withIndex("by_swiped_action", (q) =>
+        q.eq("swipedId", user._id).eq("action", "like")
+      )
+      .collect();
+    const superLikeSwipes = await ctx.db
+      .query("swipes")
+      .withIndex("by_swiped_action", (q) =>
+        q.eq("swipedId", user._id).eq("action", "superlike")
+      )
       .collect();
 
-    const likeSwipes = swipes.filter(
-      (s) => s.action === "like" || s.action === "superlike"
-    );
+    const swipes = [...likeSwipes, ...superLikeSwipes];
 
     // Exclude already-matched users
     const matchesAsUser1 = await ctx.db
       .query("matches")
-      .withIndex("by_user1", (q) => q.eq("user1Id", args.userId))
+      .withIndex("by_user1", (q) => q.eq("user1Id", user._id))
       .filter((q) => q.eq(q.field("status"), "matched"))
       .collect();
     const matchesAsUser2 = await ctx.db
       .query("matches")
-      .withIndex("by_user2", (q) => q.eq("user2Id", args.userId))
+      .withIndex("by_user2", (q) => q.eq("user2Id", user._id))
       .filter((q) => q.eq(q.field("status"), "matched"))
       .collect();
 
@@ -122,8 +152,8 @@ export const getLikesForUser = query({
 
     const likersWithData = await Promise.all(
       unmatched.map(async (swipe) => {
-        const user = await ctx.db.get(swipe.swiperId);
-        return user ? { swipe, user } : null;
+        const likerUser = await ctx.db.get(swipe.swiperId);
+        return likerUser ? { swipe, user: likerUser } : null;
       })
     );
 

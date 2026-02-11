@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, internalMutation, internalAction, internalQuery } from "./_generated/server";
+import { internalMutation, internalAction, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 // Realistic seed profiles for demo
@@ -324,7 +324,7 @@ const testUsers = [
   },
 ];
 
-export const seedUsers = mutation({
+export const seedUsers = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
@@ -355,7 +355,7 @@ export const seedUsers = mutation({
 });
 
 // Update existing seed users with latest data (coordinates, pets, etc.)
-export const reseedUsers = mutation({
+export const reseedUsers = internalMutation({
   args: {},
   handler: async (ctx) => {
     let updatedCount = 0;
@@ -388,7 +388,7 @@ export const reseedUsers = mutation({
 });
 
 // Backfill datingGoals for old seed users that have empty goals
-export const backfillDatingGoals = mutation({
+export const backfillDatingGoals = internalMutation({
   args: {},
   handler: async (ctx) => {
     const goalMap: Record<string, string[]> = {
@@ -536,7 +536,7 @@ const testHelpRequests = [
   },
 ];
 
-export const seedHelpRequests = mutation({
+export const seedHelpRequests = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Check if already seeded
@@ -577,7 +577,7 @@ export const seedHelpRequests = mutation({
 });
 
 // Add specific help requests by title (for adding new ones when DB already seeded)
-export const addMissingHelpRequests = mutation({
+export const addMissingHelpRequests = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
@@ -616,7 +616,7 @@ export const addMissingHelpRequests = mutation({
   },
 });
 
-export const seedHelpOffers = mutation({
+export const seedHelpOffers = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Check if already seeded
@@ -681,7 +681,7 @@ export const seedHelpOffers = mutation({
 });
 
 // Seed help data for the demo account (1 request with offers + 2 pending offers on other requests)
-export const seedDemoHelp = mutation({
+export const seedDemoHelp = internalMutation({
   args: { myUsername: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const myUsername = args.myUsername || "jju1ce";
@@ -786,7 +786,7 @@ export const seedDemoHelp = mutation({
 });
 
 // Seed a completed request authored by the demo user
-export const seedDemoCompletedRequest = mutation({
+export const seedDemoCompletedRequest = internalMutation({
   args: { myUsername: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const myUsername = args.myUsername || "jju1ce";
@@ -864,7 +864,7 @@ export const seedDemoCompletedRequest = mutation({
 });
 
 // Seed help conversations at different progress stages for demo account
-export const seedDemoHelpProgress = mutation({
+export const seedDemoHelpProgress = internalMutation({
   args: { myUsername: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const myUsername = args.myUsername || "jju1ce";
@@ -1132,7 +1132,7 @@ export const seedDemoHelpProgress = mutation({
 });
 
 // Patch an existing help request's progress step by title
-export const patchHelpProgress = mutation({
+export const patchHelpProgress = internalMutation({
   args: { title: v.string(), progressStep: v.string() },
   handler: async (ctx, args) => {
     const request = await ctx.db
@@ -1147,7 +1147,7 @@ export const patchHelpProgress = mutation({
 
 // Seed matches and messages for the current user
 // Pass your username so the function can find your user ID
-export const seedMatches = mutation({
+export const seedMatches = internalMutation({
   args: { myUsername: v.optional(v.string()) },
   handler: async (ctx, args) => {
     // Check if already seeded
@@ -1260,7 +1260,7 @@ export const seedMatches = mutation({
   },
 });
 
-export const seedProfileViews = mutation({
+export const seedProfileViews = internalMutation({
   args: { myUsername: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const myUsername = args.myUsername || "junz";
@@ -1314,7 +1314,7 @@ export const seedProfileViews = mutation({
   },
 });
 
-export const seedInviteCodes = mutation({
+export const seedInviteCodes = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Check if codes already exist
@@ -1467,7 +1467,7 @@ const testActivities = [
   },
 ];
 
-export const seedActivities = mutation({
+export const seedActivities = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Check if already seeded
@@ -1523,7 +1523,7 @@ export const seedActivities = mutation({
   },
 });
 
-export const seedSwipes = mutation({
+export const seedSwipes = internalMutation({
   args: { myUsername: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const myUsername = args.myUsername || "junz";
@@ -1633,7 +1633,7 @@ export const backfillCoordinates = internalAction({
 });
 
 // Trigger the backfill from CLI
-export const triggerBackfillCoordinates = mutation({
+export const triggerBackfillCoordinates = internalMutation({
   args: {},
   handler: async (ctx) => {
     await ctx.scheduler.runAfter(0, internal.seed.backfillCoordinates, {});

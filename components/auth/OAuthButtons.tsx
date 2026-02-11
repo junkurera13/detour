@@ -36,9 +36,11 @@ export function OAuthButtons({ onError }: OAuthButtonsProps) {
       } else {
         onError(`Failed to sign in with ${provider}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Don't show error for user cancellation
-      if (!err?.message?.includes('cancelled')) {
+      if (err instanceof Error && err.message.includes('cancelled')) {
+        // User cancelled — no error to show
+      } else {
         onError(`Failed to sign in with ${provider}`);
       }
     } finally {

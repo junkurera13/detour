@@ -10,33 +10,9 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useRevenueCat } from '@/context/RevenueCatContext';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { calculateAge, formatDateShort, formatTripDate } from '@/utils/profile';
 
-function calculateAge(birthday: string): number {
-  const birthDate = new Date(birthday);
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
-}
-
-// Format a Date to a short display string like "Mar 15"
-function formatDateShort(date: Date): string {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${months[date.getMonth()]} ${date.getDate()}`;
-}
-
-// Format a trip date string (ISO or short like "Mar 15") to "Feb 14"
-function formatTripDate(dateStr?: string): string | null {
-  if (!dateStr) return null;
-  const date = new Date(dateStr);
-  if (!isNaN(date.getTime())) {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  }
-  return dateStr;
-}
 
 // Parse a short date string like "Mar 15" back to a Date
 function parseDateShort(str: string): Date | null {
@@ -283,7 +259,6 @@ export default function ProfileScreen() {
     if (!text) return;
     try {
       await updateUser({
-        id: user._id,
         currentLocation: text,
         latitude: location.coordinates?.latitude,
         longitude: location.coordinates?.longitude,
@@ -306,7 +281,7 @@ export default function ProfileScreen() {
       trips.push({ location: text });
     }
     try {
-      await updateUser({ id: user._id, futureTrips: trips });
+      await updateUser({ futureTrips: trips });
     } catch (e) {
       console.error('handleSaveStopLocation:', e);
       Alert.alert('error', 'failed to update trip');
@@ -320,7 +295,7 @@ export default function ProfileScreen() {
     const trips = buildCleanTrips();
     trips[index].startDate = formatDateShort(date);
     try {
-      await updateUser({ id: user._id, futureTrips: trips });
+      await updateUser({ futureTrips: trips });
     } catch (e) {
       console.error('handleSaveStopDate:', e);
       Alert.alert('error', 'failed to update date');
@@ -332,7 +307,7 @@ export default function ProfileScreen() {
     const trips = buildCleanTrips();
     trips.splice(index, 1);
     try {
-      await updateUser({ id: user._id, futureTrips: trips });
+      await updateUser({ futureTrips: trips });
     } catch (e) {
       console.error('handleRemoveStop:', e);
       Alert.alert('error', 'failed to remove trip');
@@ -340,6 +315,7 @@ export default function ProfileScreen() {
   };
 
   return (
+    <ErrorBoundary>
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       <View className="px-6 pt-4 pb-6 flex-row items-center justify-between">
         <View className="flex-row items-center">
@@ -953,7 +929,7 @@ export default function ProfileScreen() {
                           if (!user) return;
                           setSavingBuilder(true);
                           try {
-                            const args: Record<string, unknown> = { id: user._id };
+                            const args: Record<string, unknown> = {};
                             const bio = editBuilderBio.trim();
                             if (bio) args.builderBio = bio;
                             if (editBuilderSpecialties.length > 0) args.builderSpecialties = editBuilderSpecialties;
@@ -1388,5 +1364,6 @@ export default function ProfileScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+    </ErrorBoundary>
   );
 }

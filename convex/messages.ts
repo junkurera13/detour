@@ -1,39 +1,52 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { getAuthenticatedUser } from "./auth";
 
 export const send = mutation({
   args: {
     matchId: v.id("matches"),
-    senderId: v.id("users"),
     content: v.string(),
     messageType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    // Validate content
+    if (!args.content.trim()) {
+      throw new Error("Message cannot be empty");
+    }
+    if (args.content.length > 5000) {
+      throw new Error("Message too long");
+    }
+
+    // Verify user is part of this match
+    const match = await ctx.db.get(args.matchId);
+    if (!match) {
+      throw new Error("Match not found");
+    }
+    if (match.user1Id !== user._id && match.user2Id !== user._id) {
+      throw new Error("Not authorized");
+    }
+
     const messageId = await ctx.db.insert("messages", {
       matchId: args.matchId,
-      senderId: args.senderId,
+      senderId: user._id,
       content: args.content,
       messageType: args.messageType ?? "text",
       createdAt: Date.now(),
     });
 
     // Send push notification to recipient
-    const match = await ctx.db.get(args.matchId);
-    if (match) {
-      const recipientId =
-        match.user1Id === args.senderId ? match.user2Id : match.user1Id;
+    const recipientId =
+      match.user1Id === user._id ? match.user2Id : match.user1Id;
 
-      const sender = await ctx.db.get(args.senderId);
-      if (sender) {
-        await ctx.scheduler.runAfter(0, internal.notifications.sendMessageNotification, {
-          recipientId,
-          senderName: sender.name,
-          messagePreview: args.content,
-          matchId: args.matchId,
-        });
-      }
-    }
+    await ctx.scheduler.runAfter(0, internal.notifications.sendMessageNotification, {
+      recipientId,
+      senderName: user.name,
+      messagePreview: args.content,
+      matchId: args.matchId,
+    });
 
     return messageId;
   },
@@ -42,6 +55,15 @@ export const send = mutation({
 export const getByMatch = query({
   args: { matchId: v.id("matches") },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    // Verify user is part of this match
+    const match = await ctx.db.get(args.matchId);
+    if (!match) return [];
+    if (match.user1Id !== user._id && match.user2Id !== user._id) {
+      throw new Error("Not authorized");
+    }
+
     const messages = await ctx.db
       .query("messages")
       .withIndex("by_match", (q) => q.eq("matchId", args.matchId))
@@ -66,14 +88,21 @@ export const getByMatch = query({
 export const markAsRead = mutation({
   args: {
     matchId: v.id("matches"),
-    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    // Verify user is part of this match
+    const match = await ctx.db.get(args.matchId);
+    if (!match) return;
+    if (match.user1Id !== user._id && match.user2Id !== user._id) return;
+
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_match", (q) => q.eq("matchId", args.matchId))
-      .filter((q) => q.neq(q.field("senderId"), args.userId))
-      .filter((q) => q.eq(q.field("readAt"), undefined))
+      .withIndex("by_match_read", (q) =>
+        q.eq("matchId", args.matchId).eq("readAt", undefined)
+      )
+      .filter((q) => q.neq(q.field("senderId"), user._id))
       .collect();
 
     const now = Date.now();
@@ -88,26 +117,35 @@ export const markAsRead = mutation({
 export const getLastMessage = query({
   args: { matchId: v.id("matches") },
   handler: async (ctx, args) => {
-    const messages = await ctx.db
+    const user = await getAuthenticatedUser(ctx);
+
+    // Verify user is part of this match
+    const match = await ctx.db.get(args.matchId);
+    if (!match) return null;
+    if (match.user1Id !== user._id && match.user2Id !== user._id) return null;
+
+    const message = await ctx.db
       .query("messages")
       .withIndex("by_match", (q) => q.eq("matchId", args.matchId))
       .order("desc")
       .first();
-    return messages;
+    return message;
   },
 });
 
 export const getConversationPreviews = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthenticatedUser(ctx);
+
     // Get blocked users (both directions)
     const blockedByMe = await ctx.db
       .query("blockedUsers")
-      .withIndex("by_blocker", (q) => q.eq("blockerId", args.userId))
+      .withIndex("by_blocker", (q) => q.eq("blockerId", user._id))
       .collect();
     const blockedMe = await ctx.db
       .query("blockedUsers")
-      .withIndex("by_blocked", (q) => q.eq("blockedId", args.userId))
+      .withIndex("by_blocked", (q) => q.eq("blockedId", user._id))
       .collect();
 
     const blockedUserIds = new Set([
@@ -118,29 +156,33 @@ export const getConversationPreviews = query({
     // Get all matches for this user
     const matchesAsUser1 = await ctx.db
       .query("matches")
-      .withIndex("by_user1", (q) => q.eq("user1Id", args.userId))
+      .withIndex("by_user1", (q) => q.eq("user1Id", user._id))
       .filter((q) => q.eq(q.field("status"), "matched"))
       .collect();
 
     const matchesAsUser2 = await ctx.db
       .query("matches")
-      .withIndex("by_user2", (q) => q.eq("user2Id", args.userId))
+      .withIndex("by_user2", (q) => q.eq("user2Id", user._id))
       .filter((q) => q.eq(q.field("status"), "matched"))
       .collect();
 
     const allMatches = [...matchesAsUser1, ...matchesAsUser2];
 
     // Filter out matches with blocked users
-    const filteredMatches = allMatches.filter((match) => {
-      const otherUserId = match.user1Id === args.userId ? match.user2Id : match.user1Id;
+    const filteredMatches = allMatches
+      .filter((match) => {
+      const otherUserId = match.user1Id === user._id ? match.user2Id : match.user1Id;
       return !blockedUserIds.has(otherUserId);
-    });
+      })
+      // Hard cap to keep preview query predictable at higher user scale.
+      .sort((a, b) => (b.matchedAt ?? b.createdAt) - (a.matchedAt ?? a.createdAt))
+      .slice(0, 100);
 
     // Get conversation preview for each match
     const previews = await Promise.all(
       filteredMatches.map(async (match) => {
         const otherUserId =
-          match.user1Id === args.userId ? match.user2Id : match.user1Id;
+          match.user1Id === user._id ? match.user2Id : match.user1Id;
         const otherUser = await ctx.db.get(otherUserId);
 
         // Get last message
@@ -153,9 +195,10 @@ export const getConversationPreviews = query({
         // Count unread messages
         const unreadMessages = await ctx.db
           .query("messages")
-          .withIndex("by_match", (q) => q.eq("matchId", match._id))
-          .filter((q) => q.neq(q.field("senderId"), args.userId))
-          .filter((q) => q.eq(q.field("readAt"), undefined))
+          .withIndex("by_match_read", (q) =>
+            q.eq("matchId", match._id).eq("readAt", undefined)
+          )
+          .filter((q) => q.neq(q.field("senderId"), user._id))
           .collect();
 
         return {
@@ -178,18 +221,20 @@ export const getConversationPreviews = query({
 });
 
 export const getUnreadCount = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthenticatedUser(ctx);
+
     // Get all matches for this user
     const matchesAsUser1 = await ctx.db
       .query("matches")
-      .withIndex("by_user1", (q) => q.eq("user1Id", args.userId))
+      .withIndex("by_user1", (q) => q.eq("user1Id", user._id))
       .filter((q) => q.eq(q.field("status"), "matched"))
       .collect();
 
     const matchesAsUser2 = await ctx.db
       .query("matches")
-      .withIndex("by_user2", (q) => q.eq("user2Id", args.userId))
+      .withIndex("by_user2", (q) => q.eq("user2Id", user._id))
       .filter((q) => q.eq(q.field("status"), "matched"))
       .collect();
 
@@ -202,9 +247,10 @@ export const getUnreadCount = query({
     for (const matchId of allMatchIds) {
       const unreadMessages = await ctx.db
         .query("messages")
-        .withIndex("by_match", (q) => q.eq("matchId", matchId))
-        .filter((q) => q.neq(q.field("senderId"), args.userId))
-        .filter((q) => q.eq(q.field("readAt"), undefined))
+        .withIndex("by_match_read", (q) =>
+          q.eq("matchId", matchId).eq("readAt", undefined)
+        )
+        .filter((q) => q.neq(q.field("senderId"), user._id))
         .collect();
       totalUnread += unreadMessages.length;
     }

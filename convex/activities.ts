@@ -6,7 +6,7 @@ export const list = query({
   handler: async (ctx) => {
     const activities = await ctx.db
       .query("activities")
-      .filter((q) => q.eq(q.field("status"), "active"))
+      .withIndex("by_status", (q) => q.eq("status", "active"))
       .order("desc")
       .collect();
 
@@ -67,7 +67,7 @@ export const getByUserId = query({
     // All active events (to find ones user is attending)
     const allActive = await ctx.db
       .query("activities")
-      .filter((q) => q.eq(q.field("status"), "active"))
+      .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
 
     const attending = allActive.filter(

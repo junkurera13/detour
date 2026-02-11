@@ -21,6 +21,13 @@ interface LocationResult {
   };
 }
 
+interface MapboxFeature {
+  id: string;
+  place_name: string;
+  center: [number, number];
+  text: string;
+}
+
 interface LocationAutocompleteProps {
   value: string;
   onSelect: (location: LocationResult) => void;
@@ -71,7 +78,7 @@ export function LocationAutocomplete({
       const data = await response.json();
 
       if (data.features) {
-        const locations: LocationResult[] = data.features.map((feature: any) => ({
+        const locations: LocationResult[] = data.features.map((feature: MapboxFeature) => ({
           id: feature.id,
           name: feature.text,
           fullName: feature.place_name,

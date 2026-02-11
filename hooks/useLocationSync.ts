@@ -37,7 +37,6 @@ export function useLocationSync() {
         if (newLocation === currentLocation) return;
 
         await updateUser({
-          id: convexUser._id,
           currentLocation: newLocation,
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,

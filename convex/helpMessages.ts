@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 
 // Get all conversations for current user (as requester or offerer)
 export const getMyConversations = query({
@@ -27,12 +27,18 @@ export const getMyConversations = query({
       .withIndex("by_offerer", (q) => q.eq("offererId", user._id))
       .collect();
 
-    // Combine and dedupe
+    // Combine and dedupe, then limit to 20 most recent
     const allConversations = [...asRequester, ...asOfferer];
-    const uniqueConversations = allConversations.filter(
-      (conv, index, self) =>
-        index === self.findIndex((c) => c._id === conv._id)
-    );
+    const uniqueConversations = allConversations
+      .filter(
+        (conv, index, self) =>
+          index === self.findIndex((c) => c._id === conv._id)
+      )
+      .sort(
+        (a, b) =>
+          (b.lastMessageAt || b.createdAt) - (a.lastMessageAt || a.createdAt)
+      )
+      .slice(0, 20);
 
     // Enrich with request info, other user info, and last message
     const enriched = await Promise.all(
@@ -331,7 +337,7 @@ export const markAsRead = mutation({
 });
 
 // Create a conversation (called when offer is accepted)
-export const createConversation = mutation({
+export const createConversation = internalMutation({
   args: {
     requestId: v.id("helpRequests"),
     offerId: v.id("helpOffers"),

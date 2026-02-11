@@ -88,7 +88,6 @@ export default function FutureTripScreen() {
         longitude: data.longitude,
         futureTrips: validStops.length > 0 ? validStops : undefined,
         joinPath: 'apply',
-        userStatus: 'pending',
       });
 
       // Update local state

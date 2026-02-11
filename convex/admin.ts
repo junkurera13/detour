@@ -2,10 +2,21 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 
+function verifyAdminPassword(password: string): void {
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword || password !== adminPassword) {
+    throw new Error("Unauthorized");
+  }
+}
+
 // Delete a help request by ID (admin)
 export const deleteHelpRequest = mutation({
-  args: { id: v.id("helpRequests") },
+  args: {
+    id: v.id("helpRequests"),
+    adminPassword: v.string(),
+  },
   handler: async (ctx, args) => {
+    verifyAdminPassword(args.adminPassword);
     await ctx.db.delete(args.id);
     return { success: true };
   },
@@ -13,8 +24,12 @@ export const deleteHelpRequest = mutation({
 
 // List all pending users for admin review
 export const listPendingUsers = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    adminPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    verifyAdminPassword(args.adminPassword);
+
     const pendingUsers = await ctx.db
       .query("users")
       .withIndex("by_status", (q) => q.eq("userStatus", "pending"))
@@ -51,11 +66,7 @@ export const approveUser = mutation({
     adminPassword: v.string(),
   },
   handler: async (ctx, args) => {
-    // Verify admin password
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    if (!adminPassword || args.adminPassword !== adminPassword) {
-      throw new Error("Unauthorized");
-    }
+    verifyAdminPassword(args.adminPassword);
 
     const user = await ctx.db.get(args.userId);
     if (!user) {
@@ -81,7 +92,7 @@ export const approveUser = mutation({
     if (user.expoPushToken) {
       await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
         pushToken: user.expoPushToken,
-        title: "You're in! 🎉",
+        title: "You're in!",
         body: "Your application has been approved. Welcome to Detour!",
         data: { type: "approval" },
       });
@@ -98,11 +109,7 @@ export const rejectUser = mutation({
     adminPassword: v.string(),
   },
   handler: async (ctx, args) => {
-    // Verify admin password
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    if (!adminPassword || args.adminPassword !== adminPassword) {
-      throw new Error("Unauthorized");
-    }
+    verifyAdminPassword(args.adminPassword);
 
     const user = await ctx.db.get(args.userId);
     if (!user) {
@@ -124,7 +131,7 @@ export const rejectUser = mutation({
 });
 
 // Verify admin password
-export const verifyPassword = query({
+export const verifyPassword = mutation({
   args: { password: v.string() },
   handler: async (_ctx, args) => {
     const adminPassword = process.env.ADMIN_PASSWORD;

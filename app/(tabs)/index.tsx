@@ -11,9 +11,11 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
-import { computeCompatibility, CompatibilityBreakdown } from '@/utils/compatibility';
+import { computeCompatibility, CompatibilityBreakdown, CompatibilityUser } from '@/utils/compatibility';
 import { CompatibilityBadge } from '@/components/ui/CompatibilityBadge';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { calculateAge, haversineKm } from '@/utils/profile';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -50,33 +52,30 @@ interface Profile {
   compatibilityBreakdown?: CompatibilityBreakdown;
 }
 
+type PublicDiscoverUser = Pick<
+  Doc<"users">,
+  | "_id"
+  | "name"
+  | "birthday"
+  | "gender"
+  | "lookingFor"
+  | "datingGoals"
+  | "lifestyle"
+  | "timeNomadic"
+  | "interests"
+  | "photos"
+  | "instagram"
+  | "currentLocation"
+  | "latitude"
+  | "longitude"
+  | "futureTrips"
+  | "pets"
+>;
+
 const DISTANCE_OPTIONS = [5, 10, 15, 20, 25, 50, 100, Infinity];
 const AGE_MIN = 18;
 const AGE_MAX = 70;
 
-// Helper to calculate age from birthday string
-function calculateAge(birthday: string): number {
-  const birthDate = new Date(birthday);
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
-}
-
-// Haversine distance in km between two lat/lng points
-function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 function formatDistance(km: number): string {
   if (km < 1) return `${Math.round(km * 1000)}m away`;
@@ -86,9 +85,9 @@ function formatDistance(km: number): string {
 
 // Convert Convex user to Profile interface
 function convexUserToProfile(
-  user: Doc<"users">,
+  user: PublicDiscoverUser,
   refCoords: { latitude: number; longitude: number } | null,
-  currentUser?: Doc<"users"> | null,
+  currentUser?: CompatibilityUser | null,
 ): Profile {
   const km = (refCoords && user.latitude != null && user.longitude != null)
     ? haversineKm(refCoords.latitude, refCoords.longitude, user.latitude, user.longitude)
@@ -143,22 +142,23 @@ function SwipeableCard({ profile, isFirst, onSwipeLeft, onSwipeRight, swipeDirec
     }
   };
 
-  const handleSwipeComplete = (direction: 'left' | 'right') => {
+  const handleSwipeComplete = useCallback((direction: 'left' | 'right') => {
     triggerHaptic('medium');
     if (direction === 'left') {
       onSwipeLeft();
     } else {
       onSwipeRight();
     }
-  };
+  }, [onSwipeLeft, onSwipeRight]);
 
   // Handle programmatic swipe from buttons
-  if (swipeDirection && isFirst) {
+  useEffect(() => {
+    if (!swipeDirection || !isFirst) return;
     const targetX = swipeDirection === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
     translateX.value = withTiming(targetX, { duration: 300 }, () => {
       runOnJS(handleSwipeComplete)(swipeDirection);
     });
-  }
+  }, [handleSwipeComplete, isFirst, swipeDirection, translateX]);
 
   const panGesture = Gesture.Pan()
     .enabled(isFirst)
@@ -384,9 +384,9 @@ function SwipeableCard({ profile, isFirst, onSwipeLeft, onSwipeRight, swipeDirec
                         style: 'destructive',
                         onPress: async () => {
                           try {
-                            await blockUser({ blockerId: swipeCardUser._id, blockedId: profile.id as Id<'users'> });
+                            await blockUser({ blockedId: profile.id as Id<'users'> });
                             onSwipeLeft();
-                          } catch {}
+                          } catch (e) { console.error("Failed to block user:", e); }
                         },
                       },
                     ]
@@ -412,7 +412,7 @@ function SwipeableCard({ profile, isFirst, onSwipeLeft, onSwipeRight, swipeDirec
                           try {
                             await reportUser({ reportedId: profile.id as Id<'users'>, reason: 'reported from discovery' });
                             onSwipeLeft();
-                          } catch {}
+                          } catch (e) { console.error("Failed to report user:", e); }
                         },
                       },
                     ]
@@ -602,7 +602,7 @@ export default function NearbyScreen() {
   // Fetch profiles from Convex
   const convexUsers = useQuery(
     api.users.getDiscoverUsers,
-    userId ? { currentUserId: userId, limit: 50 } : "skip"
+    userId ? { limit: 50 } : "skip"
   );
 
   // Create swipe mutation
@@ -633,7 +633,7 @@ export default function NearbyScreen() {
           if (prefs.ageMax != null) setAgeMax(prefs.ageMax);
           if (prefs.distance != null) setPrefDistance(prefs.distance);
         }
-      } catch {}
+      } catch (e) { console.error("Failed to load preferences:", e); }
       prefsLoaded.current = true;
     })();
   }, []);
@@ -643,14 +643,6 @@ export default function NearbyScreen() {
     if (!prefsLoaded.current) return;
     AsyncStorage.setItem('nearby_prefs', JSON.stringify({ ageMin, ageMax, distance: prefDistance })).catch(() => {});
   }, [ageMin, ageMax, prefDistance]);
-
-  // DEBUG: log query state to help diagnose empty nearby page
-  useEffect(() => {
-    console.log('[Nearby] convexUser:', convexUser ? `${convexUser.name} (${convexUser.userStatus})` : convexUser);
-    console.log('[Nearby] userId:', userId);
-    console.log('[Nearby] convexUsers count:', convexUsers === undefined ? 'skipped/loading' : convexUsers?.length);
-    console.log('[Nearby] datingPreference:', convexUser?.datingPreference);
-  }, [convexUser, userId, convexUsers]);
 
   const profiles = useMemo(() => {
     // If we have Convex users, use them
@@ -737,7 +729,6 @@ export default function NearbyScreen() {
     setIsProcessingSwipe(true);
     try {
       const result = await createSwipe({
-        swiperId: userId,
         swipedId: profileId as any, // The id is the Convex _id
         action,
       });
@@ -771,32 +762,23 @@ export default function NearbyScreen() {
 
   const handlePassPress = useCallback(() => {
     const profile = filteredProfiles[0];
-    if (!profile) return;
+    if (!profile || isProcessingSwipe) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSwipeDirection('left');
-    setTimeout(() => {
-      setLocalSwipedIds((prev) => new Set(prev).add(profile.id));
-      recordSwipe('pass', profile.id);
-      setSwipeDirection(null);
-    }, 350);
-  }, [recordSwipe, filteredProfiles]);
+  }, [filteredProfiles, isProcessingSwipe]);
 
   const handleLikePress = useCallback(() => {
     const profile = filteredProfiles[0];
-    if (!profile) return;
+    if (!profile || isProcessingSwipe) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSwipeDirection('right');
-    setTimeout(() => {
-      setLocalSwipedIds((prev) => new Set(prev).add(profile.id));
-      recordSwipe('like', profile.id);
-      setSwipeDirection(null);
-    }, 350);
-  }, [recordSwipe, filteredProfiles]);
+  }, [filteredProfiles, isProcessingSwipe]);
 
   const visibleProfiles = filteredProfiles.slice(0, 2);
   const isEmpty = !isLoading && filteredProfiles.length === 0;
 
   return (
+    <ErrorBoundary>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
@@ -1067,6 +1049,7 @@ export default function NearbyScreen() {
       </Modal>
 
     </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
 

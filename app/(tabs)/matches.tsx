@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Platform, Modal, Dimensions, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { useRouter } from 'expo-router';
 import { api } from '@/convex/_generated/api';
@@ -12,6 +12,7 @@ import { computeCompatibility, CompatibilityBreakdown } from '@/utils/compatibil
 import { CompatibilityBadge } from '@/components/ui/CompatibilityBadge';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -28,6 +29,7 @@ const { width: SCREEN_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 120;
 const SWIPE_VELOCITY_THRESHOLD = 500;
 const CARD_HEIGHT = Platform.OS === 'android' ? WINDOW_HEIGHT * 0.74 : WINDOW_HEIGHT * 0.71;
+const HIDDEN_CONVERSATIONS_STORAGE_KEY = 'messages_hidden_conversation_ids';
 
 // Helper to format relative time
 function formatRelativeTime(timestamp: number | undefined): string {
@@ -113,18 +115,19 @@ function LikePreviewCard({
     );
   };
 
-  const handleSwipeComplete = (direction: 'left' | 'right') => {
+  const handleSwipeComplete = useCallback((direction: 'left' | 'right') => {
     triggerHaptic('medium');
     onDismiss(direction === 'right' ? 'like' : 'pass');
-  };
+  }, [onDismiss]);
 
   // Handle programmatic swipe from buttons
-  if (swipeDirection) {
+  useEffect(() => {
+    if (!swipeDirection) return;
     const targetX = swipeDirection === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5;
     translateX.value = withTiming(targetX, { duration: 300 }, () => {
       runOnJS(handleSwipeComplete)(swipeDirection);
     });
-  }
+  }, [handleSwipeComplete, swipeDirection, translateX]);
 
   const panGesture = Gesture.Pan()
     .activeOffsetX([-15, 15])
@@ -303,12 +306,12 @@ function SwipeableMessageRow({
 
   const confirmDelete = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('delete conversation?', 'this cannot be undone.', [
+    Alert.alert('hide conversation?', 'this only hides it on this device.', [
       { text: 'cancel', style: 'cancel', onPress: () => {
         translateX.value = withSpring(0, { damping: 20, stiffness: 200 });
         isOpen.value = false;
       }},
-      { text: 'delete', style: 'destructive', onPress: () => {
+      { text: 'hide', style: 'destructive', onPress: () => {
         translateX.value = withTiming(-SCREEN_WIDTH, { duration: 200 });
         onDelete();
       }},
@@ -376,7 +379,7 @@ function SwipeableMessageRow({
         >
           <Ionicons name="trash-outline" size={22} color="#fff" />
           <Text style={{ color: '#fff', fontSize: 12, fontFamily: 'InstrumentSans_500Medium', marginTop: 2 }}>
-            delete
+            hide
           </Text>
         </TouchableOpacity>
       </Animated.View>
@@ -405,6 +408,33 @@ export default function MatchesScreen() {
   const [deletedConvoIds, setDeletedConvoIds] = useState<Set<string>>(new Set());
   const createSwipe = useMutation(api.swipes.create);
   const previewSwipeProgress = useSharedValue(0);
+
+  // Load persisted hidden conversation IDs for this user.
+  useEffect(() => {
+    let isMounted = true;
+    if (!userId) return;
+    (async () => {
+      try {
+        const key = `${HIDDEN_CONVERSATIONS_STORAGE_KEY}_${userId}`;
+        const raw = await AsyncStorage.getItem(key);
+        if (!raw || !isMounted) return;
+        const ids = JSON.parse(raw) as string[];
+        setDeletedConvoIds(new Set(ids));
+      } catch {
+        // Best effort persistence.
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [userId]);
+
+  // Persist hidden conversation IDs locally so hide survives app restarts.
+  useEffect(() => {
+    if (!userId) return;
+    const key = `${HIDDEN_CONVERSATIONS_STORAGE_KEY}_${userId}`;
+    AsyncStorage.setItem(key, JSON.stringify(Array.from(deletedConvoIds))).catch(() => {});
+  }, [deletedConvoIds, userId]);
 
   const passButtonStyle = useAnimatedStyle(() => {
     const scale = interpolate(
@@ -438,7 +468,6 @@ export default function MatchesScreen() {
     if (action === 'like' && userId) {
       try {
         const result = await createSwipe({
-          swiperId: userId,
           swipedId: dismissedUser.id as any,
           action: 'like',
         });
@@ -469,19 +498,19 @@ export default function MatchesScreen() {
   // Fetch matches from Convex
   const matchesData = useQuery(
     api.matches.getByUser,
-    userId ? { userId } : "skip"
+    userId ? {} : "skip"
   );
 
   // Fetch conversation previews for messages tab
   const conversationPreviews = useQuery(
     api.messages.getConversationPreviews,
-    userId ? { userId } : "skip"
+    userId ? {} : "skip"
   );
 
   // Fetch real likes for current user
   const realLikes = useQuery(
     api.swipes.getLikesForUser,
-    userId ? { userId } : "skip"
+    userId ? {} : "skip"
   );
 
   // Build likes you list from real data
@@ -912,7 +941,6 @@ export default function MatchesScreen() {
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     setPreviewSwipeDir('left');
-                    setTimeout(() => handlePreviewDismiss('pass'), 350);
                   }}
                 >
                   <Ionicons name="close" size={32} color="#fd6b03" />
@@ -925,7 +953,6 @@ export default function MatchesScreen() {
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     setPreviewSwipeDir('right');
-                    setTimeout(() => handlePreviewDismiss('like'), 350);
                   }}
                 >
                   <Ionicons name="heart" size={32} color="#fd6b03" />

@@ -41,7 +41,6 @@ export default function PaywallScreen() {
   const { convexUser } = useAuthenticatedUser();
 
   const consumeInviteCode = useMutation(api.inviteCodes.use);
-  const updateUser = useMutation(api.users.update);
 
   const {
     offerings,
@@ -84,9 +83,13 @@ export default function PaywallScreen() {
         // If user has an invite code, consume it and update their status
         if (hasInviteCode && convexUser?._id) {
           try {
-            await consumeInviteCode({ code: data.inviteCode, userId: convexUser._id });
-            await updateUser({ id: convexUser._id, userStatus: 'approved' });
-            updateData({ userStatus: 'approved' });
+            const result = await consumeInviteCode({ code: data.inviteCode });
+            if (result.success) {
+              updateData({ userStatus: 'approved' });
+            } else {
+              Alert.alert('Invalid invite code', result.error ?? 'Please try another code.');
+              return;
+            }
           } catch (err) {
             console.error('Failed to process invite code:', err);
             // Continue anyway - they have a subscription
@@ -113,9 +116,13 @@ export default function PaywallScreen() {
         // If user has an invite code, consume it and update their status
         if (hasInviteCode && convexUser?._id) {
           try {
-            await consumeInviteCode({ code: data.inviteCode, userId: convexUser._id });
-            await updateUser({ id: convexUser._id, userStatus: 'approved' });
-            updateData({ userStatus: 'approved' });
+            const result = await consumeInviteCode({ code: data.inviteCode });
+            if (result.success) {
+              updateData({ userStatus: 'approved' });
+            } else {
+              Alert.alert('Invalid invite code', result.error ?? 'Please try another code.');
+              return;
+            }
           } catch (err) {
             console.error('Failed to process invite code:', err);
           }

@@ -11,22 +11,27 @@ export const listOpen = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let requestsQuery = ctx.db
-      .query("helpRequests")
-      .withIndex("by_status", (q) => q.eq("status", "open"));
+    const limit = args.limit ?? 50;
 
-    const requests = await requestsQuery.collect();
-
-    // Filter by category if specified
-    const filtered = args.category
-      ? requests.filter((r) => r.category === args.category)
-      : requests;
-
-    // Sort by createdAt descending (newest first)
-    filtered.sort((a, b) => b.createdAt - a.createdAt);
-
-    // Apply limit
-    const limited = args.limit ? filtered.slice(0, args.limit) : filtered;
+    // Fast path: no category filter uses status+created index with bounded reads.
+    let limited;
+    if (!args.category) {
+      limited = await ctx.db
+        .query("helpRequests")
+        .withIndex("by_status_created", (q) => q.eq("status", "open"))
+        .order("desc")
+        .take(limit);
+    } else {
+      // Category filter still needs in-memory status filtering due index shape.
+      const byCategory = await ctx.db
+        .query("helpRequests")
+        .withIndex("by_category", (q) => q.eq("category", args.category!))
+        .collect();
+      limited = byCategory
+        .filter((r) => r.status === "open")
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, limit);
+    }
 
     // Enrich with author info and offer count
     const enriched = await Promise.all(

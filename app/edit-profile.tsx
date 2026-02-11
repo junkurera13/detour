@@ -338,7 +338,6 @@ export default function EditProfileScreen() {
       const uploadedPhotos = await uploadPhotos(photos);
 
       const args: Record<string, unknown> = {
-        id: user._id,
         name: name.trim(),
         username: username.trim(),
         lifestyle,

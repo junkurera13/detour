@@ -81,7 +81,7 @@ export default function UserProfileScreen() {
   // Check if already matched with this user
   const myMatches = useQuery(
     api.matches.getByUser,
-    currentUser?._id ? { userId: currentUser._id } : "skip"
+    currentUser?._id ? {} : "skip"
   );
   const isAlreadyMatched = useMemo(() => {
     if (!myMatches || !userId) return false;
@@ -163,7 +163,6 @@ export default function UserProfileScreen() {
     setLikeLoading(true);
     try {
       const result = await createSwipe({
-        swiperId: currentUser._id,
         swipedId: userId as Id<"users">,
         action: 'like',
       });
@@ -203,7 +202,7 @@ export default function UserProfileScreen() {
         onPress: async () => {
           if (!currentUser || !userId) return;
           try {
-            await blockUser({ blockerId: currentUser._id, blockedId: userId as Id<"users"> });
+            await blockUser({ blockedId: userId as Id<"users"> });
             router.back();
           } catch {
             Alert.alert('error', 'failed to block user');

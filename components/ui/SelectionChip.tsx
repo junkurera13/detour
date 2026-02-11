@@ -1,3 +1,4 @@
+import React from 'react';
 import { TouchableOpacity, Text } from 'react-native';
 
 interface SelectionChipProps {
@@ -7,7 +8,7 @@ interface SelectionChipProps {
   emoji?: string;
 }
 
-export function SelectionChip({ label, selected, onPress, emoji }: SelectionChipProps) {
+export const SelectionChip = React.memo(function SelectionChip({ label, selected, onPress, emoji }: SelectionChipProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -25,4 +26,4 @@ export function SelectionChip({ label, selected, onPress, emoji }: SelectionChip
       </Text>
     </TouchableOpacity>
   );
-}
+});

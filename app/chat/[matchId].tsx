@@ -22,6 +22,7 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { usePhotoUpload } from '@/hooks/usePhotoUpload';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 interface Message {
   _id: Id<'messages'>;
@@ -119,7 +120,6 @@ export default function ChatScreen() {
       if (hasUnread) {
         markAsRead({
           matchId: matchId as Id<'matches'>,
-          userId: userId,
         });
       }
     }
@@ -148,7 +148,6 @@ export default function ChatScreen() {
     try {
       await sendMessage({
         matchId: matchId as Id<'matches'>,
-        senderId: userId,
         content: text,
         messageType: 'text',
       });
@@ -168,7 +167,6 @@ export default function ChatScreen() {
       const [uploadedUrl] = await uploadPhotos([imagePreview]);
       await sendMessage({
         matchId: matchId as Id<'matches'>,
-        senderId: userId,
         content: uploadedUrl,
         messageType: 'image',
       });
@@ -194,7 +192,7 @@ export default function ChatScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await blockUser({ blockerId: userId, blockedId: otherUserId });
+              await blockUser({ blockedId: otherUserId });
               setShowMenu(false);
               router.back();
             } catch (error) {
@@ -330,6 +328,7 @@ export default function ChatScreen() {
   }
 
   return (
+    <ErrorBoundary>
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-gray-100">
@@ -477,7 +476,8 @@ export default function ChatScreen() {
                           }
                           Alert.alert('Reported', 'Thanks for letting us know. This user has been blocked.');
                           router.back();
-                        } catch {
+                        } catch (e) {
+                          console.error("Image preview failed:", e);
                           Alert.alert('Reported', 'Thanks for letting us know. This user has been blocked.');
                         }
                       },
@@ -613,5 +613,6 @@ export default function ChatScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+    </ErrorBoundary>
   );
 }

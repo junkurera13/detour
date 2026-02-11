@@ -92,8 +92,22 @@ function getAge(birthday: string): number {
   return age;
 }
 
+type ExploreUser = Pick<
+  Doc<"users">,
+  | "_id"
+  | "name"
+  | "birthday"
+  | "photos"
+  | "interests"
+  | "currentLocation"
+  | "lifestyle"
+  | "futureTrips"
+  | "futureTrip"
+  | "gender"
+>;
+
 // Get all future trip locations from a user (handles both legacy and new format)
-function getUserFutureTripLocations(user: Doc<"users">): string[] {
+function getUserFutureTripLocations(user: ExploreUser): string[] {
   const locations: string[] = [];
   if (user.futureTrips) {
     for (const trip of user.futureTrips) {
@@ -149,7 +163,7 @@ function sharedInterestCount(a: string[], b: string[]): number {
 }
 
 interface PersonCardProps {
-  user: Doc<"users">;
+  user: ExploreUser;
   subtitle: string;
   onPress: () => void;
   badge?: string;
@@ -208,7 +222,7 @@ export default function ExplorePeopleScreen() {
 
   const allUsers = useQuery(
     api.users.getAllApprovedUsers,
-    convexUser?._id ? { currentUserId: convexUser._id } : {}
+    convexUser?._id ? { currentUserId: convexUser._id, limit: 300 } : "skip"
   );
 
   const userLocation = convexUser?.currentLocation || data.currentLocation || '';
@@ -269,7 +283,7 @@ export default function ExplorePeopleScreen() {
   };
 
   // Get shared interests as display text
-  const getSharedLabel = (user: Doc<"users">): string => {
+  const getSharedLabel = (user: ExploreUser): string => {
     const shared = user.interests.filter(ai => userInterests.some(bi => interestsMatch(ai, bi)));
     if (shared.length === 0) return '';
     const labels = shared.slice(0, 2).map(i => interestLabels[i] || i);

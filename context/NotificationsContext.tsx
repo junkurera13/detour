@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import { Platform } from 'react-native';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@clerk/clerk-expo';
@@ -20,6 +20,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const { isAuthenticated } = useConvexAuth();
   const {
     expoPushToken,
+    isPushTokenSynced,
     isPermissionGranted,
     requestPermission,
     registerForPushNotifications,
@@ -31,18 +32,18 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     if (Platform.OS === 'web') return;
     if (!isSignedIn || !isAuthenticated) return;
 
-    // Register if we have a user and don't have a token yet
-    if (!expoPushToken) {
+    // Register if we don't have a token yet, or if token exists but failed to sync to backend.
+    if (!expoPushToken || !isPushTokenSynced) {
       registerForPushNotifications();
     }
-  }, [isSignedIn, isAuthenticated, expoPushToken, registerForPushNotifications]);
+  }, [isSignedIn, isAuthenticated, expoPushToken, isPushTokenSynced, registerForPushNotifications]);
 
-  const value: NotificationsContextValue = {
+  const value = useMemo<NotificationsContextValue>(() => ({
     expoPushToken,
     isPermissionGranted,
     requestPermission,
     clearBadge,
-  };
+  }), [expoPushToken, isPermissionGranted, requestPermission, clearBadge]);
 
   return (
     <NotificationsContext.Provider value={value}>

@@ -374,26 +374,24 @@ const getAdminHTML = () => `
 
   <script>
     const CONVEX_URL = window.location.origin;
-    let adminPassword = localStorage.getItem('adminPassword') || '';
+    let adminPassword = '';
     let usersData = [];
     let currentUserId = null;
-
-    // Check if already logged in
-    if (adminPassword) {
-      verifyAndShow();
-    }
 
     async function login() {
       const password = document.getElementById('password').value;
       if (!password) return;
 
       try {
-        const res = await fetch(CONVEX_URL + '/admin/verify?password=' + encodeURIComponent(password));
+        const res = await fetch(CONVEX_URL + '/admin/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
         const data = await res.json();
 
         if (data.valid) {
           adminPassword = password;
-          localStorage.setItem('adminPassword', password);
           showAdmin();
           loadUsers();
         } else {
@@ -404,21 +402,6 @@ const getAdminHTML = () => `
       }
     }
 
-    async function verifyAndShow() {
-      try {
-        const res = await fetch(CONVEX_URL + '/admin/verify?password=' + encodeURIComponent(adminPassword));
-        const data = await res.json();
-        if (data.valid) {
-          showAdmin();
-          loadUsers();
-        } else {
-          logout();
-        }
-      } catch (e) {
-        logout();
-      }
-    }
-
     function showAdmin() {
       document.getElementById('login-section').style.display = 'none';
       document.getElementById('admin-section').style.display = 'block';
@@ -426,7 +409,6 @@ const getAdminHTML = () => `
 
     function logout() {
       adminPassword = '';
-      localStorage.removeItem('adminPassword');
       document.getElementById('login-section').style.display = 'block';
       document.getElementById('admin-section').style.display = 'none';
       document.getElementById('password').value = '';
@@ -435,7 +417,11 @@ const getAdminHTML = () => `
 
     async function loadUsers() {
       try {
-        const res = await fetch(CONVEX_URL + '/admin/users');
+        const res = await fetch(CONVEX_URL + '/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminPassword }),
+        });
         usersData = await res.json();
 
         document.getElementById('pending-count').textContent = usersData.length;
@@ -641,12 +627,12 @@ http.route({
 // Verify password endpoint
 http.route({
   path: "/admin/verify",
-  method: "GET",
+  method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const url = new URL(request.url);
-    const password = url.searchParams.get("password") || "";
+    const body = await request.json();
+    const password = body.password || "";
 
-    const result = await ctx.runQuery(api.admin.verifyPassword, { password });
+    const result = await ctx.runMutation(api.admin.verifyPassword, { password });
 
     return new Response(JSON.stringify(result), {
       headers: { "Content-Type": "application/json" },
@@ -657,9 +643,12 @@ http.route({
 // Get pending users endpoint
 http.route({
   path: "/admin/users",
-  method: "GET",
-  handler: httpAction(async (ctx) => {
-    const users = await ctx.runQuery(api.admin.listPendingUsers);
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const body = await request.json();
+    const password = body.adminPassword || "";
+
+    const users = await ctx.runQuery(api.admin.listPendingUsers, { adminPassword: password });
 
     return new Response(JSON.stringify(users), {
       headers: { "Content-Type": "application/json" },

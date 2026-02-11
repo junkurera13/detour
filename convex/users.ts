@@ -1,6 +1,36 @@
 import { v } from "convex/values";
 import { mutation, query, internalQuery, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Doc } from "./_generated/dataModel";
+import { getAuthenticatedUser } from "./auth";
+
+function toPublicUser(user: Doc<"users">) {
+  return {
+    _id: user._id,
+    name: user.name,
+    username: user.username,
+    birthday: user.birthday,
+    gender: user.gender,
+    lookingFor: user.lookingFor,
+    datingPreference: user.datingPreference,
+    friendsPreference: user.friendsPreference,
+    datingGoals: user.datingGoals,
+    lifestyle: user.lifestyle,
+    timeNomadic: user.timeNomadic,
+    interests: user.interests,
+    photos: user.photos,
+    instagram: user.instagram,
+    currentLocation: user.currentLocation,
+    latitude: user.latitude,
+    longitude: user.longitude,
+    futureTrip: user.futureTrip,
+    futureTrips: user.futureTrips,
+    pets: user.pets,
+    builderBio: user.builderBio,
+    builderSpecialties: user.builderSpecialties,
+    createdAt: user.createdAt,
+  };
+}
 
 // Get the current authenticated user by their Clerk token
 export const getCurrentUser = query({
@@ -94,18 +124,30 @@ export const create = mutation({
     pets: v.optional(v.array(v.object({ type: v.string(), name: v.string() }))),
     joinPath: v.string(),
     inviteCode: v.optional(v.string()),
-    userStatus: v.string(),
   },
   handler: async (ctx, args) => {
     // Get the authenticated user's identity
     const identity = await ctx.auth.getUserIdentity();
-    const tokenIdentifier = identity?.subject;
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const tokenIdentifier = identity.subject;
+
+    // Idempotency guard for retries: if this identity already has a user, return it.
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", tokenIdentifier))
+      .first();
+    if (existingUser) {
+      return existingUser._id;
+    }
 
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
       ...args,
       tokenIdentifier,
-      email: identity?.email ?? args.email,
+      email: identity.email ?? args.email,
+      userStatus: "pending",
       createdAt: now,
       updatedAt: now,
     });
@@ -115,7 +157,6 @@ export const create = mutation({
 
 export const update = mutation({
   args: {
-    id: v.id("users"),
     name: v.optional(v.string()),
     username: v.optional(v.string()),
     birthday: v.optional(v.string()),
@@ -141,13 +182,25 @@ export const update = mutation({
     pets: v.optional(v.array(v.object({ type: v.string(), name: v.string() }))),
     builderBio: v.optional(v.string()),
     builderSpecialties: v.optional(v.array(v.string())),
-    userStatus: v.optional(v.string()),
   },
-  handler: async (ctx, { id, ...updates }) => {
+  handler: async (ctx, updates) => {
+    const user = await getAuthenticatedUser(ctx);
+
+    // Validate string lengths
+    if (updates.name && updates.name.length > 50) {
+      throw new Error("Name too long");
+    }
+    if (updates.username && updates.username.length > 30) {
+      throw new Error("Username too long");
+    }
+    if (updates.builderBio && updates.builderBio.length > 500) {
+      throw new Error("Builder bio too long");
+    }
+
     const filteredUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, value]) => value !== undefined)
     );
-    await ctx.db.patch(id, {
+    await ctx.db.patch(user._id, {
       ...filteredUpdates,
       updatedAt: Date.now(),
     });
@@ -157,21 +210,30 @@ export const update = mutation({
 export const getById = query({
   args: { id: v.id("users") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const currentUser = await getAuthenticatedUser(ctx);
+    const user = await ctx.db.get(args.id);
+    if (!user) return null;
+    if (user._id === currentUser._id) {
+      return user;
+    }
+    return toPublicUser(user);
   },
 });
 
 export const getByUsername = query({
   args: { username: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    await getAuthenticatedUser(ctx);
+    const user = await ctx.db
       .query("users")
       .withIndex("by_username", (q) => q.eq("username", args.username))
       .first();
+    if (!user) return null;
+    return toPublicUser(user);
   },
 });
 
-export const getByEmail = query({
+export const getByEmail = internalQuery({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -181,7 +243,7 @@ export const getByEmail = query({
   },
 });
 
-export const getByPhone = query({
+export const getByPhone = internalQuery({
   args: { phone: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -193,31 +255,33 @@ export const getByPhone = query({
 
 export const getNearbyUsers = query({
   args: {
-    currentUserId: v.id("users"),
     location: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
     const users = await ctx.db
       .query("users")
       .withIndex("by_location", (q) => q.eq("currentLocation", args.location))
-      .filter((q) => q.neq(q.field("_id"), args.currentUserId))
+      .filter((q) => q.neq(q.field("_id"), user._id))
       .filter((q) => q.eq(q.field("userStatus"), "approved"))
       .take(args.limit ?? 20);
-    return users;
+    return users.map(toPublicUser);
   },
 });
 
 export const getDiscoverUsers = query({
   args: {
-    currentUserId: v.id("users"),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
     // Get users that the current user hasn't swiped on yet
     const swipes = await ctx.db
       .query("swipes")
-      .withIndex("by_swiper", (q) => q.eq("swiperId", args.currentUserId))
+      .withIndex("by_swiper", (q) => q.eq("swiperId", user._id))
       .collect();
 
     const swipedUserIds = new Set(swipes.map((s) => s.swipedId));
@@ -225,11 +289,11 @@ export const getDiscoverUsers = query({
     // Get blocked users (both directions)
     const blockedByMe = await ctx.db
       .query("blockedUsers")
-      .withIndex("by_blocker", (q) => q.eq("blockerId", args.currentUserId))
+      .withIndex("by_blocker", (q) => q.eq("blockerId", user._id))
       .collect();
     const blockedMe = await ctx.db
       .query("blockedUsers")
-      .withIndex("by_blocked", (q) => q.eq("blockedId", args.currentUserId))
+      .withIndex("by_blocked", (q) => q.eq("blockedId", user._id))
       .collect();
 
     const blockedUserIds = new Set([
@@ -239,26 +303,33 @@ export const getDiscoverUsers = query({
 
     const users = await ctx.db
       .query("users")
-      .filter((q) => q.neq(q.field("_id"), args.currentUserId))
-      .filter((q) => q.eq(q.field("userStatus"), "approved"))
+      .withIndex("by_status", (q) => q.eq("userStatus", "approved"))
+      .filter((q) => q.neq(q.field("_id"), user._id))
       .take(args.limit ?? 50);
 
-    return users.filter((u) => !swipedUserIds.has(u._id) && !blockedUserIds.has(u._id));
+    return users
+      .filter((u) => !swipedUserIds.has(u._id) && !blockedUserIds.has(u._id))
+      .map(toPublicUser);
   },
 });
 
 export const getAllApprovedUsers = query({
-  args: { currentUserId: v.optional(v.id("users")) },
+  args: {
+    currentUserId: v.optional(v.id("users")),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
+    const currentUser = await getAuthenticatedUser(ctx);
     const users = await ctx.db
       .query("users")
       .withIndex("by_status", (q) => q.eq("userStatus", "approved"))
-      .collect();
+      .take(args.limit ?? 200);
 
-    if (args.currentUserId) {
-      return users.filter((u) => u._id !== args.currentUserId);
-    }
-    return users;
+    const excludedId = args.currentUserId ?? currentUser._id;
+
+    return users
+      .filter((u) => u._id !== excludedId)
+      .map(toPublicUser);
   },
 });
 

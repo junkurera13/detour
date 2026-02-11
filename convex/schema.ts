@@ -73,6 +73,7 @@ export default defineSchema({
   matches: defineTable({
     user1Id: v.id("users"),
     user2Id: v.id("users"),
+    pairKey: v.optional(v.string()), // stable sorted pair key `${minId}:${maxId}`
     status: v.string(), // "pending", "matched", "rejected"
     user1Action: v.optional(v.string()), // "liked", "passed"
     user2Action: v.optional(v.string()),
@@ -81,7 +82,8 @@ export default defineSchema({
   })
     .index("by_user1", ["user1Id"])
     .index("by_user2", ["user2Id"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_pair", ["pairKey"]),
 
   messages: defineTable({
     matchId: v.id("matches"),
@@ -92,6 +94,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_match", ["matchId"])
+    .index("by_match_created", ["matchId", "createdAt"])
+    .index("by_match_read", ["matchId", "readAt"])
     .index("by_sender", ["senderId"]),
 
   inviteCodes: defineTable({
@@ -115,6 +119,7 @@ export default defineSchema({
   })
     .index("by_swiper", ["swiperId"])
     .index("by_swiped", ["swipedId"])
+    .index("by_swiped_action", ["swipedId", "action"])
     .index("by_pair", ["swiperId", "swipedId"]),
 
   helpRequests: defineTable({
@@ -135,6 +140,7 @@ export default defineSchema({
   })
     .index("by_author", ["authorId"])
     .index("by_status", ["status"])
+    .index("by_status_created", ["status", "createdAt"])
     .index("by_category", ["category"])
     .index("by_created", ["createdAt"]),
 

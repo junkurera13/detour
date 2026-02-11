@@ -19,7 +19,7 @@ export default function SettingsScreen() {
   const [blockedVisible, setBlockedVisible] = useState(false);
   const blockedUsers = useQuery(
     api.blocks.getBlockedUsers,
-    convexUser?._id ? { userId: convexUser._id } : "skip"
+    convexUser?._id ? {} : "skip"
   );
 
   const handleUnblock = (blockedId: Id<"users">, name: string) => {
@@ -30,7 +30,7 @@ export default function SettingsScreen() {
         text: 'unblock',
         onPress: async () => {
           try {
-            await unblockUser({ blockerId: convexUser._id, blockedId });
+            await unblockUser({ blockedId });
           } catch {
             Alert.alert('error', 'failed to unblock user');
           }

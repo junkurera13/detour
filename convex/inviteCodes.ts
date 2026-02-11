@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { getAuthenticatedUser } from "./auth";
 
 const INVITE_CODES_PER_USER = 3;
 const SAFE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -56,7 +57,7 @@ export const generateCodesForUser = internalMutation({
 });
 
 // Backfill: generate codes for all approved users missing them
-export const backfillCodes = mutation({
+export const backfillCodes = internalMutation({
   args: {},
   handler: async (ctx) => {
     const users = await ctx.db.query("users").collect();
@@ -169,9 +170,10 @@ export const validate = query({
 export const use = mutation({
   args: {
     code: v.string(),
-    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
     const normalizedCode = args.code.toUpperCase().trim();
 
     const inviteCode = await ctx.db
@@ -183,20 +185,24 @@ export const use = mutation({
       return { success: false, error: "invalid invite code" };
     }
 
+    if (!inviteCode.isActive || inviteCode.currentUses >= inviteCode.maxUses) {
+      return { success: false, error: "this code is no longer valid" };
+    }
+
     await ctx.db.patch(inviteCode._id, {
       currentUses: inviteCode.currentUses + 1,
-      usedBy: args.userId,
+      usedBy: user._id,
     });
 
     // Auto-approve user who used valid invite code
-    await ctx.db.patch(args.userId, {
+    await ctx.db.patch(user._id, {
       userStatus: "approved",
       updatedAt: Date.now(),
     });
 
     // Generate 3 invite codes for the newly approved user (chain reaction)
     await ctx.scheduler.runAfter(0, internal.inviteCodes.generateCodesForUser, {
-      userId: args.userId,
+      userId: user._id,
     });
 
     return { success: true };
@@ -206,14 +212,15 @@ export const use = mutation({
 export const create = mutation({
   args: {
     code: v.string(),
-    createdBy: v.optional(v.id("users")),
     maxUses: v.number(),
     expiresAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+
     const codeId = await ctx.db.insert("inviteCodes", {
       code: args.code.toUpperCase().trim(),
-      createdBy: args.createdBy,
+      createdBy: user._id,
       maxUses: args.maxUses,
       currentUses: 0,
       expiresAt: args.expiresAt,
@@ -227,6 +234,14 @@ export const create = mutation({
 export const deactivate = mutation({
   args: { id: v.id("inviteCodes") },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    const inviteCode = await ctx.db.get(args.id);
+    if (!inviteCode) {
+      throw new Error("Invite code not found");
+    }
+    if (inviteCode.createdBy !== user._id) {
+      throw new Error("Not authorized");
+    }
     await ctx.db.patch(args.id, { isActive: false });
   },
 });

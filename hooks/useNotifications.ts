@@ -27,11 +27,29 @@ export interface NotificationData {
 
 export function useNotifications() {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+  const [isPushTokenSynced, setIsPushTokenSynced] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   const savePushToken = useMutation(api.users.savePushToken);
+
+  const persistPushToken = useCallback(async (token: string) => {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const result = await savePushToken({ expoPushToken: token });
+        if (result?.success) {
+          setIsPushTokenSynced(true);
+          return true;
+        }
+      } catch {
+        // Retried below.
+      }
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+    }
+    setIsPushTokenSynced(false);
+    return false;
+  }, [savePushToken]);
 
   // Register for push notifications and get token
   const registerForPushNotifications = useCallback(async () => {
@@ -71,24 +89,21 @@ export function useNotifications() {
         return null;
       }
 
-      const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-      const token = tokenData.data;
-
-      setExpoPushToken(token);
-
-      // Save token to Convex
-      try {
-        await savePushToken({ expoPushToken: token });
-      } catch (err) {
-        // User might not exist yet, that's OK
+      let token = expoPushToken;
+      if (!token) {
+        const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+        token = tokenData.data;
+        setExpoPushToken(token);
       }
+
+      await persistPushToken(token);
 
       return token;
     } catch (error) {
       console.error('Failed to get push token:', error);
       return null;
     }
-  }, [savePushToken]);
+  }, [expoPushToken, persistPushToken]);
 
   // Handle notification tap (deep linking)
   const handleNotificationResponse = useCallback(
@@ -156,6 +171,7 @@ export function useNotifications() {
 
   return {
     expoPushToken,
+    isPushTokenSynced,
     permissionStatus,
     isPermissionGranted: permissionStatus === 'granted',
     registerForPushNotifications,

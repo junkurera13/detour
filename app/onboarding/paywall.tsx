@@ -62,7 +62,6 @@ export default function PaywallScreen() {
   } = useRevenueCat();
 
   const createUser = useMutation(api.users.create);
-  const updateUser = useMutation(api.users.update);
   const consumeInviteCode = useMutation(api.inviteCodes.use);
   const { convexUser } = useAuthenticatedUser();
 
@@ -95,30 +94,36 @@ export default function PaywallScreen() {
     }
 
     try {
-      // If user has invite code, they're approved; otherwise pending (for new users only)
-      const userStatus = data.joinPath === 'invite' ? 'approved' : 'pending';
+      // New users start as pending; valid invite code consumption upgrades them.
+      let userStatus: 'approved' | 'pending' = 'pending';
 
       // Check if user already exists (pending user who got invite code)
       if (convexUser) {
-        // Existing user - just update their status and consume invite code
+        userStatus = convexUser.userStatus === 'approved' ? 'approved' : 'pending';
+
+        // Existing user - consume invite code to upgrade status.
         if (data.joinPath === 'invite' && data.inviteCode) {
-          await consumeInviteCode({ code: data.inviteCode, userId: convexUser._id });
-          await updateUser({ id: convexUser._id, userStatus: 'approved' });
+          const result = await consumeInviteCode({ code: data.inviteCode });
+          if (!result.success) {
+            Alert.alert('Invalid invite code', result.error ?? 'Please try another code.');
+            return;
+          }
+          userStatus = 'approved';
         }
 
         // Update local onboarding state
         updateData({
           hasCompletedOnboarding: true,
-          userStatus: 'approved',
+          userStatus,
         });
 
-        router.replace('/onboarding/done');
+        router.replace(userStatus === 'approved' ? '/onboarding/done' : '/pending');
         return;
       }
 
       // New user - photos are already uploaded as cloud URLs from the photos step
       // Create user in Convex (tokenIdentifier is captured automatically from Clerk via ctx.auth)
-      const userId = await createUser({
+      await createUser({
         name: data.name,
         username: data.username,
         birthday: data.birthday?.toISOString() ?? new Date().toISOString(),
@@ -138,12 +143,16 @@ export default function PaywallScreen() {
         futureTrips: data.futureTrips.length > 0 ? data.futureTrips : undefined,
         joinPath: data.joinPath ?? 'apply',
         inviteCode: data.inviteCode || undefined,
-        userStatus,
       });
 
       // If user joined via invite code, consume it
       if (data.joinPath === 'invite' && data.inviteCode) {
-        await consumeInviteCode({ code: data.inviteCode, userId });
+        const result = await consumeInviteCode({ code: data.inviteCode });
+        if (!result.success) {
+          Alert.alert('Invalid invite code', result.error ?? 'Please try another code.');
+          return;
+        }
+        userStatus = 'approved';
       }
 
       // Update local onboarding state
