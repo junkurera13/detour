@@ -1,16 +1,13 @@
 import { View, Text, ScrollView, Image, TouchableOpacity, Platform, ActivityIndicator, Dimensions, Alert, Modal, Animated } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { mockUsers } from '@/data/mockData';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { isDemoUser } from '@/utils/isDemoUser';
 import { computeCompatibility } from '@/utils/compatibility';
 import { CompatibilityBadge } from '@/components/ui/CompatibilityBadge';
 
@@ -60,33 +57,6 @@ const interestLabels: Record<string, { label: string; emoji: string }> = {
   'design': { label: 'design', emoji: '🎨' },
 };
 
-// Generate deterministic trip dates from user id
-function getMockTripDate(userId: string, index: number): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = ((hash << 5) - hash) + userId.charCodeAt(i);
-    hash |= 0;
-  }
-  const month = ((Math.abs(hash + index * 7) % 4) + 2); // Feb-May
-  const day = (Math.abs(hash + index * 13) % 28) + 1;
-  const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May'];
-  return `${months[month]} ${day}`;
-}
-
-function getMockTripEndDate(userId: string, index: number): string | undefined {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = ((hash << 3) - hash) + userId.charCodeAt(i);
-    hash |= 0;
-  }
-  // ~60% of trips have an end date
-  if (Math.abs(hash + index) % 5 < 2) return undefined;
-  const month = ((Math.abs(hash + index * 11) % 4) + 3); // Mar-Jun
-  const day = (Math.abs(hash + index * 17) % 28) + 1;
-  const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-  return `${months[month]} ${day}`;
-}
-
 function calculateAge(birthday: string): number {
   const birthDate = new Date(birthday);
   const today = new Date();
@@ -102,13 +72,10 @@ export default function UserProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const router = useRouter();
   const { convexUser: currentUser } = useAuthenticatedUser();
-  const isDemo = isDemoUser(currentUser?.email);
-
-  // Try fetching from Convex (real user)
-  const isMockUser = userId?.startsWith('user_');
+  // Fetch from Convex
   const convexUser = useQuery(
     api.users.getById,
-    !isMockUser && userId ? { id: userId as Id<"users"> } : "skip"
+    userId ? { id: userId as Id<"users"> } : "skip"
   );
 
   // Check if already matched with this user
@@ -121,23 +88,13 @@ export default function UserProfileScreen() {
     return myMatches.some((m) => m.otherUser?._id === userId);
   }, [myMatches, userId]);
 
-  // Find mock user if applicable (demo only)
-  const mockUser = (isMockUser && isDemo) ? mockUsers.find((u) => u.id === userId) : null;
-
-  // Redirect non-demo users away from mock profiles
-  useEffect(() => {
-    if (isMockUser && !isDemo) {
-      router.back();
-    }
-  }, [isMockUser, isDemo, router]);
-
-  // Record profile view for real users
+  // Record profile view
   const recordView = useMutation(api.profileViews.record);
   useEffect(() => {
-    if (!isMockUser && userId) {
+    if (userId) {
       recordView({ viewedId: userId as Id<"users"> }).catch(() => {});
     }
-  }, [userId, isMockUser, recordView]);
+  }, [userId, recordView]);
 
   // Normalize data to match own profile page structure
   const profileData = useMemo(() => {
@@ -158,23 +115,8 @@ export default function UserProfileScreen() {
         datingGoals: convexUser.datingGoals || [],
       };
     }
-    if (mockUser) {
-      return {
-        name: mockUser.name,
-        age: mockUser.age,
-        username: undefined,
-        photos: mockUser.photos,
-        currentLocation: mockUser.location,
-        instagram: mockUser.instagram,
-        lifestyle: mockUser.lifestyle,
-        interests: mockUser.interests,
-        futureTrips: mockUser.futureTrip ? [{ location: mockUser.futureTrip, startDate: getMockTripDate(mockUser.id, 0), endDate: getMockTripEndDate(mockUser.id, 0) }] : [],
-        pets: [],
-        datingGoals: [],
-      };
-    }
     return null;
-  }, [convexUser, mockUser]);
+  }, [convexUser]);
 
   const compatibilityResult = useMemo(() => {
     if (!currentUser || !profileData) return null;

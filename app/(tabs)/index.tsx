@@ -10,8 +10,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { mockUsers, MockUser } from '@/data/mockData';
-import { isDemoUser } from '@/utils/isDemoUser';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 import { computeCompatibility, CompatibilityBreakdown } from '@/utils/compatibility';
 import { CompatibilityBadge } from '@/components/ui/CompatibilityBadge';
@@ -117,25 +115,6 @@ function convexUserToProfile(
   };
 }
 
-// Convert MockUser to Profile interface
-function mockUserToProfile(user: MockUser): Profile {
-  return {
-    id: user.id,
-    name: user.name,
-    age: user.age,
-    gender: user.gender,
-    location: user.location,
-    lifestyle: user.lifestyle,
-    photos: user.photos,
-    distance: user.location.split(',')[0].trim(),
-    distanceKm: null,
-    interests: user.interests,
-    bio: user.bio,
-    timeNomadic: user.timeNomadic,
-    lookingFor: user.lookingFor,
-    instagram: user.instagram,
-  };
-}
 
 interface SwipeableCardProps {
   profile: Profile;
@@ -563,7 +542,6 @@ export default function NearbyScreen() {
   const { data } = useOnboarding();
   const { convexUser, isLoading: isAuthLoading } = useAuthenticatedUser();
   const userId = convexUser?._id;
-  const isDemo = isDemoUser(convexUser?.email);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const [isProcessingSwipe, setIsProcessingSwipe] = useState(false);
   const [localSwipedIds, setLocalSwipedIds] = useState<Set<string>>(new Set());
@@ -613,12 +591,8 @@ export default function NearbyScreen() {
     if (convexUsers && convexUsers.length > 0) {
       return convexUsers.map((u) => convexUserToProfile(u, prefCoords, convexUser));
     }
-    // Fall back to mock data only for demo user
-    if (isDemo) {
-      return mockUsers.map((u) => mockUserToProfile(u));
-    }
     return [];
-  }, [convexUsers, prefCoords, isDemo, convexUser]);
+  }, [convexUsers, prefCoords, convexUser]);
 
   // Current user's interests for hobby-weighted sorting
   const userInterests = useMemo(() => {
@@ -693,12 +667,6 @@ export default function NearbyScreen() {
 
   const recordSwipe = useCallback(async (action: 'like' | 'pass', profileId: string) => {
     if (!userId || isProcessingSwipe) return;
-
-    // Skip recording swipe for mock users (their IDs start with "user_")
-    // Only record swipes for real Convex users
-    if (profileId.startsWith('user_')) {
-      return;
-    }
 
     setIsProcessingSwipe(true);
     try {

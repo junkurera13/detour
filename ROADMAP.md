@@ -32,7 +32,7 @@
 | Task | Description | Status |
 |------|-------------|--------|
 | Swipe gestures | Gesture-based swipe with Reanimated | ✅ |
-| Compatibility % badge | Show match % on profile cards | ⬜ |
+| Compatibility % badge | Show match % on profile cards | ✅ |
 | Likes You modal | Swipeable card modal to accept/reject likes | ✅ |
 | User profile page | View other users' profiles (matches own profile layout) | ✅ |
 | Profile navigation | Tap photo in matches to view profile | ✅ |
@@ -84,7 +84,7 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 | 2 | Activities backend | `activities` table in Convex schema + `convex/activities.ts` with list, getById, create, join, leave queries/mutations. | ✅ |
 | 3 | Host Activity flow | "Host Event" form wired to `activities.create` mutation. Persisted events appear for all users with filtering by interest/location. | ✅ |
 | 4 | Join Activity flow | Join/leave buttons wired to `activities.join`/`activities.leave` mutations. Attendee count updates in real-time via Convex reactivity. Event detail page uses real data. | ✅ |
-| 5 | Seed activity data | 10 realistic van-lifer activities in `convex/seed.ts` (sunrise surf, co-working, yoga, street food tour, photography walk, nomad meetup, salsa night, snorkeling, ramen crawl, morning run). | ✅ |
+| 5 | Seed activity data | 10 realistic van-lifer activities in `convex/seed.ts` (sunrise surf, co-working, yoga, street food tour, photography walk, salsa night, snorkeling, ramen crawl, morning run). | ✅ |
 
 ### P1 — High Impact (strong differentiators) ✅
 
@@ -99,10 +99,10 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| 10 | Safety blurb in onboarding | Add a short screen or banner during onboarding: "Detour is invite-only to keep our community safe. All profiles are reviewed." | ⬜ |
-| 11 | Blocked users screen | Wire the "Blocked Users" settings item (currently says "coming soon") to a real list with unblock option. | ⬜ |
-| 12 | Van lifer validation evidence | Post in r/vandwellers or van life FB group asking for feedback. Screenshot responses. Reference in submission writeup. | ⬜ |
-| 13 | Reference Quin's pain points in submission | In the hackathon writeup, directly quote Quin's "needle in a haystack" and map each feature to her stated pain. | ⬜ |
+| 10 | Safety blurb in onboarding | Add a short screen or banner during onboarding: "Detour is invite-only to keep our community safe. All profiles are reviewed." | ✅ |
+| 11 | Blocked users screen | Wire the "Blocked Users" settings item (currently says "coming soon") to a real list with unblock option. | ✅ |
+| 12 | Van lifer validation evidence | Post in r/vandwellers or van life FB group asking for feedback. Screenshot responses. Reference in submission writeup. | ✅ |
+| 13 | Reference Quin's pain points in submission | In the hackathon writeup, directly quote Quin's "needle in a haystack" and map each feature to her stated pain. | ✅ |
 
 ---
 

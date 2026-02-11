@@ -56,7 +56,7 @@ export default function EventDetailScreen() {
   const userId = user?._id;
   const joined = activity && userId ? activity.attendeeIds.includes(userId) : false;
   const totalAttendees = activity ? activity.attendeeIds.length : 0;
-  const attendees = activity?.attendees || [];
+  const attendees = useMemo(() => activity?.attendees || [], [activity?.attendees]);
 
   const previewNames = useMemo(() => {
     if (attendees.length === 0) return '';

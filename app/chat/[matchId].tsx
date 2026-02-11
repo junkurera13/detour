@@ -22,7 +22,6 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { usePhotoUpload } from '@/hooks/usePhotoUpload';
-import * as ImagePicker from 'expo-image-picker';
 
 interface Message {
   _id: Id<'messages'>;
@@ -157,23 +156,6 @@ export default function ChatScreen() {
       setMessageText(text);
     } finally {
       setIsSending(false);
-    }
-  };
-
-  const handlePickImage = async () => {
-    if (blockStatus?.blocked) {
-      Alert.alert('Cannot send image', 'This conversation has been blocked.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      allowsEditing: true,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setImagePreview(result.assets[0].uri);
     }
   };
 

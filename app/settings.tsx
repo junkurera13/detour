@@ -1,23 +1,18 @@
-import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator, Modal, Image, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Switch, Alert, Modal, Image, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { useClerk } from '@clerk/clerk-expo';
-import { useMutation, useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 
 const DISTANCE_OPTIONS = [5, 10, 15, 20, 25];
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { signOut } = useClerk();
-  const { resetData } = useOnboarding();
   const { convexUser } = useAuthenticatedUser();
-  const deleteAccountMutation = useMutation(api.users.deleteAccount);
   const unblockUser = useMutation(api.blocks.unblockUser);
 
   // Blocked users
@@ -52,9 +47,6 @@ export default function SettingsScreen() {
   // Visibility state
   const [snoozeMode, setSnoozeMode] = useState(false);
 
-  // Loading states
-  const [isDeleting, setIsDeleting] = useState(false);
-
   const handleDistanceChange = (direction: 'increase' | 'decrease') => {
     const currentIndex = DISTANCE_OPTIONS.indexOf(notificationDistance);
     if (direction === 'increase' && currentIndex < DISTANCE_OPTIONS.length - 1) {
@@ -63,73 +55,6 @@ export default function SettingsScreen() {
       setNotificationDistance(DISTANCE_OPTIONS[currentIndex - 1]);
     }
   };
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-              resetData();
-              router.replace('/onboarding');
-            } catch (error) {
-              console.error('Logout error:', error);
-              resetData();
-              router.replace('/onboarding');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'delete account?',
-      'are you sure? this will permanently delete all your data, matches, messages, and help requests. this cannot be undone.',
-      [
-        { text: 'cancel', style: 'cancel' },
-        {
-          text: 'yes, delete my account',
-          style: 'destructive',
-          onPress: async () => {
-            setIsDeleting(true);
-            try {
-              await deleteAccountMutation();
-              await signOut();
-              resetData();
-              router.replace('/onboarding');
-            } catch (error) {
-              console.error('Delete account error:', error);
-              setIsDeleting(false);
-              Alert.alert('error', 'failed to delete account. please try again.');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  // Show loading screen while deleting account
-  if (isDeleting) {
-    return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#fd6b03" />
-        <Text
-          className="mt-4 text-gray-500"
-          style={{ fontFamily: 'InstrumentSans_400Regular' }}
-        >
-          deleting account...
-        </Text>
-      </View>
-    );
-  }
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -387,42 +312,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Account Section */}
-        <View className="px-6 pt-6">
-          <Text
-            className="text-sm text-gray-500 uppercase mb-3"
-            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-          >
-            account
-          </Text>
-          <View className="bg-gray-50 rounded-2xl overflow-hidden">
-            <TouchableOpacity
-              className="flex-row items-center justify-between px-4 py-4 border-b border-gray-100"
-              activeOpacity={0.7}
-              onPress={handleLogout}
-            >
-              <Text
-                className="text-red-500"
-                style={{ fontFamily: 'InstrumentSans_500Medium' }}
-              >
-                log out
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="flex-row items-center justify-between px-4 py-4"
-              activeOpacity={0.7}
-              onPress={handleDeleteAccount}
-            >
-              <Text
-                className="text-red-500"
-                style={{ fontFamily: 'InstrumentSans_500Medium' }}
-              >
-                delete account
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
 
       {/* Blocked Users Modal */}

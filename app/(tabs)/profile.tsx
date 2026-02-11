@@ -8,10 +8,7 @@ import { useRouter } from 'expo-router';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { mockActivities } from '@/data/mockData';
 import { useRevenueCat } from '@/context/RevenueCatContext';
-import { isDemoUser } from '@/utils/isDemoUser';
-import { useEvents } from '@/context/EventsContext';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 
 function calculateAge(birthday: string): number {
@@ -125,6 +122,7 @@ const settingsItems = [
   { id: 'edit', label: 'edit profile', icon: 'create-outline' },
   { id: 'settings', label: 'settings', icon: 'settings-outline' },
   { id: 'subscription', label: 'manage subscription', icon: 'card-outline' },
+  { id: 'account', label: 'account', icon: 'person-circle-outline' },
 ];
 
 function timeAgo(timestamp: number): string {
@@ -144,15 +142,10 @@ export default function ProfileScreen() {
   const { openCustomerCenter } = useRevenueCat();
   const router = useRouter();
   const builderStats = useQuery(api.helpRequests.getBuilderStats, convexAuthenticated ? {} : "skip");
+  const myActivities = useQuery(api.activities.getByUserId, user?._id ? { userId: user._id } : "skip");
   const updateUser = useMutation(api.users.update);
   const [menuVisible, setMenuVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'about' | 'events' | 'builder'>('about');
-  const isDemo = isDemoUser(user?.email);
-  const { joinedIds } = useEvents();
-  const myEvents = useMemo(() => {
-    if (isDemo) return mockActivities.filter(a => joinedIds.includes(a.id));
-    return [];
-  }, [joinedIds, isDemo]);
   const [editingCurrentLocation, setEditingCurrentLocation] = useState(false);
   const [editingLocationIndex, setEditingLocationIndex] = useState<number | null>(null);
   const [editingStopText, setEditingStopText] = useState('');
@@ -268,6 +261,8 @@ export default function ProfileScreen() {
       router.push('/settings' as any);
     } else if (id === 'edit') {
       router.push('/edit-profile' as any);
+    } else if (id === 'account') {
+      router.push('/account' as any);
     }
   };
 
@@ -491,18 +486,18 @@ export default function ProfileScreen() {
 
         {activeTab === 'events' ? (
           <View className="px-6 mb-6">
-            {myEvents.length > 0 ? (
-              myEvents.map((activity) => {
+            {myActivities && myActivities.length > 0 ? (
+              myActivities.map((activity) => {
                 const isHost = activity.host.name.toLowerCase() === profileData.name.toLowerCase();
                 return (
                   <TouchableOpacity
-                    key={activity.id}
+                    key={activity._id}
                     className="flex-row items-center py-3 border-b border-gray-50"
                     activeOpacity={0.7}
-                    onPress={() => router.push(`/event/${activity.id}` as any)}
+                    onPress={() => router.push(`/event/${activity._id}` as any)}
                   >
                     <Image
-                      source={{ uri: activity.image }}
+                      source={{ uri: activity.image || 'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=600&h=400&fit=crop' }}
                       className="w-14 h-14 rounded-xl"
                       resizeMode="cover"
                     />
@@ -513,7 +508,7 @@ export default function ProfileScreen() {
                           style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
                           numberOfLines={1}
                         >
-                          {activity.title}
+                          {activity.title.toLowerCase()}
                         </Text>
                         {isHost && (
                           <View className="bg-orange-100 rounded-full px-2 py-0.5 ml-2">

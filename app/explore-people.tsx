@@ -216,7 +216,7 @@ export default function ExplorePeopleScreen() {
 
   const userLocation = convexUser?.currentLocation || data.currentLocation || '';
   const userLifestyle = convexUser?.lifestyle || data.lifestyle || [];
-  const userInterests = convexUser?.interests || data.interests || [];
+  const userInterests = useMemo(() => convexUser?.interests || data.interests || [], [convexUser?.interests, data.interests]);
   const futureTrips = convexUser?.futureTrips ?? (data as any).futureTrips;
   const legacyFutureTrip = (convexUser as any)?.futureTrip;
   const firstTripLocation = futureTrips?.[0]?.location || legacyFutureTrip || '';
@@ -224,7 +224,7 @@ export default function ExplorePeopleScreen() {
   const isLoading = allUsers === undefined;
 
   // Filter by dating preference (nearby is dating only)
-  const datingPref = convexUser?.datingPreference || data.datingPreference || [];
+  const datingPref = useMemo(() => convexUser?.datingPreference || data.datingPreference || [], [convexUser?.datingPreference, data.datingPreference]);
   const users = useMemo(() => {
     const all = allUsers || [];
     if (datingPref.length === 0 || datingPref.includes('everyone')) return all;

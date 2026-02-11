@@ -130,17 +130,6 @@ function matchesDayFilter(dateStr: string, filter: string): boolean {
   return true;
 }
 
-// Sort order for date strings
-function dateSortValue(dateStr: string): number {
-  const d = dateStr.toLowerCase();
-  if (d === 'today') return 0;
-  if (d === 'tomorrow') return 1;
-  const dayIndex = weekdays.indexOf(d);
-  if (dayIndex >= 0) return 2 + dayIndex;
-  if (d.startsWith('next')) return 10;
-  return 20;
-}
-
 export default function ExploreScreen() {
   const { data } = useOnboarding();
   const router = useRouter();
@@ -338,7 +327,7 @@ export default function ExploreScreen() {
       });
     }
     return result;
-  }, [activities, selectedInterest, dayFilter, showOnlyInterests, showNearbyOnly, activityDistance, userLocation, userInterests]);
+  }, [activities, selectedInterest, dayFilter, showOnlyInterests, showNearbyOnly, userLocation, userInterests]);
 
   const isLoading = convexActivities === undefined;
 
@@ -363,7 +352,7 @@ export default function ExploreScreen() {
       Alert.alert('Event published!', `"${newEvent.title}" has been created.`, [
         { text: 'OK', onPress: () => setCreateVisible(false) },
       ]);
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to create event. Please try again.');
     }
   };

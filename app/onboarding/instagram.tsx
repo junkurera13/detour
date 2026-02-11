@@ -1,11 +1,10 @@
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { OnboardingLayout } from '@/components/ui/OnboardingLayout';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useOnboarding } from '@/context/OnboardingContext';
-import { Ionicons } from '@expo/vector-icons';
 
 export default function InstagramScreen() {
   const router = useRouter();

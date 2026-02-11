@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { View, Text, Image, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { OnboardingLayout } from '@/components/ui/OnboardingLayout';

@@ -101,6 +101,7 @@ const interestCategories = [
       { id: 'chill-at-the-beach', label: 'chill at the beach' },
       { id: 'meditate', label: 'meditate' },
       { id: 'spa-days', label: 'spa days' },
+      { id: 'watch-anime', label: 'watch anime' },
     ],
   },
 ];

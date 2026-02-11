@@ -8,8 +8,6 @@ import { api } from '@/convex/_generated/api';
 import { Doc } from '@/convex/_generated/dataModel';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useRevenueCat } from '@/context/RevenueCatContext';
-import { mockLikesYou, mockMatches, mockConversations } from '@/data/mockData';
-import { isDemoUser } from '@/utils/isDemoUser';
 import { computeCompatibility, CompatibilityBreakdown } from '@/utils/compatibility';
 import { CompatibilityBadge } from '@/components/ui/CompatibilityBadge';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -399,7 +397,6 @@ export default function MatchesScreen() {
   const { hasDetourPlus } = useRevenueCat();
   const router = useRouter();
   const userId = convexUser?._id;
-  const isDemo = isDemoUser(convexUser?.email);
   const [showAllLikes, setShowAllLikes] = useState(false);
   const [previewUser, setPreviewUser] = useState<LikeUser | null>(null);
   const [previewSwipeDir, setPreviewSwipeDir] = useState<'left' | 'right' | null>(null);
@@ -438,42 +435,34 @@ export default function MatchesScreen() {
 
     setDismissedLikeIds((prev) => new Set(prev).add(dismissedUser.id));
 
-    if (action === 'like') {
-      // For real users, create a swipe to trigger backend match
-      if (!dismissedUser.id.startsWith('user_') && userId) {
-        try {
-          await createSwipe({
-            swiperId: userId,
-            swipedId: dismissedUser.id as any,
-            action: 'like',
-          });
-        } catch (e) {
-          console.error('Failed to like back:', e);
+    if (action === 'like' && userId) {
+      try {
+        const result = await createSwipe({
+          swiperId: userId,
+          swipedId: dismissedUser.id as any,
+          action: 'like',
+        });
+        if (result?.isMatch) {
+          setLikedBackMatches((prev) => [
+            {
+              id: result.matchId || dismissedUser.id,
+              userId: dismissedUser.id,
+              name: dismissedUser.name,
+              age: dismissedUser.age,
+              photo: dismissedUser.photos[0],
+              matchedAt: 'just now',
+              crossingPath: null,
+            },
+            ...prev,
+          ]);
         }
-      }
-      // For mock users (demo only), add to local matches
-      if (dismissedUser.id.startsWith('user_')) {
-        setLikedBackMatches((prev) => [
-          {
-            id: dismissedUser.id,
-            userId: dismissedUser.id,
-            name: dismissedUser.name,
-            age: dismissedUser.age,
-            photo: dismissedUser.photos[0],
-            matchedAt: 'just now',
-            crossingPath: null,
-          },
-          ...prev,
-        ]);
+      } catch (e) {
+        console.error('Failed to like back:', e);
       }
     }
   };
 
   const handleOpenChat = (matchId: string) => {
-    // Mock IDs start with 'match_' or are user IDs — skip those to avoid crash
-    if (matchId.startsWith('match_') || matchId.startsWith('user_')) {
-      return;
-    }
     router.push(`/chat/${matchId}` as any);
   };
 
@@ -495,45 +484,10 @@ export default function MatchesScreen() {
     userId ? { userId } : "skip"
   );
 
-  // Build likes you list from real data + mock for demo user
+  // Build likes you list from real data
   const likesYou = useMemo(() => {
-    const realLikeUsers: LikeUser[] = (realLikes || []).map((l) => convexUserToLikeUser(l.user, convexUser));
-
-    if (isDemo) {
-      const realIds = new Set(realLikeUsers.map((u) => u.id));
-      const matchedUserIds = new Set(
-        (matchesData || []).map((m) => m.otherUser?._id as string).filter(Boolean)
-      );
-      const mockFiltered = mockLikesYou
-        .filter((u) => !realIds.has(u.id) && !matchedUserIds.has(u.id))
-        .map((u): LikeUser => {
-          const compat = convexUser ? computeCompatibility(convexUser, {
-            interests: u.interests,
-            currentLocation: u.location,
-            lifestyle: u.lifestyle,
-            datingGoals: [],
-          }) : undefined;
-          return {
-            id: u.id,
-            name: u.name,
-            age: u.age,
-            location: u.location,
-            photos: u.photos,
-            bio: u.bio,
-            lifestyle: u.lifestyle,
-            timeNomadic: u.timeNomadic,
-            lookingFor: u.lookingFor,
-            interests: u.interests,
-            instagram: u.instagram,
-            compatibility: compat?.score,
-            compatibilityBreakdown: compat?.breakdown,
-          };
-        });
-      return [...realLikeUsers, ...mockFiltered];
-    }
-
-    return realLikeUsers;
-  }, [realLikes, isDemo, matchesData, convexUser]);
+    return (realLikes || []).map((l) => convexUserToLikeUser(l.user, convexUser));
+  }, [realLikes, convexUser]);
 
   const visibleLikes = useMemo(
     () => likesYou.filter((u) => !dismissedLikeIds.has(u.id)),
@@ -588,23 +542,8 @@ export default function MatchesScreen() {
         };
       });
     }
-    // Fall back to mock matches only for demo user
-    if (isDemo) {
-      return mockMatches.map((match) => ({
-        id: match.id,
-        userId: match.user.id,
-        name: match.user.name,
-        age: match.user.age,
-        matchedAt: formatRelativeTime(new Date(match.matchedAt).getTime()),
-        photo: match.user.photos[0],
-        isNew: match.hasNewMessage,
-        crossingPath: null as string | null,
-        compatibility: undefined as number | undefined,
-        compatibilityBreakdown: undefined as CompatibilityBreakdown | undefined,
-      }));
-    }
     return [];
-  }, [matchesData, myTripLocations, isDemo, convexUser]);
+  }, [matchesData, myTripLocations, convexUser]);
 
   // Combine real/mock matches with liked-back matches from the Likes You section
   const allMatches = useMemo(() => {
@@ -630,19 +569,8 @@ export default function MatchesScreen() {
         };
       });
     }
-    // Fall back to mock conversations only for demo user
-    if (isDemo) {
-      return mockConversations.map((convo) => ({
-        id: convo.id,
-        name: convo.user.name,
-        lastMessage: convo.messages[convo.messages.length - 1]?.content || 'Start a conversation!',
-        time: convo.lastMessageAt,
-        photo: convo.user.photos[0],
-        unread: convo.unreadCount,
-      }));
-    }
     return [];
-  }, [conversationPreviews, isDemo]);
+  }, [conversationPreviews]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
