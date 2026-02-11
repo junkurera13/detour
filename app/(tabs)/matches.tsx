@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { useRouter } from 'expo-router';
 import { api } from '@/convex/_generated/api';
-import { Doc } from '@/convex/_generated/dataModel';
+import { Doc, Id } from '@/convex/_generated/dataModel';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useRevenueCat } from '@/context/RevenueCatContext';
 import { computeCompatibility, CompatibilityBreakdown } from '@/utils/compatibility';
@@ -433,7 +433,7 @@ export default function MatchesScreen() {
   useEffect(() => {
     if (!userId) return;
     const key = `${HIDDEN_CONVERSATIONS_STORAGE_KEY}_${userId}`;
-    AsyncStorage.setItem(key, JSON.stringify(Array.from(deletedConvoIds))).catch(() => {});
+    AsyncStorage.setItem(key, JSON.stringify(Array.from(deletedConvoIds))).catch((e) => console.warn('Failed to save hidden conversations:', e));
   }, [deletedConvoIds, userId]);
 
   const passButtonStyle = useAnimatedStyle(() => {
@@ -468,7 +468,7 @@ export default function MatchesScreen() {
     if (action === 'like' && userId) {
       try {
         const result = await createSwipe({
-          swipedId: dismissedUser.id as any,
+          swipedId: dismissedUser.id as Id<"users">,
           action: 'like',
         });
         if (result?.isMatch) {
@@ -487,12 +487,13 @@ export default function MatchesScreen() {
         }
       } catch (e) {
         console.error('Failed to like back:', e);
+        Alert.alert('error', 'failed to like back. please try again.');
       }
     }
   };
 
   const handleOpenChat = (matchId: string) => {
-    router.push(`/chat/${matchId}` as any);
+    router.push(`/chat/${matchId}`);
   };
 
   // Fetch matches from Convex
@@ -761,7 +762,7 @@ export default function MatchesScreen() {
                       activeOpacity={0.7}
                       onPress={() => {
                         if (match.userId) {
-                          router.push(`/user/${match.userId}` as any);
+                          router.push(`/user/${match.userId}`);
                         }
                       }}
                     >
@@ -807,6 +808,8 @@ export default function MatchesScreen() {
                       className="w-10 h-10 bg-white rounded-full items-center justify-center"
                       activeOpacity={0.7}
                       onPress={() => handleOpenChat(match.id)}
+                      accessibilityLabel="Open chat"
+                      accessibilityRole="button"
                     >
                       <Ionicons name="chatbubble" size={20} color="#000" />
                     </TouchableOpacity>
@@ -942,6 +945,8 @@ export default function MatchesScreen() {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     setPreviewSwipeDir('left');
                   }}
+                  accessibilityLabel="Pass"
+                  accessibilityRole="button"
                 >
                   <Ionicons name="close" size={32} color="#fd6b03" />
                 </TouchableOpacity>
@@ -954,6 +959,8 @@ export default function MatchesScreen() {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     setPreviewSwipeDir('right');
                   }}
+                  accessibilityLabel="Like"
+                  accessibilityRole="button"
                 >
                   <Ionicons name="heart" size={32} color="#fd6b03" />
                 </TouchableOpacity>
@@ -975,6 +982,8 @@ export default function MatchesScreen() {
             <TouchableOpacity
               onPress={() => setShowAllLikes(false)}
               className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
             >
               <Ionicons name="chevron-back" size={24} color="#000" />
             </TouchableOpacity>

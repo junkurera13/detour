@@ -1,12 +1,12 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, ComponentProps } from 'react';
 import { OnboardingLayout } from '@/components/ui/OnboardingLayout';
 import { Button } from '@/components/ui/Button';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { Ionicons } from '@expo/vector-icons';
 
-const genderOptions = [
+const genderOptions: { id: string; label: string; icon: ComponentProps<typeof Ionicons>['name'] }[] = [
   { id: 'woman', label: 'woman', icon: 'female' },
   { id: 'man', label: 'man', icon: 'male' },
   { id: 'nonbinary', label: 'non-binary', icon: 'male-female' },
@@ -44,7 +44,7 @@ export default function GenderScreen() {
               selected === option.id ? 'bg-orange-50' : 'bg-gray-100'
             }`}>
               <Ionicons
-                name={option.icon as any}
+                name={option.icon}
                 size={24}
                 color={selected === option.id ? '#fd6b03' : '#6B7280'}
               />

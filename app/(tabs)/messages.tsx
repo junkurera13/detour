@@ -65,11 +65,11 @@ export default function HelpScreen() {
   }, []);
 
   const handlePostPress = () => {
-    router.push('/help/create' as any);
+    router.push('/help/create');
   };
 
   const handleRequestPress = (requestId: string) => {
-    router.push(`/help/${requestId}` as any);
+    router.push(`/help/${requestId}`);
   };
 
   return (
@@ -92,19 +92,19 @@ export default function HelpScreen() {
         </View>
         <View className="flex-row items-center gap-2">
           <TouchableOpacity
-            onPress={() => router.push('/help/chats' as any)}
+            onPress={() => router.push('/help/chats')}
             className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
           >
             <Ionicons name="chatbubbles-outline" size={20} color="#000" />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push('/help/my-requests' as any)}
+            onPress={() => router.push('/help/my-requests')}
             className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
           >
             <Ionicons name="document-text-outline" size={20} color="#000" />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push('/help/my-offers' as any)}
+            onPress={() => router.push('/help/my-offers')}
             className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
           >
             <Ionicons name="hand-right-outline" size={20} color="#000" />

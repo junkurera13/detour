@@ -110,7 +110,7 @@ export default function HelpChatsScreen() {
             return (
               <TouchableOpacity
                 key={conv._id}
-                onPress={() => router.push(`/help/chat/${conv._id}` as any)}
+                onPress={() => router.push(`/help/chat/${conv._id}`)}
                 className="flex-row items-center px-6 py-4 border-b border-gray-50"
                 activeOpacity={0.7}
               >

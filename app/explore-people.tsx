@@ -114,8 +114,8 @@ function getUserFutureTripLocations(user: ExploreUser): string[] {
       locations.push(trip.location);
     }
   }
-  if ((user as any).futureTrip) {
-    locations.push((user as any).futureTrip);
+  if (user.futureTrip) {
+    locations.push(user.futureTrip);
   }
   return locations;
 }
@@ -228,8 +228,8 @@ export default function ExplorePeopleScreen() {
   const userLocation = convexUser?.currentLocation || data.currentLocation || '';
   const userLifestyle = convexUser?.lifestyle || data.lifestyle || [];
   const userInterests = useMemo(() => convexUser?.interests || data.interests || [], [convexUser?.interests, data.interests]);
-  const futureTrips = convexUser?.futureTrips ?? (data as any).futureTrips;
-  const legacyFutureTrip = (convexUser as any)?.futureTrip;
+  const futureTrips = convexUser?.futureTrips ?? data.futureTrips;
+  const legacyFutureTrip = convexUser?.futureTrip;
   const firstTripLocation = futureTrips?.[0]?.location || legacyFutureTrip || '';
 
   const isLoading = allUsers === undefined;

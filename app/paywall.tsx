@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { ComponentProps, useState } from 'react';
 import { useAuth } from '@clerk/clerk-expo';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -10,7 +10,7 @@ import { DETOUR_PLUS_ENTITLEMENT, useRevenueCat } from '@/context/RevenueCatCont
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 
-const features = [
+const features: { icon: ComponentProps<typeof Ionicons>['name']; title: string; description: string }[] = [
   {
     icon: 'people',
     title: 'unlimited connections',
@@ -200,7 +200,7 @@ export default function PaywallScreen() {
           {features.map((feature) => (
             <View key={feature.title} className="flex-row items-center mb-4">
               <View className="w-12 h-12 rounded-full bg-orange-50 items-center justify-center">
-                <Ionicons name={feature.icon as any} size={24} color="#fd6b03" />
+                <Ionicons name={feature.icon} size={24} color="#fd6b03" />
               </View>
               <View className="flex-1 ml-4">
                 <Text

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Modal, Animated, Alert, Platform, TextInput, Share } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Animated, Alert, Platform, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -12,6 +12,11 @@ import { useRevenueCat } from '@/context/RevenueCatContext';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { calculateAge, formatDateShort, formatTripDate } from '@/utils/profile';
+import { ViewersModal } from '@/components/profile/ViewersModal';
+import { SettingsMenu, SettingsItem } from '@/components/profile/SettingsMenu';
+import { InviteCodesModal } from '@/components/profile/InviteCodesModal';
+import { BuilderProfile } from '@/components/profile/BuilderProfile';
+import { EventsList } from '@/components/profile/EventsList';
 
 
 // Parse a short date string like "Mar 15" back to a Date
@@ -80,37 +85,12 @@ const interestLabels: Record<string, { label: string; emoji: string }> = {
   'food': { label: 'food', emoji: '🍜' },
 };
 
-const helpCategoryLabels: Record<string, { label: string; emoji: string }> = {
-  'repairs': { label: 'repairs', emoji: '🔧' },
-  'electrical': { label: 'electrical', emoji: '⚡' },
-  'build': { label: 'build', emoji: '🪚' },
-  'plumbing': { label: 'plumbing', emoji: '🚿' },
-  'solar': { label: 'solar', emoji: '☀️' },
-  'insulation': { label: 'insulation', emoji: '🧱' },
-  'water-systems': { label: 'water systems', emoji: '💧' },
-  'flooring': { label: 'flooring', emoji: '🪵' },
-  'cabinetry': { label: 'cabinetry', emoji: '🗄️' },
-  'windows-ventilation': { label: 'windows & ventilation', emoji: '🪟' },
-  'other': { label: 'other', emoji: '📦' },
-};
-
-const settingsItems = [
+const settingsItems: SettingsItem[] = [
   { id: 'edit', label: 'edit profile', icon: 'create-outline' },
   { id: 'settings', label: 'settings', icon: 'settings-outline' },
   { id: 'subscription', label: 'manage subscription', icon: 'card-outline' },
   { id: 'account', label: 'account', icon: 'person-circle-outline' },
 ];
-
-function timeAgo(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
 
 export default function ProfileScreen() {
   const { data: onboardingData } = useOnboarding();
@@ -234,11 +214,11 @@ export default function ProfileScreen() {
     if (id === 'subscription') {
       await openCustomerCenter();
     } else if (id === 'settings') {
-      router.push('/settings' as any);
+      router.push('/settings');
     } else if (id === 'edit') {
-      router.push('/edit-profile' as any);
+      router.push('/edit-profile');
     } else if (id === 'account') {
-      router.push('/account' as any);
+      router.push('/account');
     }
   };
 
@@ -314,6 +294,22 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleSaveBuilder = async () => {
+    if (!user) return;
+    setSavingBuilder(true);
+    try {
+      await updateUser({
+        ...(editBuilderBio.trim() ? { builderBio: editBuilderBio.trim() } : {}),
+        ...(editBuilderSpecialties.length > 0 ? { builderSpecialties: editBuilderSpecialties } : {}),
+      });
+      setEditingBuilder(false);
+    } catch {
+      Alert.alert('error', 'failed to save. please try again.');
+    } finally {
+      setSavingBuilder(false);
+    }
+  };
+
   return (
     <ErrorBoundary>
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
@@ -353,6 +349,8 @@ export default function ProfileScreen() {
           {profileViewers && profileViewers.length > 0 ? (
             <TouchableOpacity
               className="flex-row items-center bg-gray-100 rounded-full px-2 py-1"
+              accessibilityRole="button"
+              accessibilityLabel="Who viewed your profile"
               onPress={() => {
                 setViewersModalVisible(true);
                 Animated.spring(viewersSlideAnim, {
@@ -375,16 +373,17 @@ export default function ProfileScreen() {
                     borderColor: '#F3F4F6',
                     marginLeft: index > 0 ? -8 : 0,
                   }}
+                  accessibilityLabel={`${viewer!.name} profile photo`}
                 />
               ))}
             </TouchableOpacity>
           ) : (
             <Ionicons name="footsteps-outline" size={24} color="#000" />
           )}
-          <TouchableOpacity onPress={handleShareProfile}>
+          <TouchableOpacity onPress={handleShareProfile} accessibilityRole="button" accessibilityLabel="Share profile">
             <Ionicons name="share-outline" size={24} color="#000" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setMenuVisible(true)}>
+          <TouchableOpacity onPress={() => setMenuVisible(true)} accessibilityRole="button" accessibilityLabel="Settings menu">
             <Ionicons name="menu" size={24} color="#000" />
           </TouchableOpacity>
         </View>
@@ -402,6 +401,7 @@ export default function ProfileScreen() {
                 source={{ uri: profileData.photos[0] }}
                 className="w-28 h-28 rounded-full"
                 resizeMode="cover"
+                accessibilityLabel={`${profileData.name || 'Your'} profile photo`}
               />
             ) : (
               <View className="w-28 h-28 rounded-full bg-gray-200 items-center justify-center">
@@ -461,74 +461,11 @@ export default function ProfileScreen() {
         </View>
 
         {activeTab === 'events' ? (
-          <View className="px-6 mb-6">
-            {myActivities && myActivities.length > 0 ? (
-              myActivities.map((activity) => {
-                const isHost = activity.host.name.toLowerCase() === profileData.name.toLowerCase();
-                return (
-                  <TouchableOpacity
-                    key={activity._id}
-                    className="flex-row items-center py-3 border-b border-gray-50"
-                    activeOpacity={0.7}
-                    onPress={() => router.push(`/event/${activity._id}` as any)}
-                  >
-                    <Image
-                      source={{ uri: activity.image || 'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=600&h=400&fit=crop' }}
-                      className="w-14 h-14 rounded-xl"
-                      resizeMode="cover"
-                    />
-                    <View className="ml-3 flex-1">
-                      <View className="flex-row items-center">
-                        <Text
-                          className="text-black"
-                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                          numberOfLines={1}
-                        >
-                          {activity.title.toLowerCase()}
-                        </Text>
-                        {isHost && (
-                          <View className="bg-orange-100 rounded-full px-2 py-0.5 ml-2">
-                            <Text
-                              className="text-orange-600 text-xs"
-                              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                            >
-                              host
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text
-                        className="text-gray-500 text-sm"
-                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                      >
-                        {activity.date} at {activity.time}
-                      </Text>
-                      <View className="flex-row items-center mt-0.5">
-                        <Ionicons name="location-outline" size={12} color="#9CA3AF" />
-                        <Text
-                          className="text-gray-400 text-xs ml-1"
-                          style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                        >
-                          {activity.location}
-                        </Text>
-                      </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
-                  </TouchableOpacity>
-                );
-              })
-            ) : (
-              <View className="items-center py-12">
-                <Ionicons name="calendar-outline" size={48} color="#E5E7EB" />
-                <Text
-                  className="text-gray-400 mt-4 text-center"
-                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                >
-                  no upcoming events
-                </Text>
-              </View>
-            )}
-          </View>
+          <EventsList
+            events={myActivities}
+            profileName={profileData.name}
+            router={router}
+          />
         ) : activeTab === 'about' ? (
           <>
             {/* Journey Route */}
@@ -578,6 +515,8 @@ export default function ProfileScreen() {
                             <TouchableOpacity
                               onPress={() => setEditingCurrentLocation(true)}
                               style={{ marginLeft: 6, padding: 2 }}
+                              accessibilityRole="button"
+                              accessibilityLabel="Edit current location"
                             >
                               <Ionicons name="pencil" size={12} color="#D1D5DB" />
                             </TouchableOpacity>
@@ -652,6 +591,8 @@ export default function ProfileScreen() {
                                 <TouchableOpacity
                                   onPress={() => { setEditingLocationIndex(index); setEditingStopText(trip.location); }}
                                   style={{ marginLeft: 6, padding: 2 }}
+                                  accessibilityRole="button"
+                                  accessibilityLabel="Edit trip location"
                                 >
                                   <Ionicons name="pencil" size={12} color="#D1D5DB" />
                                 </TouchableOpacity>
@@ -847,522 +788,46 @@ export default function ProfileScreen() {
             )}
           </>
         ) : (
-          <>
-            {/* Builder Profile - Help Activity */}
-            <View className="px-6 mb-6">
-              <View className="bg-gray-50 rounded-3xl p-5">
-                {editingBuilder ? (
-                  <>
-                    {/* Edit mode */}
-                    <View className="mb-4">
-                      <Text
-                        className="text-base text-gray-500 mb-2"
-                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                      >
-                        bio
-                      </Text>
-                      <TextInput
-                        className="bg-gray-50 rounded-2xl px-4 py-3 text-black text-lg"
-                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                        value={editBuilderBio}
-                        onChangeText={(text) => setEditBuilderBio(text.slice(0, 80))}
-                        placeholder="e.g. electrician by trade, happy to help"
-                        placeholderTextColor="#9CA3AF"
-                        multiline
-                        maxLength={80}
-                      />
-                      <Text
-                        className="text-gray-400 text-xs mt-1 text-right"
-                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                      >
-                        {editBuilderBio.length}/80
-                      </Text>
-                    </View>
-
-                    <View className="mb-4">
-                      <Text
-                        className="text-base text-gray-500 mb-2"
-                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                      >
-                        specialties
-                      </Text>
-                      <View className="flex-row flex-wrap gap-2">
-                        {Object.entries(helpCategoryLabels).map(([id, info]) => {
-                          const selected = editBuilderSpecialties.includes(id);
-                          return (
-                            <TouchableOpacity
-                              key={id}
-                              onPress={() => setEditBuilderSpecialties((prev) =>
-                                prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-                              )}
-                              className={`px-4 py-2.5 rounded-full flex-row items-center border-2 ${
-                                selected ? 'bg-white border-orange-primary' : 'bg-white border-transparent'
-                              }`}
-                            >
-                              <Text className="mr-1.5 text-base">{info.emoji}</Text>
-                              <Text
-                                className={`text-base ${selected ? 'text-orange-primary' : 'text-black'}`}
-                                style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                              >
-                                {info.label}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-
-                    <View className="flex-row gap-2">
-                      <TouchableOpacity
-                        onPress={() => setEditingBuilder(false)}
-                        className="flex-1 py-3 rounded-full bg-white items-center"
-                      >
-                        <Text
-                          className="text-black text-base"
-                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                        >
-                          cancel
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={async () => {
-                          if (!user) return;
-                          setSavingBuilder(true);
-                          try {
-                            const args: Record<string, unknown> = {};
-                            const bio = editBuilderBio.trim();
-                            if (bio) args.builderBio = bio;
-                            if (editBuilderSpecialties.length > 0) args.builderSpecialties = editBuilderSpecialties;
-                            await updateUser(args as any);
-                            setEditingBuilder(false);
-                          } catch {
-                            Alert.alert('error', 'failed to save. please try again.');
-                          } finally {
-                            setSavingBuilder(false);
-                          }
-                        }}
-                        disabled={savingBuilder}
-                        className="flex-1 py-3 rounded-full bg-orange-primary items-center"
-                        style={{ opacity: savingBuilder ? 0.5 : 1 }}
-                      >
-                        <Text
-                          className="text-white text-base"
-                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                        >
-                          {savingBuilder ? 'saving...' : 'save'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                ) : (
-                  <>
-                    {/* View mode */}
-                    <TouchableOpacity
-                      onPress={() => {
-                        setEditBuilderBio(user?.builderBio || '');
-                        setEditBuilderSpecialties(user?.builderSpecialties || []);
-                        setEditingBuilder(true);
-                      }}
-                      className="absolute top-4 right-4 z-10"
-                    >
-                      <Ionicons name="pencil-outline" size={18} color="#9CA3AF" />
-                    </TouchableOpacity>
-
-                    {/* Bio */}
-                    <Text
-                      className="text-base text-gray-500 mb-2"
-                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                    >
-                      about
-                    </Text>
-                    {user?.builderBio ? (
-                      <View className="mb-5">
-                        <Text
-                          className="text-black text-lg"
-                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                        >
-                          {user.builderBio}
-                        </Text>
-                      </View>
-                    ) : (
-                      <View className="mb-5" />
-                    )}
-
-                    {/* Specialties */}
-                    {builderStats && builderStats.specialties.length > 0 ? (
-                      <View className="mb-5">
-                        <Text
-                          className="text-base text-gray-500 mb-2"
-                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                        >
-                          specialties
-                        </Text>
-                        <View className="flex-row flex-wrap gap-2">
-                          {builderStats.specialties.map((cat) => {
-                            const info = helpCategoryLabels[cat];
-                            return (
-                              <View key={cat} className="bg-white px-4 py-2.5 rounded-full flex-row items-center">
-                                {info && <Text className="mr-1.5 text-base">{info.emoji}</Text>}
-                                <Text
-                                  className="text-black text-base"
-                                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                                >
-                                  {info?.label || cat}
-                                </Text>
-                              </View>
-                            );
-                          })}
-                        </View>
-                      </View>
-                    ) : null}
-
-                  </>
-                )}
-              </View>
-
-              {/* Stats bento */}
-              {builderStats && (
-                <View className="bg-gray-50 rounded-3xl p-5 mt-3">
-                  <View className="flex-row mb-5">
-                    <View className="flex-1 items-center py-3 bg-white rounded-2xl mr-2">
-                      <Text
-                        className="text-2xl text-black"
-                        style={{ fontFamily: 'InstrumentSans_700Bold' }}
-                      >
-                        {builderStats.completedRequests}
-                      </Text>
-                      <Text
-                        className="text-sm text-gray-500 mt-1"
-                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                      >
-                        completed
-                      </Text>
-                    </View>
-                    <View className="flex-1 items-center py-3 bg-white rounded-2xl">
-                      <Text
-                        className="text-2xl text-black"
-                        style={{ fontFamily: 'InstrumentSans_700Bold' }}
-                      >
-                        {builderStats.totalRequests}
-                      </Text>
-                      <Text
-                        className="text-sm text-gray-500 mt-1"
-                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                      >
-                        requests
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Current help requests */}
-                  {builderStats.activeRequests.length > 0 && (
-                    <View>
-                      <Text
-                        className="text-base text-gray-500 mb-2"
-                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                      >
-                        current requests
-                      </Text>
-                      {builderStats.activeRequests.map((req) => {
-                        const catInfo = helpCategoryLabels[req.category];
-                        return (
-                          <View
-                            key={req._id}
-                            className="bg-white rounded-2xl p-3 mb-2 flex-row items-center"
-                          >
-                            <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center mr-3">
-                              <Text>{catInfo?.emoji || '📦'}</Text>
-                            </View>
-                            <View className="flex-1">
-                              <Text
-                                className="text-black text-base"
-                                style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                                numberOfLines={1}
-                              >
-                                {req.title}
-                              </Text>
-                              <Text
-                                className="text-gray-400 text-sm"
-                                style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                              >
-                                {req.status === 'open' ? 'open' : 'in progress'}
-                              </Text>
-                            </View>
-                            {req.isUrgent && (
-                              <Ionicons name="warning" size={18} color="#DC2626" />
-                            )}
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-
-                  {/* Empty state */}
-                  {builderStats.activeRequests.length === 0 && builderStats.totalRequests === 0 && (
-                    <View className="items-center py-4">
-                      <Ionicons name="hammer-outline" size={32} color="#D1D5DB" />
-                      <Text
-                        className="text-gray-400 text-base mt-2 text-center"
-                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                      >
-                        no help activity yet
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
-          </>
+          <BuilderProfile
+            user={user ? { builderBio: user.builderBio, builderSpecialties: user.builderSpecialties } : null}
+            builderStats={builderStats}
+            editingBuilder={editingBuilder}
+            setEditingBuilder={setEditingBuilder}
+            editBuilderBio={editBuilderBio}
+            setEditBuilderBio={setEditBuilderBio}
+            editBuilderSpecialties={editBuilderSpecialties}
+            setEditBuilderSpecialties={setEditBuilderSpecialties}
+            savingBuilder={savingBuilder}
+            onSave={handleSaveBuilder}
+          />
         )}
 
       </ScrollView>
 
-      {/* Viewers Modal */}
-      <Modal
+      <ViewersModal
         visible={viewersModalVisible}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => {
-          Animated.timing(viewersSlideAnim, {
-            toValue: 400,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => setViewersModalVisible(false));
-        }}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <TouchableOpacity
-            className="flex-1"
-            activeOpacity={1}
-            onPress={() => {
-              Animated.timing(viewersSlideAnim, {
-                toValue: 400,
-                duration: 200,
-                useNativeDriver: true,
-              }).start(() => setViewersModalVisible(false));
-            }}
-          />
-          <Animated.View
-            style={{ transform: [{ translateY: viewersSlideAnim }] }}
-            className="bg-white rounded-t-3xl px-6 pb-10 pt-4"
-          >
-            <View className="w-10 h-1 bg-gray-300 rounded-full self-center mb-4" />
-            <Text
-              className="text-xl text-black mb-4"
-              style={{ fontFamily: 'InstrumentSans_700Bold' }}
-            >
-              profile viewers
-            </Text>
+        onClose={() => setViewersModalVisible(false)}
+        slideAnim={viewersSlideAnim}
+        viewers={profileViewers}
+        router={router}
+      />
 
-            {profileViewers && profileViewers.length > 0 ? (
-              <View>
-                {profileViewers.map((viewer) => (
-                  <TouchableOpacity
-                    key={viewer!._id}
-                    className="flex-row items-center py-3 border-b border-gray-50"
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      setViewersModalVisible(false);
-                      viewersSlideAnim.setValue(400);
-                      router.push(`/user/${viewer!._id}` as any);
-                    }}
-                  >
-                    {viewer!.photos.length > 0 ? (
-                      <Image
-                        source={{ uri: viewer!.photos[0] }}
-                        className="w-12 h-12 rounded-full"
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View className="w-12 h-12 rounded-full bg-gray-200 items-center justify-center">
-                        <Ionicons name="person" size={20} color="#9CA3AF" />
-                      </View>
-                    )}
-                    <View className="ml-3 flex-1">
-                      <Text
-                        className="text-black text-base"
-                        style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                      >
-                        {viewer!.name.toLowerCase()}
-                      </Text>
-                      <Text
-                        className="text-gray-400 text-sm"
-                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                      >
-                        {timeAgo(viewer!.viewedAt)}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : (
-              <View className="items-center py-8">
-                <Ionicons name="eye-outline" size={40} color="#E5E7EB" />
-                <Text
-                  className="text-gray-400 mt-3"
-                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                >
-                  no profile views yet
-                </Text>
-              </View>
-            )}
-          </Animated.View>
-        </View>
-      </Modal>
-
-      <Modal
+      <SettingsMenu
         visible={menuVisible}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={closeMenu}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <TouchableOpacity
-            className="flex-1"
-            activeOpacity={1}
-            onPress={closeMenu}
-          />
-          <Animated.View
-            style={{ transform: [{ translateY: slideAnim }] }}
-            className="bg-white rounded-t-3xl px-6 pb-10 pt-4"
-          >
-            <View className="w-10 h-1 bg-gray-300 rounded-full self-center mb-6" />
+        onClose={closeMenu}
+        slideAnim={slideAnim}
+        onAction={handleSettingsAction}
+        settingsItems={settingsItems}
+      />
 
-            <View className="bg-gray-50 rounded-2xl overflow-hidden">
-              {settingsItems.map((item, index) => (
-                <TouchableOpacity
-                  key={item.id}
-                  className={`flex-row items-center px-4 py-4 ${
-                    index < settingsItems.length - 1 ? 'border-b border-gray-100' : ''
-                  }`}
-                  activeOpacity={0.7}
-                  onPress={() => handleSettingsAction(item.id)}
-                >
-                  <View className="w-10 h-10 bg-white rounded-full items-center justify-center">
-                    <Ionicons name={item.icon as any} size={20} color="#000" />
-                  </View>
-                  <Text
-                    className="flex-1 text-black ml-3"
-                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                  >
-                    {item.label}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                </TouchableOpacity>
-              ))}
-            </View>
-
-          </Animated.View>
-        </View>
-      </Modal>
-
-      {/* Invite Codes Modal */}
-      <Modal
+      <InviteCodesModal
         visible={inviteModalVisible}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => {
-          Animated.timing(inviteSlideAnim, {
-            toValue: 400,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => setInviteModalVisible(false));
-        }}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <TouchableOpacity
-            className="flex-1"
-            activeOpacity={1}
-            onPress={() => {
-              Animated.timing(inviteSlideAnim, {
-                toValue: 400,
-                duration: 200,
-                useNativeDriver: true,
-              }).start(() => setInviteModalVisible(false));
-            }}
-          />
-          <Animated.View
-            style={{ transform: [{ translateY: inviteSlideAnim }] }}
-            className="bg-white rounded-t-3xl px-6 pb-10 pt-4"
-          >
-            <View className="w-10 h-1 bg-gray-300 rounded-full self-center mb-4" />
-            <Text
-              className="text-xl text-black mb-1"
-              style={{ fontFamily: 'InstrumentSans_700Bold' }}
-            >
-              your invite codes
-            </Text>
-            <Text
-              className="text-gray-500 text-sm mb-4"
-              style={{ fontFamily: 'InstrumentSans_400Regular' }}
-            >
-              share with friends to skip the waitlist
-            </Text>
-
-            {myInviteCodes?.map((invite) => (
-              <View
-                key={invite._id}
-                className="flex-row items-center py-3 border-b border-gray-50"
-              >
-                <View className="flex-1">
-                  <Text
-                    className="text-black text-base"
-                    style={{ fontFamily: 'InstrumentSans_600SemiBold', letterSpacing: 1.5 }}
-                  >
-                    {invite.code}
-                  </Text>
-                  {invite.usedByUser ? (
-                    <TouchableOpacity
-                      className="flex-row items-center mt-1"
-                      onPress={() => {
-                        Animated.timing(inviteSlideAnim, {
-                          toValue: 400,
-                          duration: 200,
-                          useNativeDriver: true,
-                        }).start(() => {
-                          setInviteModalVisible(false);
-                          router.push(`/user/${invite.usedByUser!._id}` as any);
-                        });
-                      }}
-                    >
-                      {invite.usedByUser.photos?.[0] && (
-                        <Image
-                          source={{ uri: invite.usedByUser.photos[0] }}
-                          style={{ width: 16, height: 16, borderRadius: 8, marginRight: 4 }}
-                        />
-                      )}
-                      <Text
-                        className="text-gray-400 text-sm"
-                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                      >
-                        used by {invite.usedByUser.name?.toLowerCase()}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <Text
-                      className="text-green-500 text-sm mt-1"
-                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                    >
-                      available
-                    </Text>
-                  )}
-                </View>
-
-                {!invite.usedByUser && (
-                  <TouchableOpacity
-                    onPress={() => handleShareInviteCode(invite.code)}
-                    className="w-10 h-10 rounded-full items-center justify-center"
-                    style={{ backgroundColor: '#FFF7ED' }}
-                  >
-                    <Ionicons name="share-outline" size={18} color="#fd6b03" />
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-          </Animated.View>
-        </View>
-      </Modal>
+        onClose={() => setInviteModalVisible(false)}
+        slideAnim={inviteSlideAnim}
+        inviteCodes={myInviteCodes}
+        onShareCode={handleShareInviteCode}
+        router={router}
+      />
     </SafeAreaView>
     </ErrorBoundary>
   );

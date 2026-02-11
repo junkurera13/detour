@@ -92,7 +92,7 @@ export default function UserProfileScreen() {
   const recordView = useMutation(api.profileViews.record);
   useEffect(() => {
     if (userId) {
-      recordView({ viewedId: userId as Id<"users"> }).catch(() => {});
+      recordView({ viewedId: userId as Id<"users"> }).catch((e) => console.warn('Failed to record profile view:', e));
     }
   }, [userId, recordView]);
 
@@ -247,6 +247,8 @@ export default function UserProfileScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons name="chevron-back" size={24} color="#000" />
           </TouchableOpacity>
@@ -271,6 +273,8 @@ export default function UserProfileScreen() {
         <TouchableOpacity
           onPress={() => router.back()}
           className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
           <Ionicons name="chevron-back" size={24} color="#000" />
         </TouchableOpacity>
@@ -283,6 +287,8 @@ export default function UserProfileScreen() {
         <TouchableOpacity
           onPress={openMenu}
           className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+          accessibilityRole="button"
+          accessibilityLabel="Open menu"
         >
           <Ionicons name="ellipsis-vertical" size={20} color="#000" />
         </TouchableOpacity>
@@ -388,7 +394,7 @@ export default function UserProfileScreen() {
                     key={activity._id}
                     className="flex-row items-center py-3 border-b border-gray-50"
                     activeOpacity={0.7}
-                    onPress={() => router.push(`/event/${activity._id}` as any)}
+                    onPress={() => router.push(`/event/${activity._id}`)}
                   >
                     {activity.image ? (
                       <Image
@@ -726,6 +732,8 @@ export default function UserProfileScreen() {
         onPress={handleLike}
         disabled={liked || likeLoading}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Like this person"
         style={{
           position: 'absolute',
           bottom: insets.bottom + 24,

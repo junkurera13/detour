@@ -60,7 +60,12 @@ export default function SettingsScreen() {
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
       <View className="flex-row items-center px-4 py-4 border-b border-gray-100">
-        <TouchableOpacity onPress={() => router.back()} className="p-2 -ml-2">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="p-2 -ml-2"
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text
@@ -134,6 +139,8 @@ export default function SettingsScreen() {
                   onPress={() => handleDistanceChange('decrease')}
                   className="w-8 h-8 rounded-full bg-gray-200 items-center justify-center"
                   disabled={notificationDistance === DISTANCE_OPTIONS[0]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Decrease notification distance"
                 >
                   <Ionicons
                     name="remove"
@@ -151,6 +158,8 @@ export default function SettingsScreen() {
                   onPress={() => handleDistanceChange('increase')}
                   className="w-8 h-8 rounded-full bg-gray-200 items-center justify-center"
                   disabled={notificationDistance === DISTANCE_OPTIONS[DISTANCE_OPTIONS.length - 1]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Increase notification distance"
                 >
                   <Ionicons
                     name="add"
@@ -326,6 +335,8 @@ export default function SettingsScreen() {
             <TouchableOpacity
               onPress={() => setBlockedVisible(false)}
               className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+              accessibilityRole="button"
+              accessibilityLabel="Close blocked users"
             >
               <Ionicons name="chevron-back" size={24} color="#000" />
             </TouchableOpacity>

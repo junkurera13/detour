@@ -59,7 +59,7 @@ export default function HelpChatScreen() {
   // Mark messages as read when viewing
   useEffect(() => {
     if (conversationId) {
-      markAsRead({ conversationId: conversationId as Id<"helpConversations"> }).catch(() => {});
+      markAsRead({ conversationId: conversationId as Id<"helpConversations"> }).catch((e) => console.warn('Failed to mark messages as read:', e));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, messages?.length]);

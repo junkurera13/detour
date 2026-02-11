@@ -438,7 +438,7 @@ export default function HelpRequestDetailScreen() {
               {/* Go to chat button */}
               {request.conversationId && (
                 <TouchableOpacity
-                  onPress={() => router.push(`/help/chat/${request.conversationId}` as any)}
+                  onPress={() => router.push(`/help/chat/${request.conversationId}`)}
                   className="mt-4 py-3 rounded-xl items-center border border-orange-200 bg-orange-50"
                 >
                   <Text className="text-orange-600" style={{ fontFamily: 'InstrumentSans_600SemiBold' }}>

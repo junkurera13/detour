@@ -3,14 +3,11 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
-  Dimensions,
   Modal,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,14 +20,8 @@ import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { usePhotoUpload } from '@/hooks/usePhotoUpload';
 import { Input } from '@/components/ui/Input';
 import { SelectionChip } from '@/components/ui/SelectionChip';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const GRID_PADDING = 24;
-const GRID_GAP = 8;
-const GRID_WIDTH = SCREEN_WIDTH - GRID_PADDING * 2;
-const SMALL_TILE_SIZE = (GRID_WIDTH - GRID_GAP * 2) / 3;
-const LARGE_TILE_WIDTH = SMALL_TILE_SIZE * 2 + GRID_GAP;
-const LARGE_TILE_HEIGHT = SMALL_TILE_SIZE * 2 + GRID_GAP;
+import { PhotoGrid } from '@/components/edit-profile/PhotoGrid';
+import { PetsManager, type Pet } from '@/components/edit-profile/PetsManager';
 
 const lifestyleOptions = [
   { id: 'van-life', label: 'van life', emoji: '🚐' },
@@ -148,21 +139,6 @@ const interestCategories = [
 
 type Section = 'basic' | 'lifestyle' | 'interests' | 'builder';
 
-interface Pet {
-  type: string;
-  name: string;
-}
-
-const petTypeOptions = [
-  { id: 'dog', label: 'dog', emoji: '🐕' },
-  { id: 'cat', label: 'cat', emoji: '🐈' },
-  { id: 'bird', label: 'bird', emoji: '🐦' },
-  { id: 'rabbit', label: 'rabbit', emoji: '🐰' },
-  { id: 'fish', label: 'fish', emoji: '🐟' },
-  { id: 'reptile', label: 'reptile', emoji: '🦎' },
-  { id: 'other', label: 'other', emoji: '🐾' },
-];
-
 export default function EditProfileScreen() {
   const router = useRouter();
   const { convexUser: user } = useAuthenticatedUser();
@@ -177,9 +153,6 @@ export default function EditProfileScreen() {
   const [interests, setInterests] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [pets, setPets] = useState<Pet[]>([]);
-  const [addingPet, setAddingPet] = useState(false);
-  const [newPetType, setNewPetType] = useState('');
-  const [newPetName, setNewPetName] = useState('');
   const [builderBio, setBuilderBio] = useState('');
   const [builderSpecialties, setBuilderSpecialties] = useState<string[]>([]);
 
@@ -337,18 +310,17 @@ export default function EditProfileScreen() {
       // Upload any new local photos
       const uploadedPhotos = await uploadPhotos(photos);
 
-      const args: Record<string, unknown> = {
+      await updateUser({
         name: name.trim(),
         username: username.trim(),
         lifestyle,
         interests,
         photos: uploadedPhotos,
-      };
-      if (instagram.trim()) args.instagram = instagram.trim();
-      args.pets = pets.length > 0 ? pets : [];
-      if (builderBio.trim()) args.builderBio = builderBio.trim();
-      if (builderSpecialties.length > 0) args.builderSpecialties = builderSpecialties;
-      await updateUser(args as any);
+        ...(instagram.trim() ? { instagram: instagram.trim() } : {}),
+        pets: pets.length > 0 ? pets : [],
+        ...(builderBio.trim() ? { builderBio: builderBio.trim() } : {}),
+        ...(builderSpecialties.length > 0 ? { builderSpecialties } : {}),
+      });
 
       router.back();
     } catch {
@@ -367,83 +339,6 @@ export default function EditProfileScreen() {
     } else {
       router.back();
     }
-  };
-
-  const renderPhotoSlot = (index: number, isLarge: boolean = false) => {
-    const photo = photos[index];
-    const size = isLarge
-      ? { width: LARGE_TILE_WIDTH, height: LARGE_TILE_HEIGHT }
-      : { width: SMALL_TILE_SIZE, height: SMALL_TILE_SIZE };
-
-    return (
-      <TouchableOpacity
-        key={index}
-        onPress={() => pickImage(index)}
-        onLongPress={() => photo && removePhoto(index)}
-        style={[
-          size,
-          {
-            borderRadius: 16,
-            overflow: 'hidden',
-            backgroundColor: photo ? 'transparent' : '#F3F4F6',
-            borderWidth: photo ? 0 : 2,
-            borderStyle: 'dashed',
-            borderColor: '#D1D5DB',
-          },
-        ]}
-        activeOpacity={0.7}
-      >
-        {photo ? (
-          <View style={{ flex: 1 }}>
-            <Image
-              source={{ uri: photo }}
-              style={{ width: '100%', height: '100%' }}
-              resizeMode="cover"
-            />
-            <TouchableOpacity
-              onPress={() => removePhoto(index)}
-              style={{
-                position: 'absolute',
-                top: 8,
-                right: 8,
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                borderRadius: 12,
-                padding: 4,
-              }}
-            >
-              <Ionicons name="close" size={16} color="#fff" />
-            </TouchableOpacity>
-            {isLarge && (
-              <View
-                style={{
-                  position: 'absolute',
-                  bottom: 8,
-                  left: 8,
-                  backgroundColor: 'rgba(0,0,0,0.7)',
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                }}
-              >
-                <Text
-                  style={{
-                    color: '#fff',
-                    fontSize: 12,
-                    fontFamily: 'InstrumentSans_500Medium',
-                  }}
-                >
-                  main photo
-                </Text>
-              </View>
-            )}
-          </View>
-        ) : (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="add" size={isLarge ? 40 : 28} color="#9CA3AF" />
-          </View>
-        )}
-      </TouchableOpacity>
-    );
   };
 
   const sections: { id: Section; label: string }[] = [
@@ -469,7 +364,12 @@ export default function EditProfileScreen() {
       >
         {/* Header */}
         <View className="px-6 py-4 flex-row items-center justify-between border-b border-gray-100">
-          <TouchableOpacity onPress={handleBack} className="p-2 -ml-2">
+          <TouchableOpacity
+            onPress={handleBack}
+            className="p-2 -ml-2"
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
             <Ionicons name="arrow-back" size={24} color="#000" />
           </TouchableOpacity>
           <Text
@@ -566,185 +466,18 @@ export default function EditProfileScreen() {
                 autoCapitalize="none"
                 prefix="@"
               />
-              <View>
-                <Text
-                  className="text-sm text-black mb-2"
-                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                >
-                  photos
-                </Text>
-                {/* Row 1: Large photo + 2 small stacked */}
-                <View style={{ flexDirection: 'row', gap: GRID_GAP }}>
-                  {renderPhotoSlot(0, true)}
-                  <View style={{ gap: GRID_GAP }}>
-                    {renderPhotoSlot(1)}
-                    {renderPhotoSlot(2)}
-                  </View>
-                </View>
-                {/* Row 2: 3 small photos */}
-                <View style={{ flexDirection: 'row', gap: GRID_GAP, marginTop: GRID_GAP }}>
-                  {renderPhotoSlot(3)}
-                  {renderPhotoSlot(4)}
-                  {renderPhotoSlot(5)}
-                </View>
-              </View>
+              <PhotoGrid
+                photos={photos}
+                onAddPhoto={pickImage}
+                onRemovePhoto={removePhoto}
+              />
 
               {/* Pets */}
-              <View>
-                <Text
-                  className="text-sm text-black mb-2"
-                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                >
-                  pets
-                </Text>
-                <Text
-                  className="text-gray-500 mb-4"
-                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                >
-                  add your travel companions
-                </Text>
-
-                {pets.map((pet, index) => {
-                  const typeInfo = petTypeOptions.find((p) => p.id === pet.type);
-                  return (
-                    <View
-                      key={index}
-                      className="flex-row items-center justify-between bg-gray-50 rounded-2xl px-4 py-3 mb-3"
-                    >
-                      <View className="flex-row items-center">
-                        <Text style={{ fontSize: 24 }}>{typeInfo?.emoji || '🐾'}</Text>
-                        <View className="ml-3">
-                          <Text
-                            className="text-black text-base"
-                            style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                          >
-                            {pet.name}
-                          </Text>
-                          <Text
-                            className="text-gray-500 text-sm"
-                            style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                          >
-                            {typeInfo?.label || pet.type}
-                          </Text>
-                        </View>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => setPets((prev) => prev.filter((_, i) => i !== index))}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      >
-                        <Ionicons name="trash-outline" size={20} color="#9CA3AF" />
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
-
-                {addingPet ? (
-                  <View className="bg-gray-50 rounded-2xl p-4 mb-3">
-                    <Text
-                      className="text-sm text-gray-500 mb-3"
-                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                    >
-                      what kind of pet?
-                    </Text>
-                    <View className="flex-row flex-wrap gap-2 mb-4">
-                      {petTypeOptions.map((opt) => (
-                        <TouchableOpacity
-                          key={opt.id}
-                          onPress={() => setNewPetType(opt.id)}
-                          className="px-3 py-2 rounded-full flex-row items-center"
-                          style={{
-                            backgroundColor: newPetType === opt.id ? '#fd6b03' : '#E5E7EB',
-                          }}
-                        >
-                          <Text className="mr-1">{opt.emoji}</Text>
-                          <Text
-                            style={{
-                              fontFamily: 'InstrumentSans_500Medium',
-                              color: newPetType === opt.id ? '#fff' : '#374151',
-                            }}
-                          >
-                            {opt.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-
-                    <Text
-                      className="text-sm text-gray-500 mb-2"
-                      style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                    >
-                      what&apos;s their name?
-                    </Text>
-                    <TextInput
-                      value={newPetName}
-                      onChangeText={setNewPetName}
-                      placeholder="pet name"
-                      placeholderTextColor="#9CA3AF"
-                      autoCapitalize="words"
-                      maxLength={30}
-                      className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-black mb-4"
-                      style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 16 }}
-                    />
-
-                    <View className="flex-row gap-3">
-                      <TouchableOpacity
-                        onPress={() => {
-                          setAddingPet(false);
-                          setNewPetType('');
-                          setNewPetName('');
-                        }}
-                        className="flex-1 py-3 rounded-xl items-center"
-                        style={{ backgroundColor: '#F3F4F6' }}
-                      >
-                        <Text
-                          className="text-gray-600"
-                          style={{ fontFamily: 'InstrumentSans_500Medium' }}
-                        >
-                          cancel
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => {
-                          if (!newPetType || !newPetName.trim()) return;
-                          setPets((prev) => [...prev, { type: newPetType, name: newPetName.trim() }]);
-                          setAddingPet(false);
-                          setNewPetType('');
-                          setNewPetName('');
-                        }}
-                        className="flex-1 py-3 rounded-xl items-center"
-                        style={{
-                          backgroundColor: newPetType && newPetName.trim() ? '#fd6b03' : '#FDBA74',
-                        }}
-                      >
-                        <Text
-                          className="text-white"
-                          style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-                        >
-                          add
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ) : pets.length < 5 ? (
-                  <TouchableOpacity
-                    onPress={() => setAddingPet(true)}
-                    className="flex-row items-center justify-center py-4 rounded-2xl"
-                    style={{ backgroundColor: '#F3F4F6' }}
-                  >
-                    <Ionicons name="add-circle-outline" size={22} color="#6B7280" />
-                    <Text
-                      className="ml-2"
-                      style={{
-                        fontFamily: 'InstrumentSans_500Medium',
-                        fontSize: 15,
-                        color: '#6B7280',
-                      }}
-                    >
-                      add a pet
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
+              <PetsManager
+                pets={pets}
+                onAddPet={(pet) => setPets((prev) => [...prev, pet])}
+                onRemovePet={(index) => setPets((prev) => prev.filter((_, i) => i !== index))}
+              />
             </View>
           )}
 

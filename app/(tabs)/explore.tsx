@@ -371,6 +371,8 @@ export default function ExploreScreen() {
             className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
             activeOpacity={0.7}
             onPress={() => { setSearchQuery(''); setSearchVisible(true); }}
+            accessibilityRole="button"
+            accessibilityLabel="Search activities"
           >
             <Ionicons name="search-outline" size={20} color="#000" />
           </TouchableOpacity>
@@ -378,6 +380,8 @@ export default function ExploreScreen() {
             className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
             activeOpacity={0.7}
             onPress={() => setPrefsVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Open preferences"
           >
             <Ionicons name="options-outline" size={20} color="#000" />
           </TouchableOpacity>
@@ -385,6 +389,8 @@ export default function ExploreScreen() {
             className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
             activeOpacity={0.7}
             onPress={() => setMyEventsVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="View my events"
           >
             <Ionicons name="calendar-outline" size={20} color="#000" />
           </TouchableOpacity>
@@ -474,6 +480,8 @@ export default function ExploreScreen() {
                       onPress={() => Share.share({ message: `Check out "${activity.title}" on Detour!` })}
                       className="w-8 h-8 rounded-full bg-black/40 items-center justify-center"
                       activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel="Share activity"
                     >
                       <Ionicons name="share-outline" size={16} color="#fff" />
                     </TouchableOpacity>
@@ -481,6 +489,8 @@ export default function ExploreScreen() {
                       onPress={() => setMenuOpenId(menuOpenId === activity.id ? null : activity.id)}
                       className="w-8 h-8 rounded-full bg-black/40 items-center justify-center"
                       activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel="Open activity menu"
                     >
                       <Ionicons name="ellipsis-vertical" size={16} color="#fff" />
                     </TouchableOpacity>
@@ -627,6 +637,8 @@ export default function ExploreScreen() {
           setNewEvent({ coverImage: '', title: '', description: '', location: '', startDate: '', startTime: '', endDate: '', endTime: '', tags: [] });
           setCreateVisible(true);
         }}
+        accessibilityRole="button"
+        accessibilityLabel="Create new event"
       >
         <Ionicons name="add" size={32} color="#fff" />
       </TouchableOpacity>
@@ -649,6 +661,8 @@ export default function ExploreScreen() {
             <TouchableOpacity
               onPress={() => setPrefsVisible(false)}
               className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+              accessibilityRole="button"
+              accessibilityLabel="Close preferences"
             >
               <Ionicons name="close" size={22} color="#000" />
             </TouchableOpacity>
@@ -765,6 +779,8 @@ export default function ExploreScreen() {
                         }}
                         className="w-8 h-8 rounded-full bg-gray-200 items-center justify-center"
                         disabled={activityDistance === DISTANCE_OPTIONS[0]}
+                        accessibilityRole="button"
+                        accessibilityLabel="Decrease distance"
                       >
                         <Ionicons
                           name="remove"
@@ -785,6 +801,8 @@ export default function ExploreScreen() {
                         }}
                         className="w-8 h-8 rounded-full bg-gray-200 items-center justify-center"
                         disabled={activityDistance === DISTANCE_OPTIONS[DISTANCE_OPTIONS.length - 1]}
+                        accessibilityRole="button"
+                        accessibilityLabel="Increase distance"
                       >
                         <Ionicons
                           name="add"
@@ -838,7 +856,11 @@ export default function ExploreScreen() {
                 style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 16 }}
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                >
                   <Ionicons name="close-circle" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
               )}
@@ -990,6 +1012,8 @@ export default function ExploreScreen() {
             <TouchableOpacity
               onPress={() => setMyEventsVisible(false)}
               className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center"
+              accessibilityRole="button"
+              accessibilityLabel="Close my events"
             >
               <Ionicons name="close" size={22} color="#000" />
             </TouchableOpacity>

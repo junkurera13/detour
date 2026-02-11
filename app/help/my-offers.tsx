@@ -5,6 +5,26 @@ import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+
+interface EnrichedOffer {
+  _id: Id<"helpOffers">;
+  message?: string;
+  price?: number;
+  status: string;
+  createdAt: number;
+  conversationId: Id<"helpConversations"> | null;
+  request: {
+    _id: Id<"helpRequests">;
+    title: string;
+    category: string;
+    status: string;
+    isUrgent?: boolean;
+    progressStep?: string;
+    location?: string;
+  } | null;
+  requester: { _id: Id<"users">; name?: string; photos?: string[] } | null;
+}
 
 const statusTabs = [
   { id: 'pending', label: 'pending' },
@@ -46,9 +66,9 @@ export default function MyOffersScreen() {
   const handleOfferPress = (offer: any) => {
     // If accepted, go directly to chat
     if (offer.status === 'accepted' && offer.conversationId) {
-      router.push(`/help/chat/${offer.conversationId}` as any);
+      router.push(`/help/chat/${offer.conversationId}`);
     } else if (offer.request) {
-      router.push(`/help/${offer.request._id}` as any);
+      router.push(`/help/${offer.request._id}`);
     }
   };
 
@@ -121,8 +141,8 @@ export default function MyOffersScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
         >
-          {offers.map((offer) => {
-            const requester = (offer as any).requester;
+          {(offers as EnrichedOffer[]).map((offer) => {
+            const requester = offer.requester;
             const progressStep = offer.request?.progressStep;
 
             return (

@@ -5,6 +5,21 @@ import { useState } from 'react';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+
+interface EnrichedRequest {
+  _id: Id<"helpRequests">;
+  title: string;
+  category: string;
+  status: string;
+  isUrgent?: boolean;
+  createdAt: number;
+  offerCount: number;
+  conversationId: Id<"helpConversations"> | null;
+  helper: { _id: Id<"users">; name?: string; photos?: string[] } | null;
+  acceptedPrice: number | null;
+  progressStep?: string;
+}
 
 const statusTabs = [
   { id: 'open', label: 'open' },
@@ -33,7 +48,7 @@ export default function MyRequestsScreen() {
   });
 
   const handleRequestPress = (request: any) => {
-    router.push(`/help/${request._id}` as any);
+    router.push(`/help/${request._id}`);
   };
 
   return (
@@ -105,9 +120,9 @@ export default function MyRequestsScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
         >
-          {requests.map((request) => {
-            const helper = (request as any).helper;
-            const progressStep = (request as any).progressStep || 'negotiation';
+          {(requests as EnrichedRequest[]).map((request) => {
+            const helper = request.helper;
+            const progressStep = request.progressStep || 'negotiation';
 
             return (
               <TouchableOpacity

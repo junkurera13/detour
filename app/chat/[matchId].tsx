@@ -271,7 +271,12 @@ export default function ChatScreen() {
     return (
       <SafeAreaView className="flex-1 bg-white" edges={['top']}>
         <View className="flex-row items-center px-4 py-3 border-b border-gray-100">
-          <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 items-center justify-center"
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
             <Ionicons name="chevron-back" size={28} color="#000" />
           </TouchableOpacity>
         </View>
@@ -297,6 +302,8 @@ export default function ChatScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             className="w-10 h-10 items-center justify-center"
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons name="chevron-back" size={28} color="#000" />
           </TouchableOpacity>
@@ -335,6 +342,8 @@ export default function ChatScreen() {
         <TouchableOpacity
           onPress={() => router.back()}
           className="w-10 h-10 items-center justify-center"
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
           <Ionicons name="chevron-back" size={28} color="#000" />
         </TouchableOpacity>
@@ -363,6 +372,8 @@ export default function ChatScreen() {
         <TouchableOpacity
           onPress={() => setShowMenu(true)}
           className="w-10 h-10 items-center justify-center"
+          accessibilityRole="button"
+          accessibilityLabel="Open menu"
         >
           <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
         </TouchableOpacity>
@@ -430,6 +441,8 @@ export default function ChatScreen() {
               height: 44,
               backgroundColor: messageText.trim() ? '#fd6b03' : '#E5E7EB',
             }}
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
           >
             {isSending ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -558,6 +571,8 @@ export default function ChatScreen() {
               <TouchableOpacity
                 onPress={() => setImagePreview(null)}
                 className="w-10 h-10 items-center justify-center"
+                accessibilityRole="button"
+                accessibilityLabel="Close image preview"
               >
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
