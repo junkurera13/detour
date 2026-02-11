@@ -20,6 +20,7 @@
       },
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://dutiful-echidna-701.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://dutiful-echidna-701.convex.site",
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_bWF4aW11bS1ncnViLTc2LmNsZXJrLmFjY291bnRzLmRldiQ",
         "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY": "goog_VOeisoLixCLtdJrinnVABlWzOqf",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_xtjlBBlbmYVsPOqWxkEhKUVxPWv",
@@ -31,6 +32,7 @@
       "node": "20.19.4",
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://dutiful-echidna-701.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://dutiful-echidna-701.convex.site",
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_bWF4aW11bS1ncnViLTc2LmNsZXJrLmFjY291bnRzLmRldiQ",
         "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY": "goog_VOeisoLixCLtdJrinnVABlWzOqf",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_xtjlBBlbmYVsPOqWxkEhKUVxPWv",
