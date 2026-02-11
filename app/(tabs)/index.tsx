@@ -1,11 +1,11 @@
-import { View, Text, Image, TouchableOpacity, Dimensions, StyleSheet, Modal, ScrollView, ActivityIndicator, PanResponder, Platform } from 'react-native';
+import { View, Text, Image, TouchableOpacity, Dimensions, StyleSheet, Modal, ScrollView, ActivityIndicator, PanResponder, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Doc } from '@/convex/_generated/dataModel';
+import { Doc, Id } from '@/convex/_generated/dataModel';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 import { computeCompatibility, CompatibilityBreakdown } from '@/utils/compatibility';
 import { CompatibilityBadge } from '@/components/ui/CompatibilityBadge';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -130,6 +131,9 @@ function SwipeableCard({ profile, isFirst, onSwipeLeft, onSwipeRight, swipeDirec
   const translateY = useSharedValue(0);
   const [menuVisible, setMenuVisible] = useState(false);
   const cardRouter = useRouter();
+  const blockUser = useMutation(api.blocks.blockUser);
+  const reportUser = useMutation(api.reports.create);
+  const { convexUser: swipeCardUser } = useAuthenticatedUser();
 
   const triggerHaptic = (type: 'light' | 'medium') => {
     if (type === 'light') {
@@ -367,14 +371,53 @@ function SwipeableCard({ profile, isFirst, onSwipeLeft, onSwipeRight, swipeDirec
               <View style={styles.menuDivider} />
               <TouchableOpacity
                 style={styles.menuOption}
-                onPress={() => setMenuVisible(false)}
+                onPress={() => {
+                  setMenuVisible(false);
+                  if (!swipeCardUser) return;
+                  Alert.alert(
+                    'block this user?',
+                    'they won\'t be able to see you and you won\'t see them.',
+                    [
+                      { text: 'cancel', style: 'cancel' },
+                      {
+                        text: 'block',
+                        style: 'destructive',
+                        onPress: async () => {
+                          try {
+                            await blockUser({ blockerId: swipeCardUser._id, blockedId: profile.id as Id<'users'> });
+                            onSwipeLeft();
+                          } catch {}
+                        },
+                      },
+                    ]
+                  );
+                }}
               >
                 <Text style={[styles.menuOptionText, styles.menuOptionDanger]}>block</Text>
               </TouchableOpacity>
               <View style={styles.menuDivider} />
               <TouchableOpacity
                 style={styles.menuOption}
-                onPress={() => setMenuVisible(false)}
+                onPress={() => {
+                  setMenuVisible(false);
+                  Alert.alert(
+                    'report and block this user?',
+                    'this will report them for review and block them.',
+                    [
+                      { text: 'cancel', style: 'cancel' },
+                      {
+                        text: 'report & block',
+                        style: 'destructive',
+                        onPress: async () => {
+                          try {
+                            await reportUser({ reportedId: profile.id as Id<'users'>, reason: 'reported from discovery' });
+                            onSwipeLeft();
+                          } catch {}
+                        },
+                      },
+                    ]
+                  );
+                }}
               >
                 <Text style={[styles.menuOptionText, styles.menuOptionDanger]}>block and report</Text>
               </TouchableOpacity>
@@ -549,6 +592,7 @@ export default function NearbyScreen() {
   const [ageMin, setAgeMin] = useState(18);
   const [ageMax, setAgeMax] = useState(70);
   const [prefDistance, setPrefDistance] = useState(25);
+  const prefsLoaded = useRef(false);
   const [prefLocation, setPrefLocation] = useState('');
   const [prefCoords, setPrefCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
@@ -577,6 +621,28 @@ export default function NearbyScreen() {
       locationInitialized.current = true;
     }
   }, [baseLocation, convexUser?.latitude, convexUser?.longitude]);
+
+  // Load saved preferences from AsyncStorage
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem('nearby_prefs');
+        if (saved) {
+          const prefs = JSON.parse(saved);
+          if (prefs.ageMin != null) setAgeMin(prefs.ageMin);
+          if (prefs.ageMax != null) setAgeMax(prefs.ageMax);
+          if (prefs.distance != null) setPrefDistance(prefs.distance);
+        }
+      } catch {}
+      prefsLoaded.current = true;
+    })();
+  }, []);
+
+  // Save preferences when they change
+  useEffect(() => {
+    if (!prefsLoaded.current) return;
+    AsyncStorage.setItem('nearby_prefs', JSON.stringify({ ageMin, ageMax, distance: prefDistance })).catch(() => {});
+  }, [ageMin, ageMax, prefDistance]);
 
   // DEBUG: log query state to help diagnose empty nearby page
   useEffect(() => {

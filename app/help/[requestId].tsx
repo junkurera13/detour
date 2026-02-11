@@ -184,10 +184,31 @@ export default function HelpRequestDetailScreen() {
     }
   };
 
-  if (!request) {
+  if (request === undefined) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
         <ActivityIndicator size="large" color="#fd6b03" />
+      </SafeAreaView>
+    );
+  }
+
+  if (request === null) {
+    return (
+      <SafeAreaView className="flex-1 bg-white">
+        <View className="flex-row items-center px-4 py-4 border-b border-gray-100">
+          <TouchableOpacity onPress={() => router.back()} className="p-2">
+            <Ionicons name="arrow-back" size={24} color="#000" />
+          </TouchableOpacity>
+        </View>
+        <View className="flex-1 items-center justify-center px-6">
+          <Ionicons name="alert-circle-outline" size={48} color="#9CA3AF" />
+          <Text
+            className="text-gray-500 text-center mt-3"
+            style={{ fontFamily: 'InstrumentSans_500Medium' }}
+          >
+            request not found
+          </Text>
+        </View>
       </SafeAreaView>
     );
   }

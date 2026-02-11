@@ -154,10 +154,9 @@ interface PersonCardProps {
   onPress: () => void;
   badge?: string;
   badgeColor?: string;
-  badgeBg?: string;
 }
 
-function PersonCard({ user, subtitle, onPress, badge, badgeColor = '#fd6b03', badgeBg = '#FFF7ED' }: PersonCardProps) {
+function PersonCard({ user, subtitle, onPress, badge, badgeColor = '#fd6b03' }: PersonCardProps) {
   const age = getAge(user.birthday);
   return (
     <TouchableOpacity
@@ -188,15 +187,13 @@ function PersonCard({ user, subtitle, onPress, badge, badgeColor = '#fd6b03', ba
             {subtitle}
           </Text>
           {badge && (
-            <View className="mt-1.5 px-2 py-0.5 rounded-full self-start" style={{ backgroundColor: badgeBg }}>
-              <Text
-                className="text-xs"
-                style={{ fontFamily: 'InstrumentSans_500Medium', color: badgeColor }}
-                numberOfLines={1}
-              >
-                {badge}
-              </Text>
-            </View>
+            <Text
+              className="text-xs mt-1.5"
+              style={{ fontFamily: 'InstrumentSans_500Medium', color: badgeColor }}
+              numberOfLines={1}
+            >
+              {badge}
+            </Text>
           )}
         </View>
       </View>
@@ -340,7 +337,7 @@ export default function ExplorePeopleScreen() {
                     onPress={() => navigateToUser(user._id)}
                     badge={user.currentLocation.split(',')[0]}
                     badgeColor="#3B82F6"
-                    badgeBg="#EFF6FF"
+
                   />
                 ))}
               </ScrollView>
@@ -378,7 +375,7 @@ export default function ExplorePeopleScreen() {
                       onPress={() => navigateToUser(user._id)}
                       badge={user.currentLocation.split(',')[0]}
                       badgeColor="#3B82F6"
-                      badgeBg="#EFF6FF"
+  
                     />
                   ))}
               </ScrollView>
@@ -410,7 +407,7 @@ export default function ExplorePeopleScreen() {
                     onPress={() => navigateToUser(user._id)}
                     badge={user.currentLocation.split(',')[0]}
                     badgeColor="#8B5CF6"
-                    badgeBg="#F5F3FF"
+
                   />
                 ))}
               </ScrollView>
@@ -442,7 +439,7 @@ export default function ExplorePeopleScreen() {
                     onPress={() => navigateToUser(user._id)}
                     badge={lifestyleLabels[user.lifestyle[0]] || user.lifestyle[0]}
                     badgeColor="#fd6b03"
-                    badgeBg="#FFF7ED"
+
                   />
                 ))}
               </ScrollView>
@@ -474,7 +471,7 @@ export default function ExplorePeopleScreen() {
                     onPress={() => navigateToUser(user._id)}
                     badge={getSharedLabel(user)}
                     badgeColor="#059669"
-                    badgeBg="#ECFDF5"
+
                   />
                 ))}
               </ScrollView>

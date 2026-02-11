@@ -95,6 +95,7 @@ export default function ChatScreen() {
   const sendMessage = useMutation(api.messages.send);
   const markAsRead = useMutation(api.messages.markAsRead);
   const blockUser = useMutation(api.blocks.blockUser);
+  const reportUser = useMutation(api.reports.create);
 
   // Determine the other user
   const otherUser = match
@@ -260,10 +261,31 @@ export default function ChatScreen() {
     );
   };
 
-  if (!match) {
+  if (match === undefined) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
         <ActivityIndicator size="large" color="#fd6b03" />
+      </SafeAreaView>
+    );
+  }
+
+  if (match === null) {
+    return (
+      <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+        <View className="flex-row items-center px-4 py-3 border-b border-gray-100">
+          <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
+            <Ionicons name="chevron-back" size={28} color="#000" />
+          </TouchableOpacity>
+        </View>
+        <View className="flex-1 items-center justify-center px-6">
+          <Ionicons name="alert-circle-outline" size={48} color="#9CA3AF" />
+          <Text
+            className="text-gray-500 text-center mt-3"
+            style={{ fontFamily: 'InstrumentSans_400Regular' }}
+          >
+            conversation not found
+          </Text>
+        </View>
       </SafeAreaView>
     );
   }
@@ -442,14 +464,22 @@ export default function ChatScreen() {
                 setShowMenu(false);
                 Alert.alert(
                   `Report ${otherUser?.name?.toLowerCase() || 'this user'}?`,
-                  'We\'ll review this account. You can also block them to stop all contact.',
+                  'This will report and block them. You won\'t see each other in the app.',
                   [
                     { text: 'Cancel', style: 'cancel' },
                     {
-                      text: 'Report',
+                      text: 'Report & Block',
                       style: 'destructive',
-                      onPress: () => {
-                        Alert.alert('Reported', 'Thanks for letting us know. We\'ll review this account.');
+                      onPress: async () => {
+                        try {
+                          if (otherUserId) {
+                            await reportUser({ reportedId: otherUserId, reason: 'reported from chat' });
+                          }
+                          Alert.alert('Reported', 'Thanks for letting us know. This user has been blocked.');
+                          router.back();
+                        } catch {
+                          Alert.alert('Reported', 'Thanks for letting us know. This user has been blocked.');
+                        }
                       },
                     },
                   ]

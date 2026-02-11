@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from 'convex/react';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '@/convex/_generated/api';
+import { usePhotoUpload } from '@/hooks/usePhotoUpload';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { SelectionChip } from '@/components/ui/SelectionChip';
@@ -21,6 +22,7 @@ const categories = [
 export default function CreateHelpRequestScreen() {
   const router = useRouter();
   const createRequest = useMutation(api.helpRequests.create);
+  const { uploadPhotos, isUploading } = usePhotoUpload();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -70,12 +72,18 @@ export default function CreateHelpRequestScreen() {
 
     setIsSubmitting(true);
     try {
+      // Upload photos to Convex storage first
+      let uploadedPhotos: string[] | undefined;
+      if (photos.length > 0) {
+        uploadedPhotos = await uploadPhotos(photos);
+      }
+
       const result = await createRequest({
         title: title.trim(),
         description: description.trim(),
         category,
         location: location.trim() ? location.trim().toLowerCase() : undefined,
-        photos: photos.length > 0 ? photos : undefined,
+        photos: uploadedPhotos && uploadedPhotos.length > 0 ? uploadedPhotos : undefined,
         isUrgent,
       });
 
@@ -246,10 +254,10 @@ export default function CreateHelpRequestScreen() {
       {/* Submit Button */}
       <View className="px-6 pb-6 pt-4 border-t border-gray-100">
         <Button
-          title={isSubmitting ? 'posting...' : 'post request'}
+          title={isUploading ? 'uploading photos...' : isSubmitting ? 'posting...' : 'post request'}
           onPress={handleSubmit}
-          disabled={!isValid || isSubmitting}
-          loading={isSubmitting}
+          disabled={!isValid || isSubmitting || isUploading}
+          loading={isSubmitting || isUploading}
           variant="accent"
         />
       </View>

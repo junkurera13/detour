@@ -215,21 +215,19 @@ export default function UserProfileScreen() {
 
   const handleReport = () => {
     closeMenu();
-    Alert.alert('report user?', 'this will flag the account for review by our team.', [
+    Alert.alert('report and block this user?', 'this will report them for review and block them.', [
       { text: 'cancel', style: 'cancel' },
       {
-        text: 'report',
+        text: 'report & block',
         style: 'destructive',
         onPress: async () => {
-          if (!userId) {
-            Alert.alert('reported', 'thanks for letting us know. we\'ll review this account.');
-            return;
-          }
+          if (!userId) return;
           try {
             await reportUser({ reportedId: userId as Id<"users">, reason: 'reported from profile' });
-            Alert.alert('reported', 'thanks for letting us know. we\'ll review this account.');
+            Alert.alert('reported', 'thanks for letting us know. this user has been blocked.');
+            router.back();
           } catch {
-            Alert.alert('reported', 'thanks for letting us know. we\'ll review this account.');
+            Alert.alert('reported', 'thanks for letting us know. this user has been blocked.');
           }
         },
       },

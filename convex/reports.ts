@@ -24,6 +24,22 @@ export const create = mutation({
       createdAt: Date.now(),
     });
 
+    // Also block the reported user
+    const existingBlock = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_pair", (q) =>
+        q.eq("blockerId", user._id).eq("blockedId", args.reportedId)
+      )
+      .first();
+
+    if (!existingBlock) {
+      await ctx.db.insert("blockedUsers", {
+        blockerId: user._id,
+        blockedId: args.reportedId,
+        createdAt: Date.now(),
+      });
+    }
+
     return { success: true };
   },
 });
