@@ -17,11 +17,25 @@
       "node": "20.19.4",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://dutiful-echidna-701.convex.cloud",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_bWF4aW11bS1ncnViLTc2LmNsZXJrLmFjY291bnRzLmRldiQ",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY": "goog_VOeisoLixCLtdJrinnVABlWzOqf",
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_xtjlBBlbmYVsPOqWxkEhKUVxPWv",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1Ijoiamp1MWNlIiwiYSI6ImNtNnJoOW4wbDFwYXEycXEzOXlmeTk5aGwifQ.9N1FWUP-aE0CUR6i_lwcvQ"
       }
     },
     "production": {
       "autoIncrement": true,
-      "node": "20.19.4"
+      "node": "20.19.4",
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://dutiful-echidna-701.convex.cloud",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_bWF4aW11bS1ncnViLTc2LmNsZXJrLmFjY291bnRzLmRldiQ",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY": "goog_VOeisoLixCLtdJrinnVABlWzOqf",
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_xtjlBBlbmYVsPOqWxkEhKUVxPWv",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1Ijoiamp1MWNlIiwiYSI6ImNtNnJoOW4wbDFwYXEycXEzOXlmeTk5aGwifQ.9N1FWUP-aE0CUR6i_lwcvQ"
+      }
     }
   }
 }
