@@ -12,6 +12,7 @@ import type * as activities from "../activities.js";
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
 import type * as blocks from "../blocks.js";
+import type * as crews from "../crews.js";
 import type * as crossingPaths from "../crossingPaths.js";
 import type * as files from "../files.js";
 import type * as helpMessages from "../helpMessages.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
   blocks: typeof blocks;
+  crews: typeof crews;
   crossingPaths: typeof crossingPaths;
   files: typeof files;
   helpMessages: typeof helpMessages;

@@ -91,46 +91,48 @@ export default function StopsScreen() {
         </View>
       </View>
 
-      {/* Category filter chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 12, gap: 8 }}
-      >
-        {categories.map((cat) => {
-          const isSelected = selectedCategory === cat.id;
-          return (
-            <TouchableOpacity
-              key={cat.id}
-              onPress={() => setSelectedCategory(cat.id)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderRadius: 20,
-                backgroundColor: isSelected ? '#fd6b03' : '#F3F4F6',
-              }}
-            >
-              <Ionicons
-                name={cat.icon}
-                size={14}
-                color={isSelected ? '#fff' : '#6B7280'}
-                style={{ marginRight: 6 }}
-              />
-              <Text
+      {/* Category filter chips — wrapped in a View to prevent vertical stretch on Android */}
+      <View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 12, gap: 8, alignItems: 'center' }}
+        >
+          {categories.map((cat) => {
+            const isSelected = selectedCategory === cat.id;
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                onPress={() => setSelectedCategory(cat.id)}
                 style={{
-                  fontFamily: 'InstrumentSans_500Medium',
-                  fontSize: 13,
-                  color: isSelected ? '#fff' : '#6B7280',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  backgroundColor: isSelected ? '#fd6b03' : '#F3F4F6',
                 }}
               >
-                {cat.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+                <Ionicons
+                  name={cat.icon}
+                  size={14}
+                  color={isSelected ? '#fff' : '#6B7280'}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={{
+                    fontFamily: 'InstrumentSans_500Medium',
+                    fontSize: 13,
+                    color: isSelected ? '#fff' : '#6B7280',
+                  }}
+                >
+                  {cat.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       {viewMode === 'map' ? (
         /* Map view */

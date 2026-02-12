@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { View, Text, Platform } from 'react-native';
+import { View, Text, Platform, TouchableOpacity } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -71,14 +71,16 @@ interface StopMapProps {
 }
 
 function MapPlaceholder({ style }: { style?: ViewStyle }) {
+  const hasFlex = style && 'flex' in style;
+  const base: ViewStyle = {
+    ...(hasFlex ? {} : { height: 180 }),
+    borderRadius: 16,
+    backgroundColor: '#E8F4E8',
+    justifyContent: 'center',
+    alignItems: 'center',
+  };
   return (
-    <View style={[{
-      height: 180,
-      borderRadius: 16,
-      backgroundColor: '#E8F4E8',
-      justifyContent: 'center',
-      alignItems: 'center',
-    }, style]}>
+    <View style={[base, style]}>
       <Ionicons name="map-outline" size={36} color="#9CA3AF" />
       <Text style={{ fontFamily: 'InstrumentSans_500Medium', fontSize: 14, color: '#6B7280', marginTop: 8 }}>
         map requires dev build
@@ -101,6 +103,9 @@ export function StopMap({
   showRoute = false,
 }: StopMapProps) {
   const cameraRef = useRef<any>(null);
+
+  // When flex is provided in style, omit the default fixed height so the map fills its container
+  const hasFlexLayout = style && 'flex' in style;
 
   // Compute center from all points if not provided
   const mapCenter = center || computeCenter([
@@ -142,8 +147,11 @@ export function StopMap({
   }
 
   if (!mapCenter) {
+    const noDataDefault: ViewStyle = hasFlexLayout
+      ? { borderRadius: 16, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' }
+      : { height: 180, borderRadius: 16, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' };
     return (
-      <View style={[{ height: 180, borderRadius: 16, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' }, style]}>
+      <View style={[noDataDefault, style]}>
         <Text style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 14, color: '#9CA3AF' }}>
           no location data available
         </Text>
@@ -151,8 +159,12 @@ export function StopMap({
     );
   }
 
+  const defaultStyle: ViewStyle = hasFlexLayout
+    ? { borderRadius: 16, overflow: 'hidden' }
+    : { height: 180, borderRadius: 16, overflow: 'hidden' };
+
   return (
-    <View style={[{ height: 180, borderRadius: 16, overflow: 'hidden' }, style]}>
+    <View style={[defaultStyle, style]}>
       <Mapbox.MapView
         style={{ flex: 1 }}
         styleURL="mapbox://styles/mapbox/outdoors-v12"
@@ -187,59 +199,70 @@ export function StopMap({
           </Mapbox.ShapeSource>
         )}
 
-        {/* Route stop markers (numbered) */}
-        {routeStops.map((stop, index) => (
-          <Mapbox.PointAnnotation
-            key={`route-${index}`}
-            id={`route-${index}`}
-            coordinate={[stop.longitude, stop.latitude]}
-          >
-            <View style={{
-              width: 28,
-              height: 28,
-              borderRadius: 14,
-              backgroundColor: '#fd6b03',
-              justifyContent: 'center',
-              alignItems: 'center',
-              borderWidth: 2,
-              borderColor: '#fff',
-              ...Platform.select({
-                ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
-                android: { elevation: 4 },
-              }),
-            }}>
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{index + 1}</Text>
-            </View>
-          </Mapbox.PointAnnotation>
-        ))}
+        {/* Route stop markers (numbered) — use MarkerView on Android to avoid ghost render bug */}
+        {routeStops.map((stop, index) => {
+          const MarkerComponent = Platform.OS === 'android' ? Mapbox.MarkerView : Mapbox.PointAnnotation;
+          return (
+            <MarkerComponent
+              key={`route-${index}`}
+              id={`route-${index}`}
+              coordinate={[stop.longitude, stop.latitude]}
+            >
+              <View style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: '#fd6b03',
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderWidth: 2,
+                borderColor: '#fff',
+                ...Platform.select({
+                  ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
+                  android: { elevation: 4 },
+                }),
+              }}>
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{index + 1}</Text>
+              </View>
+            </MarkerComponent>
+          );
+        })}
 
-        {/* Community stop markers */}
-        {stops.map((stop) => (
-          <Mapbox.PointAnnotation
-            key={`stop-${stop.id}`}
-            id={`stop-${stop.id}`}
-            coordinate={[stop.longitude, stop.latitude]}
-            onSelected={() => onStopPress?.(stop.id)}
-          >
-            <View style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              backgroundColor: categoryColors[stop.category] || '#6B7280',
-              justifyContent: 'center',
-              alignItems: 'center',
-              borderWidth: 2,
-              borderColor: '#fff',
-              ...Platform.select({
-                ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
-                android: { elevation: 4 },
-              }),
-            }}>
-              <Text style={{ fontSize: 14 }}>{categoryLabels[stop.category] || '📍'}</Text>
-            </View>
-            <Mapbox.Callout title={stop.name} />
-          </Mapbox.PointAnnotation>
-        ))}
+        {/* Community stop markers — use MarkerView on Android to avoid ghost render bug */}
+        {stops.map((stop) => {
+          const MarkerComponent = Platform.OS === 'android' ? Mapbox.MarkerView : Mapbox.PointAnnotation;
+          return (
+            <MarkerComponent
+              key={`stop-${stop.id}`}
+              id={`stop-${stop.id}`}
+              coordinate={[stop.longitude, stop.latitude]}
+              {...(Platform.OS !== 'android' ? { onSelected: () => onStopPress?.(stop.id) } : {})}
+            >
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={Platform.OS === 'android' ? () => onStopPress?.(stop.id) : undefined}
+              >
+                <View style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: categoryColors[stop.category] || '#6B7280',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderWidth: 2,
+                  borderColor: '#fff',
+                  ...Platform.select({
+                    ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
+                    android: { elevation: 4 },
+                  }),
+                }}>
+                  <Text style={{ fontSize: 14 }}>{categoryLabels[stop.category] || '📍'}</Text>
+                </View>
+              </TouchableOpacity>
+              {Platform.OS !== 'android' && <Mapbox.Callout title={stop.name} />}
+            </MarkerComponent>
+          );
+        })}
       </Mapbox.MapView>
     </View>
   );

@@ -24,6 +24,10 @@ const testUsers = [
     latitude: 38.7223,
     longitude: -9.1393,
     futureTrip: "Barcelona, Spain",
+    futureTrips: [
+      { location: "Lisbon, Portugal", startDate: "2026-02-01", endDate: "2026-03-15", latitude: 38.7223, longitude: -9.1393, stopType: "city" },
+      { location: "Barcelona, Spain", startDate: "2026-03-20", endDate: "2026-04-15", latitude: 41.3874, longitude: 2.1686, stopType: "city" },
+    ],
     pets: [{ type: "cat", name: "mochi" }],
     rigType: "no-vehicle",
   },
@@ -47,6 +51,10 @@ const testUsers = [
     latitude: -8.6478,
     longitude: 115.1385,
     futureTrip: "Chiang Mai, Thailand",
+    futureTrips: [
+      { location: "Canggu, Bali", startDate: "2026-02-01", endDate: "2026-03-30", latitude: -8.6478, longitude: 115.1385, stopType: "city" },
+      { location: "Chiang Mai, Thailand", startDate: "2026-03-01", endDate: "2026-04-15", latitude: 18.7883, longitude: 98.9853, stopType: "city" },
+    ],
     pets: [{ type: "dog", name: "biscuit" }],
     rigType: "bike-motorcycle",
     rigName: "la vespa",
@@ -70,6 +78,10 @@ const testUsers = [
     latitude: 18.7883,
     longitude: 98.9853,
     futureTrip: "Vietnam",
+    futureTrips: [
+      { location: "Chiang Mai, Thailand", startDate: "2026-02-01", endDate: "2026-03-30", latitude: 18.7883, longitude: 98.9853, stopType: "city" },
+      { location: "Da Nang, Vietnam", startDate: "2026-04-01", endDate: "2026-04-20", latitude: 16.0544, longitude: 108.2022, stopType: "city" },
+    ],
     rigType: "on-foot",
   },
   {
@@ -92,6 +104,10 @@ const testUsers = [
     latitude: 41.3874,
     longitude: 2.1686,
     futureTrip: "Lisbon, Portugal",
+    futureTrips: [
+      { location: "Lisbon, Portugal", startDate: "2026-03-01", endDate: "2026-03-20", latitude: 38.7223, longitude: -9.1393, stopType: "city" },
+      { location: "Marrakech, Morocco", startDate: "2026-04-01", endDate: "2026-04-20", latitude: 31.6295, longitude: -7.9811, stopType: "city" },
+    ],
     rigType: "converted-van",
     rigName: "sol",
   },
@@ -115,6 +131,10 @@ const testUsers = [
     latitude: -33.9249,
     longitude: 18.4241,
     futureTrip: "Bali, Indonesia",
+    futureTrips: [
+      { location: "Canggu, Bali", startDate: "2026-03-15", endDate: "2026-04-15", latitude: -8.6478, longitude: 115.1385, stopType: "city" },
+      { location: "Chiang Mai, Thailand", startDate: "2026-04-20", endDate: "2026-05-10", latitude: 18.7883, longitude: 98.9853, stopType: "city" },
+    ],
     pets: [{ type: "dog", name: "koda" }, { type: "cat", name: "nala" }],
     rigType: "suv-car",
     rigName: "sahara",
@@ -139,6 +159,10 @@ const testUsers = [
     latitude: 13.7563,
     longitude: 100.5018,
     futureTrip: "Da Nang, Vietnam",
+    futureTrips: [
+      { location: "Chiang Mai, Thailand", startDate: "2026-03-05", endDate: "2026-03-25", latitude: 18.7883, longitude: 98.9853, stopType: "city" },
+      { location: "Da Nang, Vietnam", startDate: "2026-04-01", endDate: "2026-04-20", latitude: 16.0544, longitude: 108.2022, stopType: "city" },
+    ],
     rigType: "no-vehicle",
   },
   {
@@ -161,6 +185,10 @@ const testUsers = [
     latitude: 19.4326,
     longitude: -99.1332,
     futureTrip: "Guatemala",
+    futureTrips: [
+      { location: "Mexico City, Mexico", startDate: "2026-03-15", endDate: "2026-04-30", latitude: 19.4326, longitude: -99.1332, stopType: "city" },
+      { location: "Antigua, Guatemala", startDate: "2026-05-05", endDate: "2026-05-25", latitude: 14.5586, longitude: -90.7295, stopType: "city" },
+    ],
     rigType: "on-foot",
   },
   {
@@ -183,6 +211,10 @@ const testUsers = [
     latitude: 41.7151,
     longitude: 44.8271,
     futureTrip: "Istanbul, Turkey",
+    futureTrips: [
+      { location: "Istanbul, Turkey", startDate: "2026-03-01", endDate: "2026-03-30", latitude: 41.0082, longitude: 28.9784, stopType: "city" },
+      { location: "Athens, Greece", startDate: "2026-04-05", endDate: "2026-04-25", latitude: 37.9838, longitude: 23.7275, stopType: "city" },
+    ],
     pets: [{ type: "cat", name: "pixel" }],
     rigType: "converted-van",
     rigName: "pixel wagon",
@@ -206,6 +238,10 @@ const testUsers = [
     latitude: 16.0544,
     longitude: 108.2022,
     futureTrip: "Philippines",
+    futureTrips: [
+      { location: "Chiang Mai, Thailand", startDate: "2026-03-10", endDate: "2026-04-05", latitude: 18.7883, longitude: 98.9853, stopType: "city" },
+      { location: "El Nido, Philippines", startDate: "2026-04-15", endDate: "2026-05-05", latitude: 11.1784, longitude: 119.3930, stopType: "city" },
+    ],
     rigType: "no-vehicle",
   },
   {
@@ -228,6 +264,10 @@ const testUsers = [
     latitude: 6.2476,
     longitude: -75.5658,
     futureTrip: "Mexico City, Mexico",
+    futureTrips: [
+      { location: "Lisbon, Portugal", startDate: "2026-03-08", endDate: "2026-04-01", latitude: 38.7223, longitude: -9.1393, stopType: "city" },
+      { location: "Mexico City, Mexico", startDate: "2026-04-01", endDate: "2026-04-20", latitude: 19.4326, longitude: -99.1332, stopType: "city" },
+    ],
     rigType: "truck-camper",
     rigName: "el camino",
   },
@@ -251,6 +291,10 @@ const testUsers = [
     latitude: 35.6762,
     longitude: 139.6503,
     futureTrip: "Seoul, South Korea",
+    futureTrips: [
+      { location: "Seoul, South Korea", startDate: "2026-03-01", endDate: "2026-03-20", latitude: 37.5665, longitude: 126.9780, stopType: "city" },
+      { location: "Osaka, Japan", startDate: "2026-04-01", endDate: "2026-04-15", latitude: 34.6937, longitude: 135.5023, stopType: "city" },
+    ],
     rigType: "no-vehicle",
   },
   {
@@ -272,6 +316,10 @@ const testUsers = [
     latitude: 41.1579,
     longitude: -8.6291,
     futureTrip: "Morocco",
+    futureTrips: [
+      { location: "Lisbon, Portugal", startDate: "2026-03-05", endDate: "2026-03-25", latitude: 38.7223, longitude: -9.1393, stopType: "city" },
+      { location: "Marrakech, Morocco", startDate: "2026-04-01", endDate: "2026-04-20", latitude: 31.6295, longitude: -7.9811, stopType: "city" },
+    ],
     rigType: "rv-motorhome",
     rigName: "europa",
   },
@@ -295,6 +343,10 @@ const testUsers = [
     latitude: -8.5069,
     longitude: 115.2625,
     futureTrip: "Goa, India",
+    futureTrips: [
+      { location: "Ubud, Bali", startDate: "2026-02-15", endDate: "2026-04-01", latitude: -8.5069, longitude: 115.2625, stopType: "city" },
+      { location: "Goa, India", startDate: "2026-04-10", endDate: "2026-05-01", latitude: 15.2993, longitude: 74.1240, stopType: "city" },
+    ],
     pets: [{ type: "rabbit", name: "bun" }],
     rigType: "on-foot",
   },
@@ -318,6 +370,10 @@ const testUsers = [
     latitude: 37.5665,
     longitude: 126.9780,
     futureTrip: "Tokyo, Japan",
+    futureTrips: [
+      { location: "Mexico City, Mexico", startDate: "2026-04-05", endDate: "2026-04-25", latitude: 19.4326, longitude: -99.1332, stopType: "city" },
+      { location: "Tokyo, Japan", startDate: "2026-05-01", endDate: "2026-05-20", latitude: 35.6762, longitude: 139.6503, stopType: "city" },
+    ],
     rigType: "bike-motorcycle",
   },
   {
@@ -340,6 +396,10 @@ const testUsers = [
     latitude: 43.5081,
     longitude: 16.4402,
     futureTrip: "Montenegro",
+    futureTrips: [
+      { location: "Kotor, Montenegro", startDate: "2026-06-01", endDate: "2026-06-20", latitude: 42.4247, longitude: 18.7712, stopType: "city" },
+      { location: "Athens, Greece", startDate: "2026-06-25", endDate: "2026-07-10", latitude: 37.9838, longitude: 23.7275, stopType: "city" },
+    ],
     pets: [{ type: "dog", name: "finn" }],
     rigType: "boat-sailboat",
     rigName: "wanderlust",
@@ -401,6 +461,7 @@ export const reseedUsers = internalMutation({
           pets: (user as any).pets,
           rigType: (user as any).rigType,
           rigName: (user as any).rigName,
+          futureTrips: (user as any).futureTrips,
           updatedAt: Date.now(),
         });
         updatedCount++;

@@ -241,6 +241,11 @@ export default function ExplorePeopleScreen() {
     convexUser?._id ? { currentUserId: convexUser._id, limit: 300 } : "skip"
   );
 
+  const crews = useQuery(
+    api.crews.getCrewsForUser,
+    convexUser?._id ? {} : "skip"
+  );
+
   const userLocation = convexUser?.currentLocation || data.currentLocation || '';
   const userLifestyle = convexUser?.lifestyle || data.lifestyle || [];
   const userInterests = useMemo(() => convexUser?.interests || data.interests || [], [convexUser?.interests, data.interests]);
@@ -363,61 +368,77 @@ export default function ExplorePeopleScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
         >
-          {/* Map Preview — tap to open full stops screen */}
-          <TouchableOpacity
-            onPress={() => router.push('/stops')}
-            activeOpacity={0.9}
-            className="mx-6 mt-4 mb-6"
-          >
-            <View style={{ borderRadius: 16, overflow: 'hidden', position: 'relative' }}>
-              <StopMap
-                routeStops={
-                  (convexUser?.futureTrips || [])
-                    .filter((t): t is typeof t & { latitude: number; longitude: number } =>
-                      t.latitude != null && t.longitude != null
-                    )
-                    .map(t => ({ latitude: t.latitude, longitude: t.longitude, location: t.location }))
-                }
-                center={
-                  convexUser?.latitude && convexUser?.longitude
-                    ? { latitude: convexUser.latitude, longitude: convexUser.longitude }
-                    : undefined
-                }
-                zoom={6}
-                style={{ height: 180, borderRadius: 16 }}
-                interactive={false}
-                showRoute
-              />
-              {/* Overlay label */}
-              <View
-                style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  backgroundColor: 'rgba(0,0,0,0.5)',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <View className="flex-row items-center">
-                  <Ionicons name="map" size={16} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={{ fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, color: '#fff' }}>
-                    nomad stops
-                  </Text>
-                </View>
-                <View className="flex-row items-center">
-                  <Text style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
-                    discover & share spots
-                  </Text>
-                  <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.8)" style={{ marginLeft: 4 }} />
+          {/* Route Mesh Hero — tap to open full interactive map */}
+          <View className="mt-4 mb-2">
+            <TouchableOpacity
+              onPress={() => router.push('/route-mesh')}
+              activeOpacity={0.9}
+              className="mx-6 mb-4"
+            >
+              <View style={{ borderRadius: 16, overflow: 'hidden', position: 'relative' }}>
+                <StopMap
+                  routeStops={
+                    (convexUser?.futureTrips || [])
+                      .filter((t): t is typeof t & { latitude: number; longitude: number } =>
+                        t.latitude != null && t.longitude != null
+                      )
+                      .map(t => ({ latitude: t.latitude, longitude: t.longitude, location: t.location }))
+                  }
+                  center={
+                    convexUser?.latitude && convexUser?.longitude
+                      ? { latitude: convexUser.latitude, longitude: convexUser.longitude }
+                      : undefined
+                  }
+                  zoom={4}
+                  style={{ height: 200, borderRadius: 16 }}
+                  interactive={false}
+                  showRoute
+                />
+                {/* Overlay label */}
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    backgroundColor: 'rgba(0,0,0,0.55)',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons name="git-network-outline" size={16} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={{ fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, color: '#fff' }}>
+                      route mesh
+                    </Text>
+                    {crews && crews.length > 0 && (
+                      <View style={{
+                        backgroundColor: '#fd6b03',
+                        borderRadius: 10,
+                        paddingHorizontal: 6,
+                        paddingVertical: 1,
+                        marginLeft: 8,
+                      }}>
+                        <Text style={{ color: '#fff', fontSize: 11, fontFamily: 'InstrumentSans_600SemiBold' }}>
+                          {crews.length}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <View className="flex-row items-center">
+                    <Text style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
+                      tap to explore
+                    </Text>
+                    <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.8)" style={{ marginLeft: 4 }} />
+                  </View>
                 </View>
               </View>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+
+          </View>
 
           {/* 1. Heading Your Way */}
           {headingYourWay.length > 0 && (
@@ -615,6 +636,35 @@ export default function ExplorePeopleScreen() {
               </ScrollView>
             </View>
           )}
+
+          {/* Nomad Stops — secondary link */}
+          <TouchableOpacity
+            onPress={() => router.push('/stops')}
+            activeOpacity={0.8}
+            className="mx-6 mb-8"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: '#F9FAFB',
+              borderRadius: 14,
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+            }}
+          >
+            <View className="flex-row items-center">
+              <Ionicons name="map-outline" size={18} color="#6B7280" style={{ marginRight: 10 }} />
+              <View>
+                <Text style={{ fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, color: '#000' }}>
+                  nomad stops
+                </Text>
+                <Text style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 12, color: '#9CA3AF', marginTop: 1 }}>
+                  community-pinned spots nearby
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+          </TouchableOpacity>
 
           {/* Empty state if nothing to show */}
           {headingYourWay.length === 0 && !firstTripLocation && recentCrossings.length === 0 && sameLifestyle.length === 0 && sameInterests.length === 0 && (
