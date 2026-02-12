@@ -95,7 +95,6 @@ export const create = mutation({
           const userTrips = (user.futureTrips || []).map((t) => t.location);
           const swipedTrips = (swiped.futureTrips || []).map((t) => t.location);
           const allSwipedLocs = [...swipedTrips, swiped.currentLocation];
-          const allUserLocs = [...userTrips, user.currentLocation];
 
           for (const userLoc of userTrips) {
             const userCity = userLoc.split(",")[0].trim().toLowerCase();
@@ -150,15 +149,6 @@ export const getLikesForUser = query({
         q.eq("swipedId", user._id).eq("action", "like")
       )
       .collect();
-    const superLikeSwipes = await ctx.db
-      .query("swipes")
-      .withIndex("by_swiped_action", (q) =>
-        q.eq("swipedId", user._id).eq("action", "superlike")
-      )
-      .collect();
-
-    const swipes = [...likeSwipes, ...superLikeSwipes];
-
     // Exclude already-matched users
     const matchesAsUser1 = await ctx.db
       .query("matches")
