@@ -48,7 +48,8 @@
           "icon": "./assets/images/icon.png",
           "color": "#fd6b03"
         }
-      ]
+      ],
+      "@rnmapbox/maps"
     ],
     "notification": {
       "icon": "./assets/images/icon.png",

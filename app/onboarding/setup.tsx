@@ -56,7 +56,7 @@ export default function SetupScreen() {
           {selected && (
             <View className="mt-6">
               <TextInput
-                className="border border-gray-300 rounded-xl px-4 py-3 text-base text-black"
+                className="border border-gray-300 rounded-xl px-4 py-5 text-base text-black"
                 placeholder="rig name (optional)"
                 placeholderTextColor="#9CA3AF"
                 value={rigName}

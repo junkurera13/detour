@@ -8,6 +8,7 @@ import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Doc } from '@/convex/_generated/dataModel';
+import { StopMap } from '@/components/map/StopMap';
 
 // Lifestyle ID to label mapping
 const lifestyleLabels: Record<string, string> = {
@@ -362,6 +363,62 @@ export default function ExplorePeopleScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
         >
+          {/* Map Preview — tap to open full stops screen */}
+          <TouchableOpacity
+            onPress={() => router.push('/stops')}
+            activeOpacity={0.9}
+            className="mx-6 mt-4 mb-6"
+          >
+            <View style={{ borderRadius: 16, overflow: 'hidden', position: 'relative' }}>
+              <StopMap
+                routeStops={
+                  (convexUser?.futureTrips || [])
+                    .filter((t): t is typeof t & { latitude: number; longitude: number } =>
+                      t.latitude != null && t.longitude != null
+                    )
+                    .map(t => ({ latitude: t.latitude, longitude: t.longitude, location: t.location }))
+                }
+                center={
+                  convexUser?.latitude && convexUser?.longitude
+                    ? { latitude: convexUser.latitude, longitude: convexUser.longitude }
+                    : undefined
+                }
+                zoom={6}
+                style={{ height: 180, borderRadius: 16 }}
+                interactive={false}
+                showRoute
+              />
+              {/* Overlay label */}
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <View className="flex-row items-center">
+                  <Ionicons name="map" size={16} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={{ fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, color: '#fff' }}>
+                    nomad stops
+                  </Text>
+                </View>
+                <View className="flex-row items-center">
+                  <Text style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
+                    discover & share spots
+                  </Text>
+                  <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.8)" style={{ marginLeft: 4 }} />
+                </View>
+              </View>
+            </View>
+          </TouchableOpacity>
+
           {/* 1. Heading Your Way */}
           {headingYourWay.length > 0 && (
             <View className="mb-8 pt-4">

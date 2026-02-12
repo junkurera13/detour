@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { env } from '@/lib/env';
 
-interface LocationResult {
+export interface LocationResult {
   id: string;
   name: string;
   fullName: string;
@@ -19,6 +19,7 @@ interface LocationResult {
     latitude: number;
     longitude: number;
   };
+  category?: string; // POI category from Mapbox Search Box API
 }
 
 interface MapboxFeature {
@@ -28,21 +29,44 @@ interface MapboxFeature {
   text: string;
 }
 
+// Mapbox Search Box API types
+interface SearchBoxSuggestion {
+  mapbox_id: string;
+  name: string;
+  full_address?: string;
+  place_formatted?: string;
+  feature_type: string;
+  poi_category?: string[];
+}
+
 interface LocationAutocompleteProps {
   value: string;
   onSelect: (location: LocationResult) => void;
   placeholder?: string;
+  enablePOI?: boolean; // When true, uses Mapbox Search Box API for POI search
+}
+
+function generateSessionToken(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 export function LocationAutocomplete({
   value,
   onSelect,
-  placeholder = 'Search for a city...',
+  placeholder,
+  enablePOI = false,
 }: LocationAutocompleteProps) {
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<LocationResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const sessionTokenRef = useRef(generateSessionToken());
+
+  const defaultPlaceholder = enablePOI ? 'search city, campsite, or spot...' : 'Search for a city...';
 
   // Sync with external value changes (e.g., from "use current location")
   useEffect(() => {
@@ -54,12 +78,38 @@ export function LocationAutocomplete({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  const searchLocations = useCallback(async (searchQuery: string) => {
-    if (searchQuery.length < 2) {
-      setResults([]);
-      return;
-    }
+  // Search Box API (POI mode) — two-step: suggest then retrieve on select
+  const searchPOI = useCallback(async (searchQuery: string) => {
+    const token = env.mapboxToken;
+    if (!token) return;
 
+    setIsLoading(true);
+    try {
+      const url = `https://api.mapbox.com/search/searchbox/v1/suggest?q=${encodeURIComponent(
+        searchQuery
+      )}&access_token=${token}&session_token=${sessionTokenRef.current}&types=poi,place&limit=8&language=en`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.suggestions) {
+        const locations: LocationResult[] = data.suggestions.map((s: SearchBoxSuggestion) => ({
+          id: s.mapbox_id,
+          name: s.name,
+          fullName: s.full_address || s.place_formatted || s.name,
+          category: s.poi_category?.[0],
+        }));
+        setResults(locations);
+      }
+    } catch (error) {
+      console.error('POI search error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Geocoding v5 (city mode) — single-step
+  const searchCities = useCallback(async (searchQuery: string) => {
     const token = env.mapboxToken;
     if (!token) {
       console.warn('Mapbox token not configured');
@@ -67,7 +117,6 @@ export function LocationAutocomplete({
     }
 
     setIsLoading(true);
-
     try {
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
@@ -98,6 +147,21 @@ export function LocationAutocomplete({
     }
   }, []);
 
+  const searchLocations = useCallback(
+    async (searchQuery: string) => {
+      if (searchQuery.length < 2) {
+        setResults([]);
+        return;
+      }
+      if (enablePOI) {
+        await searchPOI(searchQuery);
+      } else {
+        await searchCities(searchQuery);
+      }
+    },
+    [enablePOI, searchPOI, searchCities]
+  );
+
   useEffect(() => {
     const debounce = setTimeout(() => {
       if (query !== value) {
@@ -108,12 +172,63 @@ export function LocationAutocomplete({
     return () => clearTimeout(debounce);
   }, [query, value, searchLocations]);
 
-  const handleSelect = (location: LocationResult) => {
-    setQuery(location.fullName);
+  // For POI mode, retrieve full details (coordinates) on select
+  const retrievePOIDetails = async (mapboxId: string): Promise<LocationResult | null> => {
+    const token = env.mapboxToken;
+    if (!token) return null;
+
+    try {
+      const url = `https://api.mapbox.com/search/searchbox/v1/retrieve/${mapboxId}?access_token=${token}&session_token=${sessionTokenRef.current}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      const feature = data.features?.[0];
+      if (!feature) return null;
+
+      // Reset session token after retrieval (Search Box API billing)
+      sessionTokenRef.current = generateSessionToken();
+
+      return {
+        id: mapboxId,
+        name: feature.properties?.name || '',
+        fullName: feature.properties?.full_address || feature.properties?.place_formatted || feature.properties?.name || '',
+        coordinates: feature.geometry?.coordinates
+          ? {
+              longitude: feature.geometry.coordinates[0],
+              latitude: feature.geometry.coordinates[1],
+            }
+          : undefined,
+        category: feature.properties?.poi_category?.[0],
+      };
+    } catch (error) {
+      console.error('POI retrieve error:', error);
+      return null;
+    }
+  };
+
+  const handleSelect = async (location: LocationResult) => {
     setShowResults(false);
     setResults([]);
     Keyboard.dismiss();
-    onSelect(location);
+
+    if (enablePOI && !location.coordinates) {
+      // Need to retrieve full details for POI results
+      setIsLoading(true);
+      const details = await retrievePOIDetails(location.id);
+      setIsLoading(false);
+
+      if (details) {
+        setQuery(details.fullName);
+        onSelect(details);
+      } else {
+        // Fallback: use what we have
+        setQuery(location.fullName);
+        onSelect(location);
+      }
+    } else {
+      setQuery(location.fullName);
+      onSelect(location);
+    }
   };
 
   return (
@@ -136,7 +251,7 @@ export function LocationAutocomplete({
             setShowResults(true);
           }}
           onFocus={() => setShowResults(true)}
-          placeholder={placeholder}
+          placeholder={placeholder || defaultPlaceholder}
           placeholderTextColor="#9CA3AF"
           autoCapitalize="none"
           autoCorrect={false}
@@ -190,7 +305,12 @@ export function LocationAutocomplete({
                   borderBottomColor: '#F3F4F6',
                 }}
               >
-                <Ionicons name="location" size={18} color="#fd6b03" style={{ marginRight: 12 }} />
+                <Ionicons
+                  name={item.category ? 'pin' : 'location'}
+                  size={18}
+                  color="#fd6b03"
+                  style={{ marginRight: 12 }}
+                />
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
@@ -210,7 +330,7 @@ export function LocationAutocomplete({
                     }}
                     numberOfLines={1}
                   >
-                    {item.fullName}
+                    {item.category ? `${item.category} · ${item.fullName}` : item.fullName}
                   </Text>
                 </View>
               </TouchableOpacity>

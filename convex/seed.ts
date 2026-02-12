@@ -25,6 +25,7 @@ const testUsers = [
     longitude: -9.1393,
     futureTrip: "Barcelona, Spain",
     pets: [{ type: "cat", name: "mochi" }],
+    rigType: "no-vehicle",
   },
   {
     name: "Marco",
@@ -47,6 +48,8 @@ const testUsers = [
     longitude: 115.1385,
     futureTrip: "Chiang Mai, Thailand",
     pets: [{ type: "dog", name: "biscuit" }],
+    rigType: "bike-motorcycle",
+    rigName: "la vespa",
   },
   {
     name: "Jess",
@@ -67,6 +70,7 @@ const testUsers = [
     latitude: 18.7883,
     longitude: 98.9853,
     futureTrip: "Vietnam",
+    rigType: "on-foot",
   },
   {
     name: "Tomas",
@@ -88,6 +92,8 @@ const testUsers = [
     latitude: 41.3874,
     longitude: 2.1686,
     futureTrip: "Lisbon, Portugal",
+    rigType: "converted-van",
+    rigName: "sol",
   },
   {
     name: "Aisha",
@@ -110,6 +116,8 @@ const testUsers = [
     longitude: 18.4241,
     futureTrip: "Bali, Indonesia",
     pets: [{ type: "dog", name: "koda" }, { type: "cat", name: "nala" }],
+    rigType: "suv-car",
+    rigName: "sahara",
   },
   {
     name: "Nate",
@@ -131,6 +139,7 @@ const testUsers = [
     latitude: 13.7563,
     longitude: 100.5018,
     futureTrip: "Da Nang, Vietnam",
+    rigType: "no-vehicle",
   },
   {
     name: "Camille",
@@ -152,6 +161,7 @@ const testUsers = [
     latitude: 19.4326,
     longitude: -99.1332,
     futureTrip: "Guatemala",
+    rigType: "on-foot",
   },
   {
     name: "Ravi",
@@ -174,6 +184,8 @@ const testUsers = [
     longitude: 44.8271,
     futureTrip: "Istanbul, Turkey",
     pets: [{ type: "cat", name: "pixel" }],
+    rigType: "converted-van",
+    rigName: "pixel wagon",
   },
   {
     name: "Linnea",
@@ -194,6 +206,7 @@ const testUsers = [
     latitude: 16.0544,
     longitude: 108.2022,
     futureTrip: "Philippines",
+    rigType: "no-vehicle",
   },
   {
     name: "Seb",
@@ -215,6 +228,8 @@ const testUsers = [
     latitude: 6.2476,
     longitude: -75.5658,
     futureTrip: "Mexico City, Mexico",
+    rigType: "truck-camper",
+    rigName: "el camino",
   },
   {
     name: "Mei",
@@ -236,6 +251,7 @@ const testUsers = [
     latitude: 35.6762,
     longitude: 139.6503,
     futureTrip: "Seoul, South Korea",
+    rigType: "no-vehicle",
   },
   {
     name: "Oscar",
@@ -256,6 +272,8 @@ const testUsers = [
     latitude: 41.1579,
     longitude: -8.6291,
     futureTrip: "Morocco",
+    rigType: "rv-motorhome",
+    rigName: "europa",
   },
   {
     name: "Thalia",
@@ -278,6 +296,7 @@ const testUsers = [
     longitude: 115.2625,
     futureTrip: "Goa, India",
     pets: [{ type: "rabbit", name: "bun" }],
+    rigType: "on-foot",
   },
   {
     name: "Diego",
@@ -299,6 +318,7 @@ const testUsers = [
     latitude: 37.5665,
     longitude: 126.9780,
     futureTrip: "Tokyo, Japan",
+    rigType: "bike-motorcycle",
   },
   {
     name: "Zoe",
@@ -321,6 +341,8 @@ const testUsers = [
     longitude: 16.4402,
     futureTrip: "Montenegro",
     pets: [{ type: "dog", name: "finn" }],
+    rigType: "boat-sailboat",
+    rigName: "wanderlust",
   },
 ];
 
@@ -377,6 +399,8 @@ export const reseedUsers = internalMutation({
           latitude: user.latitude,
           longitude: user.longitude,
           pets: (user as any).pets,
+          rigType: (user as any).rigType,
+          rigName: (user as any).rigName,
           updatedAt: Date.now(),
         });
         updatedCount++;

@@ -1,4 +1,4 @@
-import { View, Text, Alert, ActivityIndicator, TouchableOpacity, Platform, Modal } from 'react-native';
+import { View, Text, Alert, ActivityIndicator, TouchableOpacity, Platform, Modal, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -9,6 +9,15 @@ import { useOnboarding, TripStop } from '@/context/OnboardingContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useConvexAuth } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+
+const stopTypeOptions = [
+  { id: 'city', label: 'city', icon: 'business-outline' as const },
+  { id: 'campsite', label: 'campsite', icon: 'bonfire-outline' as const },
+  { id: 'coworking', label: 'co-working', icon: 'wifi-outline' as const },
+  { id: 'beach', label: 'beach', icon: 'sunny-outline' as const },
+  { id: 'rest-area', label: 'rest area', icon: 'car-outline' as const },
+  { id: 'hostel', label: 'hostel', icon: 'bed-outline' as const },
+];
 
 export default function FutureTripScreen() {
   const router = useRouter();
@@ -205,9 +214,58 @@ export default function FutureTripScreen() {
 
                 <LocationAutocomplete
                   value={stop.location}
-                  onSelect={(loc) => updateStop(index, { location: loc.fullName })}
-                  placeholder="search city or region"
+                  enablePOI
+                  onSelect={(loc) => updateStop(index, {
+                    location: loc.fullName,
+                    latitude: loc.coordinates?.latitude,
+                    longitude: loc.coordinates?.longitude,
+                    stopType: loc.category ? 'community' : 'city',
+                  })}
+                  placeholder="search city, campsite, or spot..."
                 />
+
+                {/* Stop type chips */}
+                {stop.location.length > 0 && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingTop: 10, gap: 8 }}
+                  >
+                    {stopTypeOptions.map((option) => {
+                      const isSelected = stop.stopType === option.id;
+                      return (
+                        <TouchableOpacity
+                          key={option.id}
+                          onPress={() => updateStop(index, { stopType: option.id })}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: 20,
+                            backgroundColor: isSelected ? '#fd6b03' : '#F3F4F6',
+                          }}
+                        >
+                          <Ionicons
+                            name={option.icon}
+                            size={14}
+                            color={isSelected ? '#fff' : '#6B7280'}
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text
+                            style={{
+                              fontFamily: 'InstrumentSans_500Medium',
+                              fontSize: 13,
+                              color: isSelected ? '#fff' : '#6B7280',
+                            }}
+                          >
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                )}
 
                 {/* Date picker button */}
                 <TouchableOpacity

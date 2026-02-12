@@ -33,22 +33,19 @@ export default function GenderScreen() {
           <TouchableOpacity
             key={option.id}
             onPress={() => setSelected(option.id)}
-            className={`flex-row items-center p-4 rounded-2xl mb-3 border-2 ${
+            className={`flex-row items-center px-4 py-6 rounded-2xl mb-3 border-2 ${
               selected === option.id
                 ? 'border-orange-primary bg-white'
                 : 'border-gray-100 bg-white'
             }`}
             activeOpacity={0.7}
           >
-            <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${
-              selected === option.id ? 'bg-orange-50' : 'bg-gray-100'
-            }`}>
-              <Ionicons
-                name={option.icon}
-                size={24}
-                color={selected === option.id ? '#fd6b03' : '#6B7280'}
-              />
-            </View>
+            <Ionicons
+              name={option.icon}
+              size={24}
+              color={selected === option.id ? '#fd6b03' : '#6B7280'}
+              style={{ marginRight: 16 }}
+            />
             <Text
               className="text-lg text-black flex-1"
               style={{ fontFamily: 'InstrumentSans_500Medium' }}

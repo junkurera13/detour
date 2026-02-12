@@ -3,7 +3,7 @@ export interface CompatibilityUser {
   currentLocation: string;
   latitude?: number;
   longitude?: number;
-  futureTrips?: { location: string }[];
+  futureTrips?: { location: string; latitude?: number; longitude?: number }[];
   lifestyle: string[];
   pets?: { type: string; name: string }[];
   datingGoals?: string[];
@@ -47,12 +47,29 @@ function overlapItems(a: string[], b: string[]): string[] {
   return a.filter((s) => setB.has(s.toLowerCase()));
 }
 
+// Check if two trips are at the same place (coordinates within 50km or city-name match)
+function tripsNearby(
+  tripA: { location: string; latitude?: number; longitude?: number },
+  tripB: { location: string; latitude?: number; longitude?: number }
+): boolean {
+  if (tripA.latitude != null && tripA.longitude != null && tripB.latitude != null && tripB.longitude != null) {
+    return haversineKm(tripA.latitude, tripA.longitude, tripB.latitude, tripB.longitude) <= NEARBY_THRESHOLD_KM;
+  }
+  // Fall back to city-name matching
+  return tripA.location.split(',')[0].trim().toLowerCase() === tripB.location.split(',')[0].trim().toLowerCase();
+}
+
 export function computeCompatibility(userA: CompatibilityUser, userB: CompatibilityUser): CompatibilityResult {
   // Route overlap (30%) — same city worth 0.7, shared future trips worth up to 0.3
-  const citiesA = (userA.futureTrips || []).map((t) => t.location.split(',')[0].trim().toLowerCase());
-  const citiesB = (userB.futureTrips || []).map((t) => t.location.split(',')[0].trim().toLowerCase());
-  const sharedTripCities = citiesA.filter((c) => citiesB.includes(c));
-  const maxCities = Math.max(citiesA.length, citiesB.length);
+  const tripsA = userA.futureTrips || [];
+  const tripsB = userB.futureTrips || [];
+  const sharedTripCities: string[] = [];
+  for (const tA of tripsA) {
+    if (tripsB.some((tB) => tripsNearby(tA, tB))) {
+      sharedTripCities.push(tA.location.split(',')[0].trim().toLowerCase());
+    }
+  }
+  const maxCities = Math.max(tripsA.length, tripsB.length);
   const tripRatio = maxCities > 0 ? sharedTripCities.length / maxCities : 0;
   // Use coordinates if available (within 50km = nearby), fall back to city name match
   const sameCity =

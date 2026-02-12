@@ -5,6 +5,9 @@ export interface TripStop {
   date?: string; // Legacy field kept for backward compatibility with existing records
   startDate?: string;
   endDate?: string;
+  latitude?: number;
+  longitude?: number;
+  stopType?: string; // "city", "campsite", "coworking", "beach", "rest-area", "hostel", "community"
 }
 
 export interface OnboardingData {

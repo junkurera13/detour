@@ -22,6 +22,7 @@ import type * as http from "../http.js";
 import type * as inviteCodes from "../inviteCodes.js";
 import type * as matches from "../matches.js";
 import type * as messages from "../messages.js";
+import type * as nomadStops from "../nomadStops.js";
 import type * as notifications from "../notifications.js";
 import type * as profileViews from "../profileViews.js";
 import type * as reports from "../reports.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   inviteCodes: typeof inviteCodes;
   matches: typeof matches;
   messages: typeof messages;
+  nomadStops: typeof nomadStops;
   notifications: typeof notifications;
   profileViews: typeof profileViews;
   reports: typeof reports;

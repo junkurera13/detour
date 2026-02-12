@@ -44,6 +44,9 @@ export default defineSchema({
       date: v.optional(v.string()),
       startDate: v.optional(v.string()),
       endDate: v.optional(v.string()),
+      latitude: v.optional(v.number()),
+      longitude: v.optional(v.number()),
+      stopType: v.optional(v.string()), // "city", "campsite", "coworking", "beach", "rest-area", "hostel", "community"
     }))),
 
     // Pets
@@ -250,6 +253,35 @@ export default defineSchema({
     .index("by_blocker", ["blockerId"])
     .index("by_blocked", ["blockedId"])
     .index("by_pair", ["blockerId", "blockedId"]),
+
+  // Community-sourced nomad stops
+  nomadStops: defineTable({
+    creatorId: v.id("users"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: v.string(), // "campsite", "coworking", "beach", "rest-area", "hostel", "parking", "water", "dump-station", "other"
+    latitude: v.number(),
+    longitude: v.number(),
+    address: v.optional(v.string()),
+    amenities: v.optional(v.array(v.string())), // "wifi", "water", "electric", "showers", "laundry", "pets-ok"
+    photos: v.optional(v.array(v.string())),
+    status: v.string(), // "active", "flagged", "removed"
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_creator", ["creatorId"])
+    .index("by_category", ["category"])
+    .index("by_status", ["status"]),
+
+  // Saved nomad stops
+  stopSaves: defineTable({
+    userId: v.id("users"),
+    stopId: v.id("nomadStops"),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_stop", ["stopId"])
+    .index("by_pair", ["userId", "stopId"]),
 
   // Admin auth attempt tracking (rate limit / temporary lockout)
   adminAuthAttempts: defineTable({
