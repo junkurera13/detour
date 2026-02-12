@@ -48,7 +48,7 @@ eas build --platform android --profile production   # Production Android build
   - `paywall.tsx` - Trial expired paywall (see Paywall Architecture below)
 - `convex/` - Convex backend (schema, mutations, queries)
   - `schema.ts` - Database schema (users, matches, messages, swipes, inviteCodes, profileViews)
-  - `files.ts` - File storage mutations for photo uploads
+  - `files.ts` - File storage (generateUploadUrl mutation + getUrl query)
   - `profileViews.ts` - Profile view tracking (record mutation + getRecentViewers query)
 - `components/` - Reusable components
   - `ui/` - UI primitives (Button, Input, SelectionChip, OnboardingLayout, ProgressBar)
@@ -150,10 +150,10 @@ Paywalls are fully functional on Android with Google Play subscription products 
 
 ## Current State
 
-Functional MVP (7/10) with backend fully integrated. See `ROADMAP.md` for full details.
+Functional MVP with backend fully integrated. See `ROADMAP.md` for full details.
 
 **Implemented:**
-- Convex backend (users, matches, messages, swipes, inviteCodes, profileViews)
+- Convex backend (users, matches, messages, swipes, inviteCodes, profileViews, blockedUsers)
 - Clerk authentication (phone, Google, Apple sign-in)
 - RevenueCat subscriptions (SDK integrated, dashboard configured with entitlements, offerings, and 7-day free trial)
 - Photo cloud upload (Convex File Storage)
@@ -161,17 +161,21 @@ Functional MVP (7/10) with backend fully integrated. See `ROADMAP.md` for full d
 - Discovery and swiping
 - Push notifications (Expo Notifications)
 - Edit profile screen
+- Server-side blocked user enforcement (swipes + messages mutations)
+- Server-side username uniqueness check
+- Account deletion with full data cleanup
 
 **Deferred (post-hackathon):**
 - iOS / TestFlight release (blocked on App Store Connect Paid Apps Agreement — Korean BRN pending)
 - Testing suite
 
 **Recently completed:**
-- "Who Viewed My Profile" — real profile view tracking with `profileViews` table, viewers modal with timestamps, tap-to-navigate
-- Google Play subscription purchase flow verified with license tester (7-day free trial working)
-- Android build uploaded to Google Play Internal Testing
-- Removed paywall bypass (`ALLOW_PAYWALL_BYPASS`) — no longer needed
-- "Likes You" cards now unlock for subscribers/trial users (`hasDetourPlus` check)
-- RevenueCat dashboard configured with entitlements, offerings, and 7-day free trial
-- EAS Build configured (eas.json created, EAS CLI ready)
+- Fixed cold-start paywall race condition (RevenueCat `restorePurchases()` on startup, trust client + DB flag)
+- Server-side block checks on `swipes.create` and `messages.send` mutations
+- Match list deduplication (optimistic liked-back vs server matches)
+- Likes and matches sorted newest-first
+- Compatibility score visible on new match cards
+- Terms/privacy links working on paywall screens
+- `files.getUrl` changed from mutation to query for proper caching
+- Android production build uploaded to Google Play Internal Testing
 - Privacy policy hosted at https://junkurera13.github.io/detour/privacy-policy.html

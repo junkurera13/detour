@@ -106,14 +106,24 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 
 ---
 
-## Phase 5: Demo Polish ⬜
+## Phase 5: Demo Polish ✅
 **Goal:** Judges can experience the app quickly with no dead ends
 
 | Task | Description | Status |
 |------|-------------|--------|
 | Seed demo data | Profiles, matches, messages, help requests, help offers | ✅ |
 | Sandbox purchases | Test purchase flow works | ✅ (verified with Google Play license tester) |
-| Bug fixes | Fix any rough edges | 🟡 |
+| Bug fixes | Fix any rough edges | ✅ |
+| Cold-start paywall fix | Fix race condition where trial users saw "trial ended" on app restart | ✅ |
+| Blocked user enforcement | Server-side block checks on swipes and messages mutations | ✅ |
+| Match deduplication | Prevent duplicate entries when "like back" matches appear from server | ✅ |
+| Likes sorting | Newest likes appear first in "Likes You" section | ✅ |
+| Matches sorting | Newest matches appear first in matches list | ✅ |
+| Compatibility in new matches | Show compatibility score on new match cards | ✅ |
+| Terms/privacy links | Wire paywall terms and privacy links to hosted URLs | ✅ |
+| files.getUrl → query | Changed from mutation to query for proper caching | ✅ |
+| Username uniqueness | Server-side uniqueness check in users.create | ✅ |
+| Account deletion cleanup | Delete profileViews, stopSaves, reports, blockedUsers on account deletion | ✅ |
 
 ---
 
@@ -137,6 +147,10 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 | Help Marketplace | Request/offer help with categories, offers, chat |
 | Seed Data | Users, matches, messages, help requests, help offers in Convex |
 | Who Viewed My Profile | Real profile view tracking, viewers modal with timestamps |
+| Blocked User Enforcement | Server-side block checks on swipes and messages |
+| Report Users | Report UI wired to `reports` table + mutation |
+| Cold-Start Paywall Fix | RevenueCat `restorePurchases()` on startup, trust client + DB flag |
+| Match Deduplication | Prevent duplicate entries in matches list |
 
 ---
 
@@ -144,13 +158,11 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 
 - iOS / TestFlight release (deferred to post-hackathon)
 - Testing suite
-- Security audits
 - Content moderation
 - Analytics
 - i18n
 - Background location
 - Message reactions
-- Report users
 - Undo swipe
 
 ---
@@ -173,7 +185,7 @@ iOS release is deferred to post-hackathon. The following are complete and ready 
 
 ---
 
-*Last updated: February 10, 2026*
+*Last updated: February 13, 2026*
 
 ---
 

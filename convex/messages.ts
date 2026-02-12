@@ -29,6 +29,25 @@ export const send = mutation({
       throw new Error("Not authorized");
     }
 
+    // Block check: prevent messaging if either user has blocked the other
+    const recipientId =
+      match.user1Id === user._id ? match.user2Id : match.user1Id;
+    const blocked = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_pair", (q) =>
+        q.eq("blockerId", user._id).eq("blockedId", recipientId)
+      )
+      .first();
+    const blockedBy = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_pair", (q) =>
+        q.eq("blockerId", recipientId).eq("blockedId", user._id)
+      )
+      .first();
+    if (blocked || blockedBy) {
+      throw new Error("Cannot send message");
+    }
+
     const messageId = await ctx.db.insert("messages", {
       matchId: args.matchId,
       senderId: user._id,
@@ -38,9 +57,6 @@ export const send = mutation({
     });
 
     // Send push notification to recipient
-    const recipientId =
-      match.user1Id === user._id ? match.user2Id : match.user1Id;
-
     await ctx.scheduler.runAfter(0, internal.notifications.sendMessageNotification, {
       recipientId,
       senderName: user.name,

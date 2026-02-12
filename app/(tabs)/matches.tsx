@@ -577,12 +577,13 @@ export default function MatchesScreen() {
     return [];
   }, [matchesData, myTripLocations, convexUser]);
 
-  // Combine real/mock matches with liked-back matches from the Likes You section
+  // Combine real/mock matches with liked-back matches from the Likes You section (dedupe by userId)
   const allMatches = useMemo(() => {
-    return [
-      ...likedBackMatches.map((m) => ({ ...m, isNew: true })),
-      ...matches,
-    ];
+    const serverUserIds = new Set(matches.map((m) => m.userId));
+    const uniqueOptimistic = likedBackMatches
+      .filter((m) => !serverUserIds.has(m.userId as any))
+      .map((m) => ({ ...m, isNew: true }));
+    return [...uniqueOptimistic, ...matches];
   }, [matches, likedBackMatches]);
 
   // For messages tab, use real conversation previews or fall back to mock

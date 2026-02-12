@@ -19,6 +19,23 @@ export const create = mutation({
       throw new Error("Cannot swipe on yourself");
     }
 
+    // Block check: prevent swiping on/by blocked users
+    const blocked = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_pair", (q) =>
+        q.eq("blockerId", user._id).eq("blockedId", args.swipedId)
+      )
+      .first();
+    const blockedBy = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_pair", (q) =>
+        q.eq("blockerId", args.swipedId).eq("blockedId", user._id)
+      )
+      .first();
+    if (blocked || blockedBy) {
+      return { success: false, error: "cannot interact with this user" };
+    }
+
     // Check if swipe already exists
     const existingSwipe = await ctx.db
       .query("swipes")

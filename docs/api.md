@@ -342,7 +342,7 @@ const unreadCount = useQuery(api.messages.getUnreadCount, {
 
 #### `messages.send`
 
-Send a message (also triggers push notification).
+Send a message (also triggers push notification). Blocked users are rejected server-side.
 
 ```typescript
 const sendMessage = useMutation(api.messages.send);
@@ -410,7 +410,7 @@ const swipes = useQuery(api.swipes.getBySwiper, { swiperId: myUserId });
 
 #### `swipes.create`
 
-Record a swipe action (creates match if mutual like).
+Record a swipe action (creates match if mutual like). Blocked users are rejected server-side.
 
 ```typescript
 const swipe = useMutation(api.swipes.create);
@@ -439,6 +439,25 @@ if (result.isMatch) {
 
 ## Files (`convex/files.ts`)
 
+### Queries
+
+#### `files.getUrl`
+
+Convert a storage ID to a public URL.
+
+```typescript
+const publicUrl = await convex.query(api.files.getUrl, { storageId });
+```
+
+**Args:**
+| Name | Type | Description |
+|------|------|-------------|
+| storageId | `Id<"_storage">` | Storage ID from upload |
+
+**Returns:** `string` (public URL)
+
+---
+
 ### Mutations
 
 #### `files.generateUploadUrl`
@@ -461,24 +480,6 @@ const { storageId } = await response.json();
 **Args:** None (requires auth)
 
 **Returns:** `string` (upload URL)
-
----
-
-#### `files.getUrl`
-
-Convert a storage ID to a public URL.
-
-```typescript
-const getUrl = useMutation(api.files.getUrl);
-const publicUrl = await getUrl({ storageId });
-```
-
-**Args:**
-| Name | Type | Description |
-|------|------|-------------|
-| storageId | `Id<"_storage">` | Storage ID from upload |
-
-**Returns:** `string` (public URL)
 
 ---
 

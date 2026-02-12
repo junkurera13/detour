@@ -130,7 +130,7 @@ files.generateUploadUrl mutation
 POST blob to Convex storage URL
     │
     ▼
-files.getUrl mutation (converts storage ID to public URL)
+files.getUrl query (converts storage ID to public URL)
     │
     ▼
 Store public URLs in user.photos array
@@ -219,7 +219,7 @@ detour/
 |-------|------|-------------|
 | user1Id | Id<users> | First user in match |
 | user2Id | Id<users> | Second user in match |
-| status | string | "matched", "unmatched" |
+| status | string | "matched", "rejected" |
 | user1Action | string? | "like", "superlike" |
 | user2Action | string? | "like", "superlike" |
 | matchedAt | number? | Timestamp of match |
