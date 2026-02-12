@@ -11,7 +11,7 @@ import { api } from '@/convex/_generated/api';
 import { useRevenueCat } from '@/context/RevenueCatContext';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { calculateAge, formatDateShort, formatTripDate } from '@/utils/profile';
+import { calculateAge, formatTripDate } from '@/utils/profile';
 import { ViewersModal } from '@/components/profile/ViewersModal';
 import { SettingsMenu, SettingsItem } from '@/components/profile/SettingsMenu';
 import { InviteCodesModal } from '@/components/profile/InviteCodesModal';

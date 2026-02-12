@@ -481,6 +481,8 @@ export default function MatchesScreen() {
               photo: dismissedUser.photos[0],
               matchedAt: 'just now',
               crossingPath: null,
+              compatibility: dismissedUser.compatibility,
+              compatibilityBreakdown: dismissedUser.compatibilityBreakdown,
             },
             ...prev,
           ]);

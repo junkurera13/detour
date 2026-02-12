@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAction } from 'convex/react';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useRevenueCat } from '@/context/RevenueCatContext';
@@ -8,37 +8,26 @@ import { api } from '@/convex/_generated/api';
 
 export default function Index() {
   const { isSignedIn, isLoading, convexUser, needsOnboarding } = useAuthenticatedUser();
-  const { hasDetourPlus, isLoading: isRevenueCatLoading, isConfigured } = useRevenueCat();
+  const { hasDetourPlus, isLoading: isRevenueCatLoading } = useRevenueCat();
   const syncMyEntitlement = useAction(api.subscriptions.syncMyEntitlement);
-  const [isServerSubscriptionSynced, setIsServerSubscriptionSynced] = useState(false);
-  const [serverHasDetourPlus, setServerHasDetourPlus] = useState<boolean | null>(null);
   const syncStartedRef = useRef(false);
-  const shouldSyncServerEntitlement =
-    isSignedIn && !!convexUser && convexUser.userStatus === 'approved' && hasDetourPlus;
+
+  // Background sync: keep server-side entitlement flag up to date
+  const shouldSync =
+    isSignedIn && !!convexUser && convexUser.userStatus === 'approved' && (hasDetourPlus || convexUser.hasDetourPlus);
 
   useEffect(() => {
-    if (!shouldSyncServerEntitlement) {
-      setIsServerSubscriptionSynced(true);
-      setServerHasDetourPlus(null);
+    if (!shouldSync) {
       syncStartedRef.current = false;
       return;
     }
-
     if (syncStartedRef.current) return;
     syncStartedRef.current = true;
-    setIsServerSubscriptionSynced(false);
-    syncMyEntitlement()
-      .then((result) => setServerHasDetourPlus(result.hasDetourPlus))
-      .catch(() => setServerHasDetourPlus(false))
-      .finally(() => setIsServerSubscriptionSynced(true));
-  }, [shouldSyncServerEntitlement, syncMyEntitlement, convexUser?._id]);
+    syncMyEntitlement().catch(() => {});
+  }, [shouldSync, syncMyEntitlement, convexUser?._id]);
 
   // Show loading while checking auth state or subscription status
-  if (
-    isLoading ||
-    (isConfigured && isRevenueCatLoading) ||
-    (shouldSyncServerEntitlement && !isServerSubscriptionSynced)
-  ) {
+  if (isLoading || isRevenueCatLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#fd6b03" />
@@ -62,12 +51,8 @@ export default function Index() {
   }
 
   // Approved but no active subscription -> show paywall
-  if (!hasDetourPlus) {
-    return <Redirect href="/paywall" />;
-  }
-
-  // Client indicates active subscription, but server sync could not confirm it.
-  if (shouldSyncServerEntitlement && isServerSubscriptionSynced && !serverHasDetourPlus) {
+  // Trust client-side RevenueCat as primary check; server sync updates DB in background
+  if (!hasDetourPlus && !convexUser.hasDetourPlus) {
     return <Redirect href="/paywall" />;
   }
 

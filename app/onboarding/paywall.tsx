@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -387,7 +387,7 @@ export default function PaywallScreen() {
         </TouchableOpacity>
 
         <View className="flex-row justify-center items-center mt-4 gap-4">
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => Linking.openURL('https://junkurera13.github.io/detour/privacy-policy.html')}>
             <Text
               className="text-gray-400 text-sm"
               style={{ fontFamily: 'InstrumentSans_400Regular' }}
@@ -396,7 +396,7 @@ export default function PaywallScreen() {
             </Text>
           </TouchableOpacity>
           <Text className="text-gray-300">•</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => Linking.openURL('https://junkurera13.github.io/detour/privacy-policy.html')}>
             <Text
               className="text-gray-400 text-sm"
               style={{ fontFamily: 'InstrumentSans_400Regular' }}

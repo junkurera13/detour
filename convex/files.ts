@@ -1,4 +1,4 @@
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 // Generate an upload URL for the client to POST a file to
@@ -15,7 +15,7 @@ export const generateUploadUrl = mutation({
 });
 
 // Convert a storage ID to a public URL
-export const getUrl = mutation({
+export const getUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
     const url = await ctx.storage.getUrl(args.storageId);

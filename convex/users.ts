@@ -152,6 +152,15 @@ export const create = mutation({
       return existingUser._id;
     }
 
+    // Enforce username uniqueness server-side
+    const existingUsername = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .first();
+    if (existingUsername) {
+      throw new Error("Username already taken");
+    }
+
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
       ...args,
@@ -613,6 +622,63 @@ export const deleteAccount = mutation({
       .collect();
     for (const msg of helpMessagesBySender) {
       await ctx.db.delete(msg._id);
+    }
+
+    // Delete profile views (both directions)
+    const viewsByUser = await ctx.db
+      .query("profileViews")
+      .withIndex("by_pair", (q) => q.eq("viewerId", userId))
+      .collect();
+    for (const view of viewsByUser) {
+      await ctx.db.delete(view._id);
+    }
+    const viewsOfUser = await ctx.db
+      .query("profileViews")
+      .withIndex("by_viewed", (q) => q.eq("viewedId", userId))
+      .collect();
+    for (const view of viewsOfUser) {
+      await ctx.db.delete(view._id);
+    }
+
+    // Delete saved stops
+    const savedStops = await ctx.db
+      .query("stopSaves")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const save of savedStops) {
+      await ctx.db.delete(save._id);
+    }
+
+    // Delete reports (both directions)
+    const reportsByUser = await ctx.db
+      .query("reports")
+      .withIndex("by_reporter", (q) => q.eq("reporterId", userId))
+      .collect();
+    for (const report of reportsByUser) {
+      await ctx.db.delete(report._id);
+    }
+    const reportsOfUser = await ctx.db
+      .query("reports")
+      .withIndex("by_reported", (q) => q.eq("reportedId", userId))
+      .collect();
+    for (const report of reportsOfUser) {
+      await ctx.db.delete(report._id);
+    }
+
+    // Delete blocks (both directions)
+    const blocksByUser = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_blocker", (q) => q.eq("blockerId", userId))
+      .collect();
+    for (const block of blocksByUser) {
+      await ctx.db.delete(block._id);
+    }
+    const blocksOfUser = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_blocked", (q) => q.eq("blockedId", userId))
+      .collect();
+    for (const block of blocksOfUser) {
+      await ctx.db.delete(block._id);
     }
 
     // Finally, delete the user from Convex

@@ -6,8 +6,6 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 
-const ROUTE_COLORS = ['#fd6b03', '#3B82F6', '#0D9488', '#8B5CF6', '#EF4444', '#F59E0B'];
-
 const interestLabels: Record<string, string> = {
   'grab-coffee': 'coffee', 'try-street-food': 'street food', 'cook-together': 'cooking',
   'go-hiking': 'hiking', 'go-surfing': 'surfing', 'go-diving': 'diving',

@@ -166,7 +166,9 @@ export const getLikesForUser = query({
       ...matchesAsUser2.map((m) => m.user1Id),
     ]);
 
-    const unmatched = likeSwipes.filter((s) => !matchedUserIds.has(s.swiperId));
+    const unmatched = likeSwipes
+      .filter((s) => !matchedUserIds.has(s.swiperId))
+      .sort((a, b) => b.createdAt - a.createdAt);
 
     // Batch-fetch all liker users to avoid N+1
     const likerIds = [...new Set(unmatched.map((s) => s.swiperId))];

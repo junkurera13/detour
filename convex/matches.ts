@@ -19,7 +19,8 @@ export const getByUser = query({
       .filter((q) => q.eq(q.field("status"), "matched"))
       .collect();
 
-    const allMatches = [...matchesAsUser1, ...matchesAsUser2];
+    const allMatches = [...matchesAsUser1, ...matchesAsUser2]
+      .sort((a, b) => (b.matchedAt ?? b.createdAt) - (a.matchedAt ?? a.createdAt));
 
     // Get the other user's info for each match
     const matchesWithUsers = await Promise.all(
@@ -78,7 +79,7 @@ export const unmatch = mutation({
     }
 
     await ctx.db.patch(args.matchId, {
-      status: "unmatched",
+      status: "rejected",
     });
   },
 });

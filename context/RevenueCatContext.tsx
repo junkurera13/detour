@@ -42,18 +42,19 @@ const getApiKey = () => {
 export function RevenueCatProvider({ children }: { children: React.ReactNode }) {
   const { userId, isLoaded } = useAuth();
   const [isConfigured, setIsConfigured] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
   const lastUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web') { setIsLoading(false); return; }
     if (!isLoaded) return;
 
     const apiKey = getApiKey();
     if (!apiKey) {
       console.warn('RevenueCat API key missing. Set EXPO_PUBLIC_REVENUECAT_*_API_KEY.');
+      setIsLoading(false);
       return;
     }
 
@@ -70,6 +71,7 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
         setIsConfigured(true);
       } catch (error) {
         console.warn('[RevenueCat] Configure failed (expected in Expo Go):', error);
+        setIsLoading(false);
       }
       return;
     }
@@ -118,7 +120,16 @@ export function RevenueCatProvider({ children }: { children: React.ReactNode }) 
     if (!isConfigured) return;
 
     setIsLoading(true);
-    Promise.all([refreshCustomerInfo(), refreshOfferings()]).finally(() => {
+    // Use restorePurchases instead of getCustomerInfo on startup.
+    // getCustomerInfo returns stale cached data on cold start (no entitlement),
+    // while restorePurchases syncs with Google Play / App Store to get the real status.
+    Promise.all([
+      Purchases.restorePurchases().then((info) => {
+        setCustomerInfo(info);
+        return info;
+      }).catch(() => refreshCustomerInfo()),
+      refreshOfferings(),
+    ]).finally(() => {
       setIsLoading(false);
     });
 
