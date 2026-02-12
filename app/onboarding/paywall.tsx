@@ -159,6 +159,8 @@ export default function PaywallScreen() {
         latitude: data.latitude,
         longitude: data.longitude,
         futureTrips: data.futureTrips.length > 0 ? data.futureTrips : undefined,
+        pets: data.pets.length > 0 ? data.pets : undefined,
+        rigPhoto: data.rigPhoto || undefined,
         joinPath: data.joinPath ?? 'apply',
         inviteCode: data.inviteCode || undefined,
       });

@@ -22,6 +22,8 @@ export interface OnboardingData {
   lifestyle: string[];
   rigType: string;
   rigName: string;
+  rigPhoto: string;
+  pets: Array<{ type: string; name: string; photo: string }>;
   timeNomadic: string;
   interests: string[];
   photos: string[];
@@ -54,6 +56,8 @@ const defaultData: OnboardingData = {
   lifestyle: [],
   rigType: '',
   rigName: '',
+  rigPhoto: '',
+  pets: [],
   timeNomadic: '',
   interests: [],
   photos: [],

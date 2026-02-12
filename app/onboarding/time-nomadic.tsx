@@ -28,7 +28,7 @@ export default function TimeNomadicScreen() {
     <OnboardingLayout
       title="how long have you been nomadic?"
       subtitle="we all started somewhere"
-      currentStep={9}
+      currentStep={10}
     >
       <View className="flex-1 pt-4">
         {timeOptions.map((option) => (

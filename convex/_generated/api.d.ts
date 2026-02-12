@@ -9,6 +9,7 @@
  */
 
 import type * as activities from "../activities.js";
+import type * as activityMessages from "../activityMessages.js";
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
 import type * as blocks from "../blocks.js";
@@ -41,6 +42,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   activities: typeof activities;
+  activityMessages: typeof activityMessages;
   admin: typeof admin;
   auth: typeof auth;
   blocks: typeof blocks;

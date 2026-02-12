@@ -56,15 +56,43 @@ export default function PhotosScreen() {
   };
 
   const handleContinue = async () => {
-    // Check if there are local photos that need uploading
-    const hasLocalPhotos = photos.some(
+    // Collect all URIs that need uploading: profile photos + rig photo + pet photos
+    const allUris: string[] = [...photos];
+    const rigPhotoUri = data.rigPhoto;
+    const hasRigPhoto = rigPhotoUri && !rigPhotoUri.startsWith('http');
+    if (hasRigPhoto) allUris.push(rigPhotoUri);
+
+    const petPhotoIndices: number[] = [];
+    data.pets.forEach((pet, i) => {
+      if (pet.photo && !pet.photo.startsWith('http')) {
+        petPhotoIndices.push(i);
+        allUris.push(pet.photo);
+      }
+    });
+
+    const hasLocalPhotos = allUris.some(
       (p) => p.startsWith('file://') || p.startsWith('ph://')
     );
 
     if (hasLocalPhotos) {
       try {
-        const cloudUrls = await uploadPhotos(photos);
-        updateData({ photos: cloudUrls });
+        const cloudUrls = await uploadPhotos(allUris);
+
+        // Split results back
+        const profileCount = photos.length;
+        const profileCloudUrls = cloudUrls.slice(0, profileCount);
+        let idx = profileCount;
+
+        const rigPhotoCloud = hasRigPhoto ? cloudUrls[idx++] : data.rigPhoto;
+
+        const updatedPets = data.pets.map((pet, i) => {
+          if (petPhotoIndices.includes(i)) {
+            return { ...pet, photo: cloudUrls[idx++] };
+          }
+          return pet;
+        });
+
+        updateData({ photos: profileCloudUrls, rigPhoto: rigPhotoCloud, pets: updatedPets });
       } catch {
         Alert.alert(
           'upload failed',
@@ -172,7 +200,7 @@ export default function PhotosScreen() {
     <OnboardingLayout
       title="add your photos"
       subtitle="add 1-6 photos. tap to add, hold to remove."
-      currentStep={11}
+      currentStep={12}
     >
       <View className="flex-1 pt-4">
         {/* Row 1: Large photo + 2 small stacked */}

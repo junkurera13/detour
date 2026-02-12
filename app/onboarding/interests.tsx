@@ -141,7 +141,7 @@ export default function InterestsScreen() {
     <OnboardingLayout
       title="what do you love doing?"
       subtitle={`pick the activities you'd want to do with someone. this helps us find your people. (${selected.length}/15)`}
-      currentStep={10}
+      currentStep={11}
     >
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="pt-4 pb-4">

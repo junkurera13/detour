@@ -27,6 +27,7 @@ export default defineSchema({
     lifestyle: v.array(v.string()),
     rigType: v.optional(v.string()),
     rigName: v.optional(v.string()),
+    rigPhoto: v.optional(v.string()),
     timeNomadic: v.string(),
     interests: v.array(v.string()),
 
@@ -50,7 +51,7 @@ export default defineSchema({
     }))),
 
     // Pets
-    pets: v.optional(v.array(v.object({ type: v.string(), name: v.string() }))),
+    pets: v.optional(v.array(v.object({ type: v.string(), name: v.string(), photo: v.optional(v.string()) }))),
 
     // Builder profile
     builderBio: v.optional(v.string()),
@@ -233,6 +234,17 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_category", ["category"])
     .index("by_created", ["createdAt"]),
+
+  // Activity group chat messages
+  activityMessages: defineTable({
+    activityId: v.id("activities"),
+    senderId: v.id("users"),
+    content: v.string(),
+    messageType: v.string(), // "text"
+    createdAt: v.number(),
+  })
+    .index("by_activity", ["activityId"])
+    .index("by_activity_created", ["activityId", "createdAt"]),
 
   // Reports
   reports: defineTable({

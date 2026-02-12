@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 
 export interface Pet {
   type: string;
   name: string;
+  photo?: string;
 }
 
 export const petTypeOptions = [
@@ -21,12 +23,31 @@ interface PetsManagerProps {
   pets: Pet[];
   onAddPet: (pet: Pet) => void;
   onRemovePet: (index: number) => void;
+  onUpdatePetPhoto?: (index: number, photoUri: string) => void;
 }
 
-export function PetsManager({ pets, onAddPet, onRemovePet }: PetsManagerProps) {
+export function PetsManager({ pets, onAddPet, onRemovePet, onUpdatePetPhoto }: PetsManagerProps) {
   const [addingPet, setAddingPet] = useState(false);
   const [newPetType, setNewPetType] = useState('');
   const [newPetName, setNewPetName] = useState('');
+  const [newPetPhoto, setNewPetPhoto] = useState('');
+
+  const pickPhoto = async (callback: (uri: string) => void) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('permission needed', 'please allow access to your photo library.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      callback(result.assets[0].uri);
+    }
+  };
 
   return (
     <View>
@@ -51,7 +72,30 @@ export function PetsManager({ pets, onAddPet, onRemovePet }: PetsManagerProps) {
             className="flex-row items-center justify-between bg-gray-50 rounded-2xl px-4 py-3 mb-3"
           >
             <View className="flex-row items-center">
-              <Text style={{ fontSize: 24 }}>{typeInfo?.emoji || '🐾'}</Text>
+              <TouchableOpacity
+                onPress={() => pickPhoto((uri) => onUpdatePetPhoto?.(index, uri))}
+                activeOpacity={0.7}
+              >
+                {pet.photo ? (
+                  <Image
+                    source={{ uri: pet.photo }}
+                    style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#E5E7EB' }}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: '#E5E7EB',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 20 }}>{typeInfo?.emoji || '🐾'}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
               <View className="ml-3">
                 <Text
                   className="text-black text-base"
@@ -127,12 +171,47 @@ export function PetsManager({ pets, onAddPet, onRemovePet }: PetsManagerProps) {
             style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 16 }}
           />
 
+          {/* Photo picker */}
+          <Text
+            className="text-sm text-gray-500 mb-2"
+            style={{ fontFamily: 'InstrumentSans_500Medium' }}
+          >
+            add a photo (optional)
+          </Text>
+          <TouchableOpacity
+            onPress={() => pickPhoto(setNewPetPhoto)}
+            activeOpacity={0.7}
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 32,
+              backgroundColor: newPetPhoto ? 'transparent' : '#E5E7EB',
+              borderWidth: newPetPhoto ? 0 : 2,
+              borderStyle: 'dashed',
+              borderColor: '#D1D5DB',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 16,
+              overflow: 'hidden',
+            }}
+          >
+            {newPetPhoto ? (
+              <Image
+                source={{ uri: newPetPhoto }}
+                style={{ width: 64, height: 64, borderRadius: 32 }}
+              />
+            ) : (
+              <Ionicons name="camera-outline" size={24} color="#9CA3AF" />
+            )}
+          </TouchableOpacity>
+
           <View className="flex-row gap-3">
             <TouchableOpacity
               onPress={() => {
                 setAddingPet(false);
                 setNewPetType('');
                 setNewPetName('');
+                setNewPetPhoto('');
               }}
               className="flex-1 py-3 rounded-xl items-center"
               style={{ backgroundColor: '#F3F4F6' }}
@@ -147,10 +226,11 @@ export function PetsManager({ pets, onAddPet, onRemovePet }: PetsManagerProps) {
             <TouchableOpacity
               onPress={() => {
                 if (!newPetType || !newPetName.trim()) return;
-                onAddPet({ type: newPetType, name: newPetName.trim() });
+                onAddPet({ type: newPetType, name: newPetName.trim(), photo: newPetPhoto || undefined });
                 setAddingPet(false);
                 setNewPetType('');
                 setNewPetName('');
+                setNewPetPhoto('');
               }}
               className="flex-1 py-3 rounded-xl items-center"
               style={{

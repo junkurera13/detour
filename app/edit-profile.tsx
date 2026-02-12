@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -165,6 +166,7 @@ export default function EditProfileScreen() {
   const [lifestyle, setLifestyle] = useState<string[]>([]);
   const [rigType, setRigType] = useState('');
   const [rigName, setRigName] = useState('');
+  const [rigPhoto, setRigPhoto] = useState('');
   const [interests, setInterests] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [pets, setPets] = useState<Pet[]>([]);
@@ -192,6 +194,7 @@ export default function EditProfileScreen() {
       setLifestyle(user.lifestyle || []);
       setRigType(user.rigType || '');
       setRigName(user.rigName || '');
+      setRigPhoto(user.rigPhoto || '');
       setInterests(user.interests || []);
       setPhotos(user.photos || []);
       setPets(user.pets || []);
@@ -210,13 +213,14 @@ export default function EditProfileScreen() {
       JSON.stringify(lifestyle) !== JSON.stringify(user.lifestyle) ||
       rigType !== (user.rigType || '') ||
       rigName !== (user.rigName || '') ||
+      rigPhoto !== (user.rigPhoto || '') ||
       JSON.stringify(interests) !== JSON.stringify(user.interests) ||
       JSON.stringify(photos) !== JSON.stringify(user.photos) ||
       JSON.stringify(pets) !== JSON.stringify(user.pets || []) ||
       builderBio !== (user.builderBio || '') ||
       JSON.stringify(builderSpecialties) !== JSON.stringify(user.builderSpecialties || []);
     setHasChanges(changed);
-  }, [name, username, instagram, lifestyle, rigType, rigName, interests, photos, pets, builderBio, builderSpecialties, user]);
+  }, [name, username, instagram, lifestyle, rigType, rigName, rigPhoto, interests, photos, pets, builderBio, builderSpecialties, user]);
 
   // Username validation
   useEffect(() => {
@@ -326,8 +330,30 @@ export default function EditProfileScreen() {
     setIsSaving(true);
 
     try {
-      // Upload any new local photos
-      const uploadedPhotos = await uploadPhotos(photos);
+      // Collect all photos to upload in one batch
+      const allUris: string[] = [...photos];
+      const hasLocalRigPhoto = rigPhoto && !rigPhoto.startsWith('http');
+      if (hasLocalRigPhoto) allUris.push(rigPhoto);
+
+      const petPhotoIndices: number[] = [];
+      pets.forEach((pet, i) => {
+        if (pet.photo && !pet.photo.startsWith('http')) {
+          petPhotoIndices.push(i);
+          allUris.push(pet.photo);
+        }
+      });
+
+      const allUploaded = await uploadPhotos(allUris);
+
+      const uploadedPhotos = allUploaded.slice(0, photos.length);
+      let idx = photos.length;
+      const uploadedRigPhoto = hasLocalRigPhoto ? allUploaded[idx++] : rigPhoto;
+      const uploadedPets = pets.map((pet, i) => {
+        if (petPhotoIndices.includes(i)) {
+          return { ...pet, photo: allUploaded[idx++] };
+        }
+        return pet;
+      });
 
       await updateUser({
         name: name.trim(),
@@ -335,10 +361,11 @@ export default function EditProfileScreen() {
         lifestyle,
         ...(rigType ? { rigType } : {}),
         ...(rigName.trim() ? { rigName: rigName.trim() } : {}),
+        ...(uploadedRigPhoto ? { rigPhoto: uploadedRigPhoto } : {}),
         interests,
         photos: uploadedPhotos,
         ...(instagram.trim() ? { instagram: instagram.trim() } : {}),
-        pets: pets.length > 0 ? pets : [],
+        pets: uploadedPets.length > 0 ? uploadedPets : [],
         ...(builderBio.trim() ? { builderBio: builderBio.trim() } : {}),
         ...(builderSpecialties.length > 0 ? { builderSpecialties } : {}),
       });
@@ -498,6 +525,7 @@ export default function EditProfileScreen() {
                 pets={pets}
                 onAddPet={(pet) => setPets((prev) => [...prev, pet])}
                 onRemovePet={(index) => setPets((prev) => prev.filter((_, i) => i !== index))}
+                onUpdatePetPhoto={(index, uri) => setPets((prev) => prev.map((p, i) => i === index ? { ...p, photo: uri } : p))}
               />
             </View>
           )}
@@ -546,15 +574,84 @@ export default function EditProfileScreen() {
                 ))}
               </View>
               {rigType ? (
-                <TextInput
-                  className="border border-gray-300 rounded-xl px-4 py-3 text-base text-black mt-4"
-                  placeholder="rig name (optional)"
-                  placeholderTextColor="#9CA3AF"
-                  value={rigName}
-                  onChangeText={setRigName}
-                  maxLength={30}
-                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                />
+                <View>
+                  <TextInput
+                    className="border border-gray-300 rounded-xl px-4 py-3 text-base text-black mt-4"
+                    placeholder="rig name (optional)"
+                    placeholderTextColor="#9CA3AF"
+                    value={rigName}
+                    onChangeText={setRigName}
+                    maxLength={30}
+                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                  />
+                  {/* Rig photo */}
+                  <TouchableOpacity
+                    onPress={async () => {
+                      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                      if (status !== 'granted') {
+                        Alert.alert('permission needed', 'please allow access to your photo library.');
+                        return;
+                      }
+                      const result = await ImagePicker.launchImageLibraryAsync({
+                        mediaTypes: ['images'],
+                        allowsEditing: true,
+                        aspect: [16, 9],
+                        quality: 0.8,
+                      });
+                      if (!result.canceled && result.assets[0]) {
+                        setRigPhoto(result.assets[0].uri);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                    style={{
+                      marginTop: 12,
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      aspectRatio: 16 / 9,
+                      backgroundColor: rigPhoto ? 'transparent' : '#F3F4F6',
+                      borderWidth: rigPhoto ? 0 : 2,
+                      borderStyle: 'dashed',
+                      borderColor: '#D1D5DB',
+                    }}
+                  >
+                    {rigPhoto ? (
+                      <View style={{ flex: 1 }}>
+                        <Image
+                          source={{ uri: rigPhoto }}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="cover"
+                        />
+                        <TouchableOpacity
+                          onPress={() => setRigPhoto('')}
+                          style={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                            borderRadius: 12,
+                            padding: 4,
+                          }}
+                        >
+                          <Ionicons name="close" size={16} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="camera-outline" size={28} color="#9CA3AF" />
+                        <Text
+                          style={{
+                            color: '#9CA3AF',
+                            fontSize: 14,
+                            marginTop: 6,
+                            fontFamily: 'InstrumentSans_400Regular',
+                          }}
+                        >
+                          add a photo (optional)
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
               ) : null}
             </View>
           )}

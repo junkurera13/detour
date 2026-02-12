@@ -98,6 +98,8 @@ export default function FutureTripScreen() {
         latitude: data.latitude,
         longitude: data.longitude,
         futureTrips: validStops.length > 0 ? validStops : undefined,
+        pets: data.pets.length > 0 ? data.pets : undefined,
+        rigPhoto: data.rigPhoto || undefined,
         joinPath: 'apply',
       });
 
@@ -147,7 +149,7 @@ export default function FutureTripScreen() {
     <OnboardingLayout
       title="where to next?"
       subtitle="add your upcoming destinations to connect with nomads along your route"
-      currentStep={13}
+      currentStep={14}
       showSkip
       onSkip={handleSkip}
       scrollable

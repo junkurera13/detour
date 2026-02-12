@@ -58,7 +58,7 @@ export default function LocationScreen() {
     <OnboardingLayout
       title="where are you now?"
       subtitle="help nearby nomads find you"
-      currentStep={12}
+      currentStep={13}
       scrollable
       footer={
         <Button

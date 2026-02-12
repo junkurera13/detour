@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, Share, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, Share, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -67,14 +67,31 @@ export default function EventDetailScreen() {
 
   const handleToggleJoin = async () => {
     if (!eventId) return;
-    try {
-      if (joined) {
-        await leaveMutation({ activityId: eventId as Id<"activities"> });
-      } else {
+    if (joined) {
+      Alert.alert(
+        'leave event?',
+        'you will lose access to the group chat.',
+        [
+          { text: 'cancel', style: 'cancel' },
+          {
+            text: 'leave',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await leaveMutation({ activityId: eventId as Id<"activities"> });
+              } catch {
+                // silently handle
+              }
+            },
+          },
+        ],
+      );
+    } else {
+      try {
         await joinMutation({ activityId: eventId as Id<"activities"> });
+      } catch {
+        // silently handle
       }
-    } catch {
-      // silently handle
     }
   };
 
@@ -409,25 +426,37 @@ export default function EventDetailScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Join / Joined button */}
-          <TouchableOpacity
-            className="flex-row items-center px-6 py-3 rounded-full"
-            style={{ backgroundColor: joined ? '#F3F4F6' : '#fd6b03' }}
-            activeOpacity={0.8}
-            onPress={handleToggleJoin}
-          >
-            <Ionicons
-              name={joined ? 'checkmark' : 'add'}
-              size={20}
-              color={joined ? '#374151' : '#fff'}
-            />
-            <Text
-              className={`text-base ml-1 ${joined ? 'text-gray-700' : 'text-white'}`}
-              style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+          {/* Right actions: chat bubble + join button */}
+          <View className="flex-row items-center gap-2">
+            {joined && (
+              <TouchableOpacity
+                onPress={() => router.push(`/event/chat/${eventId}` as any)}
+                className="w-10 h-10 rounded-full items-center justify-center"
+                style={{ backgroundColor: '#000' }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chatbubbles" size={18} color="#fff" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              className="flex-row items-center px-6 py-3 rounded-full"
+              style={{ backgroundColor: joined ? '#F3F4F6' : '#fd6b03' }}
+              activeOpacity={0.8}
+              onPress={handleToggleJoin}
             >
-              {joined ? 'joined' : 'join'}
-            </Text>
-          </TouchableOpacity>
+              <Ionicons
+                name={joined ? 'checkmark' : 'add'}
+                size={20}
+                color={joined ? '#374151' : '#fff'}
+              />
+              <Text
+                className={`text-base ml-1 ${joined ? 'text-gray-700' : 'text-white'}`}
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                {joined ? 'joined' : 'join'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 

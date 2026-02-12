@@ -156,6 +156,7 @@ export default function ProfileScreen() {
         lifestyle: user.lifestyle,
         rigType: user.rigType,
         rigName: user.rigName,
+        rigPhoto: user.rigPhoto || '',
         interests: user.interests,
         futureTrips: user.futureTrips || [],
         pets: user.pets || [],
@@ -171,9 +172,10 @@ export default function ProfileScreen() {
       lifestyle: onboardingData.lifestyle,
       rigType: onboardingData.rigType,
       rigName: onboardingData.rigName,
+      rigPhoto: onboardingData.rigPhoto || '',
       interests: onboardingData.interests,
       futureTrips: onboardingData.futureTrips || [],
-      pets: [],
+      pets: onboardingData.pets || [],
     };
   }, [user, onboardingData, age]);
 
@@ -756,6 +758,13 @@ export default function ProfileScreen() {
                 >
                   setup
                 </Text>
+                {profileData.rigPhoto ? (
+                  <Image
+                    source={{ uri: profileData.rigPhoto }}
+                    style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 16, marginBottom: 12 }}
+                    resizeMode="cover"
+                  />
+                ) : null}
                 <View className="bg-gray-100 px-3 py-2 rounded-full flex-row items-center self-start">
                   <Text className="mr-1">{setupLabels[profileData.rigType]?.emoji}</Text>
                   <Text
@@ -781,12 +790,19 @@ export default function ProfileScreen() {
                     const emojiMap: Record<string, string> = { dog: '🐕', cat: '🐈', bird: '🐦', rabbit: '🐰', fish: '🐟', reptile: '🦎', other: '🐾' };
                     return (
                       <View key={idx} className="bg-gray-100 px-3 py-2 rounded-full flex-row items-center">
-                        <Text className="mr-1">{emojiMap[pet.type] || '🐾'}</Text>
+                        {pet.photo ? (
+                          <Image
+                            source={{ uri: pet.photo }}
+                            style={{ width: 24, height: 24, borderRadius: 12, marginRight: 4 }}
+                          />
+                        ) : (
+                          <Text className="mr-1">{emojiMap[pet.type] || '🐾'}</Text>
+                        )}
                         <Text
                           className="text-gray-700"
                           style={{ fontFamily: 'InstrumentSans_500Medium' }}
                         >
-                          {pet.name} ({pet.type})
+                          {pet.type} ({pet.name})
                         </Text>
                       </View>
                     );
