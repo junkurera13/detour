@@ -15,7 +15,7 @@ const timelineSteps = [
   {
     day: 'today',
     title: 'start your free trial',
-    description: 'get instant access to all nearby nomads & unlimited messages',
+    description: 'unlock route mesh, travel crews, and unlimited messages',
   },
   {
     day: 'day 5',
@@ -31,20 +31,28 @@ const timelineSteps = [
 
 const maxFeatures = [
   {
-    title: 'unlock full nomad lists',
-    description: 'nearby and at your destinations',
+    title: 'route mesh',
+    description: 'see where your travel routes overlap with other nomads',
   },
   {
-    title: 'priority visibility',
-    description: 'your profile near the top of the nearby list',
+    title: 'travel crews',
+    description: 'auto-matched groups at your upcoming destinations',
+  },
+  {
+    title: 'activity ideas',
+    description: 'personalized suggestions based on your location and interests',
+  },
+  {
+    title: 'nomad help',
+    description: 'ask for or offer help to nearby nomads',
+  },
+  {
+    title: 'unlimited messages',
+    description: 'chat with all your matches without limits',
   },
   {
     title: 'see who viewed your profile',
-    description: 'nearby nomads who viewed your profile',
-  },
-  {
-    title: 'personalized activity ideas',
-    description: 'based off your location and interests',
+    description: 'know which nomads are checking you out',
   },
 ];
 
@@ -268,7 +276,7 @@ export default function PaywallScreen() {
           className="text-3xl text-black mb-8"
           style={{ fontFamily: 'InstrumentSans_700Bold' }}
         >
-          make unlimited nomad friends with detour plus
+          find your crew on the road with detour plus
         </Text>
 
         {/* Timeline Progress */}

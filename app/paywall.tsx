@@ -13,9 +13,24 @@ import { withRetry } from '@/lib/retry';
 
 const features: { icon: ComponentProps<typeof Ionicons>['name']; title: string; description: string }[] = [
   {
+    icon: 'git-network-outline',
+    title: 'route mesh',
+    description: 'visualize where your routes overlap on an interactive map',
+  },
+  {
     icon: 'people',
-    title: 'unlimited connections',
-    description: 'connect with all nearby nomads',
+    title: 'travel crews',
+    description: 'auto-grouped nomads at your upcoming destinations',
+  },
+  {
+    icon: 'bulb-outline',
+    title: 'activity ideas',
+    description: 'personalized suggestions based on your location and interests',
+  },
+  {
+    icon: 'hand-left-outline',
+    title: 'nomad help',
+    description: 'ask for or offer help to nearby nomads',
   },
   {
     icon: 'chatbubbles',
@@ -24,13 +39,8 @@ const features: { icon: ComponentProps<typeof Ionicons>['name']; title: string; 
   },
   {
     icon: 'eye',
-    title: 'see who likes you',
-    description: 'know who\'s interested before you swipe',
-  },
-  {
-    icon: 'star',
-    title: 'priority visibility',
-    description: 'appear at the top of the nearby list',
+    title: 'profile views',
+    description: 'see which nomads have been checking you out',
   },
 ];
 

@@ -66,21 +66,45 @@ interface ResolvedTrip {
   stopType?: string;
 }
 
+// Parse flexible date strings: ISO "2026-03-30", short "Mar 30", or full Date strings
+function parseFlexDate(str: string): string {
+  // Already ISO format
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
+
+  // Short format like "Mar 30" — assume current year
+  const months: Record<string, string> = {
+    jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+    jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
+  };
+  const match = str.trim().match(/^([A-Za-z]{3})\s+(\d{1,2})$/);
+  if (match) {
+    const m = months[match[1].toLowerCase()];
+    const d = match[2].padStart(2, "0");
+    if (m) return `${new Date().getFullYear()}-${m}-${d}`;
+  }
+
+  // Fallback: try native parsing
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  return str;
+}
+
 function resolveTrips(trips: RawTrip[]): ResolvedTrip[] {
   const resolved: ResolvedTrip[] = [];
 
   for (let i = 0; i < trips.length; i++) {
     const t = trips[i];
-    const start = t.startDate || t.date;
-    if (!start) continue; // skip trips with no date at all
+    const rawStart = t.startDate || t.date;
+    if (!rawStart) continue; // skip trips with no date at all
+    const start = parseFlexDate(rawStart);
 
-    let end = t.endDate;
+    let end = t.endDate ? parseFlexDate(t.endDate) : undefined;
     if (!end) {
       // Use next trip's startDate as implicit end
       const nextTrip = trips[i + 1];
-      const nextStart = nextTrip?.startDate || nextTrip?.date;
-      if (nextStart) {
-        end = nextStart;
+      const nextRaw = nextTrip?.startDate || nextTrip?.date;
+      if (nextRaw) {
+        end = parseFlexDate(nextRaw);
       } else {
         // Last stop — assume DEFAULT_STAY_DAYS
         const d = new Date(start);

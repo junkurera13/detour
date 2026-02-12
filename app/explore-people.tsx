@@ -637,35 +637,6 @@ export default function ExplorePeopleScreen() {
             </View>
           )}
 
-          {/* Nomad Stops — secondary link */}
-          <TouchableOpacity
-            onPress={() => router.push('/stops')}
-            activeOpacity={0.8}
-            className="mx-6 mb-8"
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              backgroundColor: '#F9FAFB',
-              borderRadius: 14,
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-            }}
-          >
-            <View className="flex-row items-center">
-              <Ionicons name="map-outline" size={18} color="#6B7280" style={{ marginRight: 10 }} />
-              <View>
-                <Text style={{ fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, color: '#000' }}>
-                  nomad stops
-                </Text>
-                <Text style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 12, color: '#9CA3AF', marginTop: 1 }}>
-                  community-pinned spots nearby
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
-          </TouchableOpacity>
-
           {/* Empty state if nothing to show */}
           {headingYourWay.length === 0 && !firstTripLocation && recentCrossings.length === 0 && sameLifestyle.length === 0 && sameInterests.length === 0 && (
             <View className="items-center pt-20 px-6">

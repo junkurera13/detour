@@ -241,13 +241,15 @@ export default function ProfileScreen() {
   // Build a clean trip array with only schema-valid fields: location, startDate.
   // Convex v.object() is strict — extra keys cause validation failures.
   const buildCleanTrips = () =>
-    profileData.futureTrips.map((t) => {
-      const trip: { location: string; startDate?: string } = {
-        location: t.location,
-      };
-      if (t.startDate) trip.startDate = t.startDate;
-      return trip;
-    });
+    profileData.futureTrips.map((t) => ({
+      location: t.location,
+      ...(t.date ? { date: t.date } : {}),
+      ...(t.startDate ? { startDate: t.startDate } : {}),
+      ...(t.endDate ? { endDate: t.endDate } : {}),
+      ...(t.latitude != null ? { latitude: t.latitude } : {}),
+      ...(t.longitude != null ? { longitude: t.longitude } : {}),
+      ...(t.stopType ? { stopType: t.stopType } : {}),
+    }));
 
   const handleSaveCurrentLocation = async (location: { fullName: string; coordinates?: { latitude: number; longitude: number } }) => {
     if (!user) return;
@@ -266,15 +268,19 @@ export default function ProfileScreen() {
     setEditingCurrentLocation(false);
   };
 
-  const handleSaveStopLocation = async (index: number, locationText: string) => {
+  const handleSaveStopLocation = async (index: number, location: { fullName: string; coordinates?: { latitude: number; longitude: number } }) => {
     if (!user) return;
-    const text = locationText.trim();
+    const text = location.fullName.trim();
     if (!text) return;
     const trips = buildCleanTrips();
+    const stopData = {
+      location: text,
+      ...(location.coordinates ? { latitude: location.coordinates.latitude, longitude: location.coordinates.longitude } : {}),
+    };
     if (index < trips.length) {
-      trips[index].location = text;
+      trips[index] = { ...trips[index], ...stopData };
     } else {
-      trips.push({ location: text });
+      trips.push(stopData);
     }
     try {
       await updateUser({ futureTrips: trips });
@@ -289,7 +295,7 @@ export default function ProfileScreen() {
   const handleSaveStopDate = async (index: number, _field: 'start' | 'end', date: Date) => {
     if (!user || index >= profileData.futureTrips.length) return;
     const trips = buildCleanTrips();
-    trips[index].startDate = formatDateShort(date);
+    trips[index].startDate = date.toISOString().slice(0, 10);
     try {
       await updateUser({ futureTrips: trips });
     } catch (e) {
@@ -568,7 +574,7 @@ export default function ProfileScreen() {
                             <LocationAutocomplete
                               value={editingStopText}
                               placeholder="search for a city..."
-                              onSelect={(location) => handleSaveStopLocation(index, location.fullName)}
+                              onSelect={(location) => handleSaveStopLocation(index, location)}
                             />
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
                               <TouchableOpacity onPress={() => { setEditingLocationIndex(null); setEditingStopText(''); }} style={{ paddingVertical: 4 }}>
@@ -685,7 +691,7 @@ export default function ProfileScreen() {
                             <LocationAutocomplete
                               value={editingStopText}
                               placeholder="search for a city..."
-                              onSelect={(location) => handleSaveStopLocation(profileData.futureTrips.length, location.fullName)}
+                              onSelect={(location) => handleSaveStopLocation(profileData.futureTrips.length, location)}
                             />
                             <TouchableOpacity onPress={() => { setEditingLocationIndex(null); setEditingStopText(''); }} style={{ marginTop: 6, paddingVertical: 4 }}>
                               <Text style={{ color: '#9CA3AF', fontSize: 12, fontFamily: 'InstrumentSans_500Medium' }}>cancel</Text>

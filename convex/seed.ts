@@ -25,8 +25,8 @@ const testUsers = [
     longitude: -9.1393,
     futureTrip: "Barcelona, Spain",
     futureTrips: [
-      { location: "Lisbon, Portugal", startDate: "2026-02-01", endDate: "2026-03-15", latitude: 38.7223, longitude: -9.1393, stopType: "city" },
       { location: "Barcelona, Spain", startDate: "2026-03-20", endDate: "2026-04-15", latitude: 41.3874, longitude: 2.1686, stopType: "city" },
+      { location: "Split, Croatia", startDate: "2026-04-20", endDate: "2026-05-10", latitude: 43.5081, longitude: 16.4402, stopType: "city" },
     ],
     pets: [{ type: "cat", name: "mochi" }],
     rigType: "no-vehicle",
@@ -375,6 +375,267 @@ const testUsers = [
       { location: "Tokyo, Japan", startDate: "2026-05-01", endDate: "2026-05-20", latitude: 35.6762, longitude: 139.6503, stopType: "city" },
     ],
     rigType: "bike-motorcycle",
+  },
+  {
+    name: "Kira",
+    username: "kira.nomad",
+    birthday: "1998-02-11",
+    gender: "woman",
+    lookingFor: ["dating"],
+    datingPreference: ["men"],
+    datingGoals: ["long-term"],
+    lifestyle: ["digital-nomad", "slow-travel"],
+    timeNomadic: "1-to-2-years",
+    interests: ["cowork-at-cafes", "go-hiking", "take-photos", "grab-coffee", "watch-sunsets"],
+    photos: [
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=500&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=500&fit=crop&crop=face",
+    ],
+    instagram: "kira.nomad",
+    currentLocation: "Berlin, Germany",
+    latitude: 52.5200,
+    longitude: 13.4050,
+    futureTrip: "Lisbon, Portugal",
+    futureTrips: [
+      { location: "Lisbon, Portugal", startDate: "2026-03-01", endDate: "2026-03-25", latitude: 38.7223, longitude: -9.1393, stopType: "city" },
+      { location: "Barcelona, Spain", startDate: "2026-04-01", endDate: "2026-04-20", latitude: 41.3874, longitude: 2.1686, stopType: "city" },
+    ],
+    rigType: "no-vehicle",
+  },
+  {
+    name: "Felix",
+    username: "felix.runs",
+    birthday: "1995-08-30",
+    gender: "man",
+    lookingFor: ["dating"],
+    datingPreference: ["women"],
+    datingGoals: ["casual", "long-term"],
+    lifestyle: ["digital-nomad", "perpetual-traveler"],
+    timeNomadic: "2-plus-years",
+    interests: ["go-running", "hit-the-gym", "cowork-at-cafes", "try-street-food", "go-hiking"],
+    photos: [
+      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=500&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=500&fit=crop&crop=face",
+    ],
+    instagram: "felix.runs",
+    currentLocation: "Berlin, Germany",
+    latitude: 52.5200,
+    longitude: 13.4050,
+    futureTrip: "Barcelona, Spain",
+    futureTrips: [
+      { location: "Barcelona, Spain", startDate: "2026-03-15", endDate: "2026-04-10", latitude: 41.3874, longitude: 2.1686, stopType: "city" },
+      { location: "Lisbon, Portugal", startDate: "2026-04-15", endDate: "2026-05-05", latitude: 38.7223, longitude: -9.1393, stopType: "city" },
+    ],
+    rigType: "no-vehicle",
+  },
+  {
+    name: "Sofia",
+    username: "sofiatrails",
+    birthday: "2000-04-18",
+    gender: "woman",
+    lookingFor: ["dating"],
+    datingPreference: ["men"],
+    datingGoals: ["casual"],
+    lifestyle: ["backpacker", "digital-nomad"],
+    timeNomadic: "6-months-to-1-year",
+    interests: ["go-hiking", "take-photos", "try-street-food", "go-dancing", "see-live-music"],
+    photos: [
+      "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=400&h=500&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=500&fit=crop&crop=face",
+    ],
+    currentLocation: "Lisbon, Portugal",
+    latitude: 38.7223,
+    longitude: -9.1393,
+    futureTrip: "Split, Croatia",
+    futureTrips: [
+      { location: "Barcelona, Spain", startDate: "2026-03-10", endDate: "2026-04-05", latitude: 41.3874, longitude: 2.1686, stopType: "city" },
+      { location: "Split, Croatia", startDate: "2026-04-10", endDate: "2026-05-01", latitude: 43.5081, longitude: 16.4402, stopType: "city" },
+    ],
+    rigType: "on-foot",
+  },
+  {
+    name: "Kai",
+    username: "kai.builds",
+    birthday: "1994-12-05",
+    gender: "man",
+    lookingFor: ["dating"],
+    datingPreference: ["women"],
+    datingGoals: ["long-term"],
+    lifestyle: ["digital-nomad"],
+    timeNomadic: "2-plus-years",
+    interests: ["build-stuff", "cowork-at-cafes", "brainstorm-ideas", "grab-coffee", "go-cycling"],
+    photos: [
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=500&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face",
+    ],
+    instagram: "kai.builds",
+    currentLocation: "Chiang Mai, Thailand",
+    latitude: 18.7883,
+    longitude: 98.9853,
+    futureTrip: "Canggu, Bali",
+    futureTrips: [
+      { location: "Canggu, Bali", startDate: "2026-03-10", endDate: "2026-04-10", latitude: -8.6478, longitude: 115.1385, stopType: "city" },
+      { location: "Da Nang, Vietnam", startDate: "2026-04-15", endDate: "2026-05-05", latitude: 16.0544, longitude: 108.2022, stopType: "city" },
+    ],
+    rigType: "bike-motorcycle",
+    rigName: "shadow",
+  },
+  {
+    name: "Ines",
+    username: "ines.wanders",
+    birthday: "1997-06-22",
+    gender: "woman",
+    lookingFor: ["dating"],
+    datingPreference: ["men"],
+    datingGoals: ["long-term", "casual"],
+    lifestyle: ["slow-travel", "digital-nomad"],
+    timeNomadic: "1-to-2-years",
+    interests: ["cook-together", "visit-museums", "read-together", "grab-coffee", "explore-the-city"],
+    photos: [
+      "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&h=500&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=500&fit=crop&crop=face",
+    ],
+    instagram: "ines.wanders",
+    currentLocation: "Barcelona, Spain",
+    latitude: 41.3874,
+    longitude: 2.1686,
+    futureTrip: "Lisbon, Portugal",
+    futureTrips: [
+      { location: "Lisbon, Portugal", startDate: "2026-03-05", endDate: "2026-03-28", latitude: 38.7223, longitude: -9.1393, stopType: "city" },
+      { location: "Marrakech, Morocco", startDate: "2026-04-05", endDate: "2026-04-25", latitude: 31.6295, longitude: -7.9811, stopType: "city" },
+    ],
+    rigType: "no-vehicle",
+  },
+  {
+    name: "Leo",
+    username: "leo.drifts",
+    birthday: "1996-10-14",
+    gender: "man",
+    lookingFor: ["dating"],
+    datingPreference: ["women"],
+    datingGoals: ["casual"],
+    lifestyle: ["van-life", "perpetual-traveler"],
+    timeNomadic: "2-plus-years",
+    interests: ["go-surfing", "go-camping", "beach-days", "cook-together", "watch-sunsets"],
+    photos: [
+      "https://images.unsplash.com/photo-1463453091185-61582044d556?w=400&h=500&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400&h=500&fit=crop&crop=face",
+    ],
+    instagram: "leo.drifts",
+    currentLocation: "Porto, Portugal",
+    latitude: 41.1579,
+    longitude: -8.6291,
+    futureTrip: "Barcelona, Spain",
+    futureTrips: [
+      { location: "Lisbon, Portugal", startDate: "2026-02-20", endDate: "2026-03-15", latitude: 38.7223, longitude: -9.1393, stopType: "city" },
+      { location: "Barcelona, Spain", startDate: "2026-03-20", endDate: "2026-04-15", latitude: 41.3874, longitude: 2.1686, stopType: "city" },
+      { location: "Split, Croatia", startDate: "2026-04-20", endDate: "2026-05-10", latitude: 43.5081, longitude: 16.4402, stopType: "city" },
+    ],
+    pets: [{ type: "dog", name: "wave" }],
+    rigType: "converted-van",
+    rigName: "salty",
+  },
+  {
+    name: "Yuna",
+    username: "yuna.snaps",
+    birthday: "2001-01-09",
+    gender: "woman",
+    lookingFor: ["dating"],
+    datingPreference: ["men"],
+    datingGoals: ["casual", "long-term"],
+    lifestyle: ["digital-nomad", "hostel-hopper"],
+    timeNomadic: "6-months-to-1-year",
+    interests: ["take-photos", "make-content", "try-street-food", "go-dancing", "explore-the-city"],
+    photos: [
+      "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&h=500&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=400&h=500&fit=crop&crop=face",
+    ],
+    currentLocation: "Seoul, South Korea",
+    latitude: 37.5665,
+    longitude: 126.9780,
+    futureTrip: "Chiang Mai, Thailand",
+    futureTrips: [
+      { location: "Chiang Mai, Thailand", startDate: "2026-03-01", endDate: "2026-03-25", latitude: 18.7883, longitude: 98.9853, stopType: "city" },
+      { location: "Canggu, Bali", startDate: "2026-04-01", endDate: "2026-04-25", latitude: -8.6478, longitude: 115.1385, stopType: "city" },
+    ],
+    rigType: "on-foot",
+  },
+  {
+    name: "Arjun",
+    username: "arjun.dev",
+    birthday: "1993-09-17",
+    gender: "man",
+    lookingFor: ["dating"],
+    datingPreference: ["women"],
+    datingGoals: ["life-partner"],
+    lifestyle: ["digital-nomad"],
+    timeNomadic: "2-plus-years",
+    interests: ["build-stuff", "cowork-at-cafes", "grab-coffee", "play-board-games", "go-hiking"],
+    photos: [
+      "https://images.unsplash.com/photo-1564564321837-a57b7070ac4f?w=400&h=500&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1548372290-8d01b6c8e78c?w=400&h=500&fit=crop&crop=face",
+    ],
+    instagram: "arjun.dev",
+    currentLocation: "Canggu, Bali",
+    latitude: -8.6478,
+    longitude: 115.1385,
+    futureTrip: "Chiang Mai, Thailand",
+    futureTrips: [
+      { location: "Chiang Mai, Thailand", startDate: "2026-03-05", endDate: "2026-04-01", latitude: 18.7883, longitude: 98.9853, stopType: "city" },
+      { location: "Da Nang, Vietnam", startDate: "2026-04-05", endDate: "2026-04-25", latitude: 16.0544, longitude: 108.2022, stopType: "city" },
+    ],
+    rigType: "bike-motorcycle",
+  },
+  {
+    name: "Mila",
+    username: "mila.roams",
+    birthday: "1999-11-28",
+    gender: "woman",
+    lookingFor: ["dating"],
+    datingPreference: ["men"],
+    datingGoals: ["casual"],
+    lifestyle: ["backpacker", "hostel-hopper"],
+    timeNomadic: "6-months-to-1-year",
+    interests: ["go-diving", "beach-days", "try-street-food", "go-dancing", "see-live-music"],
+    photos: [
+      "https://images.unsplash.com/photo-1502767089025-6572583495f9?w=400&h=500&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1526510747491-58f928ec870f?w=400&h=500&fit=crop&crop=face",
+    ],
+    currentLocation: "Da Nang, Vietnam",
+    latitude: 16.0544,
+    longitude: 108.2022,
+    futureTrip: "Canggu, Bali",
+    futureTrips: [
+      { location: "Canggu, Bali", startDate: "2026-03-15", endDate: "2026-04-10", latitude: -8.6478, longitude: 115.1385, stopType: "city" },
+      { location: "El Nido, Philippines", startDate: "2026-04-15", endDate: "2026-05-05", latitude: 11.1784, longitude: 119.3930, stopType: "city" },
+    ],
+    rigType: "on-foot",
+  },
+  {
+    name: "Ethan",
+    username: "ethan.abroad",
+    birthday: "1997-03-06",
+    gender: "man",
+    lookingFor: ["dating"],
+    datingPreference: ["women"],
+    datingGoals: ["long-term"],
+    lifestyle: ["digital-nomad", "slow-travel"],
+    timeNomadic: "1-to-2-years",
+    interests: ["make-content", "go-hiking", "grab-coffee", "cowork-at-cafes", "visit-museums"],
+    photos: [
+      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=500&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=500&fit=crop&crop=face",
+    ],
+    instagram: "ethan.abroad",
+    currentLocation: "Mexico City, Mexico",
+    latitude: 19.4326,
+    longitude: -99.1332,
+    futureTrip: "Lisbon, Portugal",
+    futureTrips: [
+      { location: "Lisbon, Portugal", startDate: "2026-03-10", endDate: "2026-04-05", latitude: 38.7223, longitude: -9.1393, stopType: "city" },
+      { location: "Barcelona, Spain", startDate: "2026-04-10", endDate: "2026-05-01", latitude: 41.3874, longitude: 2.1686, stopType: "city" },
+    ],
+    rigType: "no-vehicle",
   },
   {
     name: "Zoe",
@@ -1608,6 +1869,139 @@ export const seedActivities = internalMutation({
   },
 });
 
+const berlinActivities = [
+  {
+    hostUsername: "kira.nomad",
+    title: "coworking at bonanza coffee",
+    description: "spending the day working from bonanza in kreuzberg. fast wifi, great flat whites, chill vibes. come hang if you need a coworking buddy.",
+    image: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop",
+    date: "today",
+    time: "10:00 AM",
+    location: "Bonanza Coffee, Kreuzberg, Berlin",
+    category: "coworking",
+    tags: ["cowork-at-cafes", "grab-coffee"],
+    maxAttendees: 8,
+    attendeeUsernames: ["felix.runs", "ethan.abroad"],
+  },
+  {
+    hostUsername: "felix.runs",
+    title: "morning run through tiergarten",
+    description: "easy 6k loop through tiergarten park. meeting at the victory column. all paces welcome — we regroup at water stops. coffee after at the biergarten.",
+    image: "https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&h=400&fit=crop",
+    date: "tomorrow",
+    time: "7:00 AM",
+    location: "Siegessäule, Tiergarten, Berlin",
+    category: "fitness",
+    tags: ["go-running", "grab-coffee", "go-hiking"],
+    maxAttendees: 12,
+    attendeeUsernames: ["kira.nomad"],
+  },
+  {
+    hostUsername: "ethan.abroad",
+    title: "street food at markthalle neun",
+    description: "it's street food thursday! the best food market in berlin. thai, mexican, korean, pizza — everything. meet at the entrance around 5 and we'll explore together.",
+    image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=400&fit=crop",
+    date: "thursday",
+    time: "5:00 PM",
+    location: "Markthalle Neun, Kreuzberg, Berlin",
+    category: "food",
+    tags: ["try-street-food", "explore-the-city"],
+    maxAttendees: 10,
+    attendeeUsernames: ["kira.nomad", "felix.runs", "sofiatrails"],
+  },
+  {
+    hostUsername: "sofiatrails",
+    title: "sunset drinks at klunkerkranich",
+    description: "rooftop bar on top of a parking garage in neukölln. best sunset views in berlin. come for a drink and good conversation. gets busy so let's meet early.",
+    image: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop",
+    date: "friday",
+    time: "6:30 PM",
+    location: "Klunkerkranich, Neukölln, Berlin",
+    category: "other",
+    tags: ["watch-sunsets", "grab-coffee", "see-live-music"],
+    maxAttendees: 8,
+    attendeeUsernames: ["ethan.abroad", "kira.nomad"],
+  },
+  {
+    hostUsername: "kira.nomad",
+    title: "photography walk through mitte",
+    description: "exploring berlin's best photo spots — museum island, hackescher markt, the tv tower. golden hour walk ending with dinner somewhere nice. bring any camera, phone is fine too.",
+    image: "https://images.unsplash.com/photo-1560969184-10fe8719e047?w=600&h=400&fit=crop",
+    date: "saturday",
+    time: "3:30 PM",
+    location: "Museum Island, Mitte, Berlin",
+    category: "photography",
+    tags: ["take-photos", "explore-the-city", "watch-sunsets"],
+    maxAttendees: 8,
+    attendeeUsernames: ["sofiatrails", "ethan.abroad"],
+  },
+  {
+    hostUsername: "felix.runs",
+    title: "bouldering at the wall",
+    description: "heading to the wall bouldering gym in friedrichshain. all levels welcome — they have routes from V0 to V8. great way to meet people. rental shoes available.",
+    image: "https://images.unsplash.com/photo-1522163182402-834f871fd851?w=600&h=400&fit=crop",
+    date: "sunday",
+    time: "11:00 AM",
+    location: "The Wall, Friedrichshain, Berlin",
+    category: "fitness",
+    tags: ["go-climbing", "hit-the-gym"],
+    maxAttendees: 6,
+    attendeeUsernames: ["kira.nomad"],
+  },
+];
+
+export const seedBerlinActivities = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    let seededCount = 0;
+
+    for (const activity of berlinActivities) {
+      // Skip if already exists
+      const existing = await ctx.db
+        .query("activities")
+        .filter((q) => q.eq(q.field("title"), activity.title))
+        .first();
+      if (existing) continue;
+
+      const host = await ctx.db
+        .query("users")
+        .withIndex("by_username", (q) => q.eq("username", activity.hostUsername))
+        .first();
+      if (!host) continue;
+
+      const attendeeIds = [];
+      for (const username of activity.attendeeUsernames) {
+        const attendee = await ctx.db
+          .query("users")
+          .withIndex("by_username", (q) => q.eq("username", username))
+          .first();
+        if (attendee) attendeeIds.push(attendee._id);
+      }
+
+      await ctx.db.insert("activities", {
+        hostId: host._id,
+        title: activity.title,
+        description: activity.description,
+        image: activity.image,
+        date: activity.date,
+        time: activity.time,
+        location: activity.location,
+        category: activity.category,
+        tags: activity.tags,
+        maxAttendees: activity.maxAttendees,
+        attendeeIds,
+        status: "active",
+        createdAt: now - Math.floor(Math.random() * 86400000),
+        updatedAt: now,
+      });
+      seededCount++;
+    }
+
+    return { message: `Seeded ${seededCount} Berlin activities`, count: seededCount };
+  },
+});
+
 export const seedSwipes = internalMutation({
   args: { myUsername: v.optional(v.string()) },
   handler: async (ctx, args) => {
@@ -1633,6 +2027,9 @@ export const seedSwipes = internalMutation({
       "hana.k_", "marcodelucci", "jess_ontheroad", "tomasux",
       "aisha.o", "natethompson_", "camille.jpg", "ravi.codes",
       "linneainasia", "seb_writes", "meimei.draws", "oscardata",
+      "kira.nomad", "felix.runs", "sofiatrails", "kai.builds",
+      "ines.wanders", "leo.drifts", "yuna.snaps", "arjun.dev",
+      "mila.roams", "ethan.abroad",
     ];
 
     const now = Date.now();
@@ -1663,6 +2060,50 @@ export const seedSwipes = internalMutation({
     }
 
     return { message: `Seeded ${count} likes for @${myUsername}` };
+  },
+});
+
+// Add swipes from new users that weren't in the original seed
+export const topUpSwipes = internalMutation({
+  args: { myUsername: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const myUsername = args.myUsername || "jju1ce";
+    const me = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", myUsername))
+      .first();
+    if (!me) return { message: `User '${myUsername}' not found.` };
+
+    const newUsernames = [
+      "kira.nomad", "felix.runs", "sofiatrails", "kai.builds",
+      "ines.wanders", "leo.drifts", "yuna.snaps", "arjun.dev",
+      "mila.roams", "ethan.abroad",
+    ];
+
+    const now = Date.now();
+    let count = 0;
+    for (const username of newUsernames) {
+      const liker = await ctx.db
+        .query("users")
+        .withIndex("by_username", (q) => q.eq("username", username))
+        .first();
+      if (!liker) continue;
+
+      const existing = await ctx.db
+        .query("swipes")
+        .withIndex("by_pair", (q) => q.eq("swiperId", liker._id).eq("swipedId", me._id))
+        .first();
+      if (existing) continue;
+
+      await ctx.db.insert("swipes", {
+        swiperId: liker._id,
+        swipedId: me._id,
+        action: "like",
+        createdAt: now - Math.floor(Math.random() * 86400000 * 3),
+      });
+      count++;
+    }
+    return { message: `Added ${count} new likes for @${myUsername}` };
   },
 });
 
