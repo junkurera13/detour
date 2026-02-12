@@ -34,10 +34,12 @@ export function useLocationSync() {
         if (!newLocation) return;
 
         const currentLocation = convexUser.currentLocation?.toLowerCase().trim() ?? '';
-        if (newLocation === currentLocation) return;
+        const missingCoords = convexUser.latitude == null || convexUser.longitude == null;
+
+        if (newLocation === currentLocation && !missingCoords) return;
 
         await updateUser({
-          currentLocation: newLocation,
+          currentLocation: newLocation || convexUser.currentLocation,
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         });
