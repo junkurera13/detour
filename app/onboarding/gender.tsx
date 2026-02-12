@@ -26,7 +26,7 @@ export default function GenderScreen() {
     <OnboardingLayout
       title="what's your gender?"
       subtitle="this helps us show you to the right people"
-      currentStep={3}
+      currentStep={4}
     >
       <View className="flex-1 pt-6">
         {genderOptions.map((option) => (

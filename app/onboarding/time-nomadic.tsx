@@ -21,14 +21,14 @@ export default function TimeNomadicScreen() {
 
   const handleContinue = () => {
     updateData({ timeNomadic: selected });
-    router.push('/onboarding/photos');
+    router.push('/onboarding/interests');
   };
 
   return (
     <OnboardingLayout
       title="how long have you been nomadic?"
       subtitle="we all started somewhere"
-      currentStep={8}
+      currentStep={9}
     >
       <View className="flex-1 pt-4">
         {timeOptions.map((option) => (

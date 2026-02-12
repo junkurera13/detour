@@ -79,6 +79,8 @@ export default function FutureTripScreen() {
         friendsPreference: data.friendsPreference.length > 0 ? data.friendsPreference : undefined,
         datingGoals: data.datingGoals,
         lifestyle: data.lifestyle,
+        rigType: data.rigType || undefined,
+        rigName: data.rigName || undefined,
         timeNomadic: data.timeNomadic,
         interests: data.interests,
         photos: data.photos,
@@ -136,7 +138,7 @@ export default function FutureTripScreen() {
     <OnboardingLayout
       title="where to next?"
       subtitle="add your upcoming destinations to connect with nomads along your route"
-      currentStep={12}
+      currentStep={13}
       showSkip
       onSkip={handleSkip}
       scrollable

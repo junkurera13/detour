@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { useMutation, useConvexAuth } from 'convex/react';
+import { useAction, useMutation, useConvexAuth } from 'convex/react';
 import { useAuth } from '@clerk/clerk-expo';
 import { api } from '@/convex/_generated/api';
 import { useOnboarding } from '@/context/OnboardingContext';
@@ -63,6 +63,7 @@ export default function PaywallScreen() {
 
   const createUser = useMutation(api.users.create);
   const consumeInviteCode = useMutation(api.inviteCodes.use);
+  const syncMyEntitlement = useAction(api.subscriptions.syncMyEntitlement);
   const { convexUser } = useAuthenticatedUser();
 
   const createUserInternal = async () => {
@@ -111,6 +112,12 @@ export default function PaywallScreen() {
           userStatus = 'approved';
         }
 
+        const entitlement = await syncMyEntitlement();
+        if (!entitlement.hasDetourPlus) {
+          Alert.alert('Subscription sync failed', 'Please wait a moment and try again.');
+          return;
+        }
+
         // Update local onboarding state
         updateData({
           hasCompletedOnboarding: true,
@@ -133,6 +140,8 @@ export default function PaywallScreen() {
         friendsPreference: data.friendsPreference.length > 0 ? data.friendsPreference : undefined,
         datingGoals: data.datingGoals,
         lifestyle: data.lifestyle,
+        rigType: data.rigType || undefined,
+        rigName: data.rigName || undefined,
         timeNomadic: data.timeNomadic,
         interests: data.interests,
         photos: data.photos,
@@ -153,6 +162,12 @@ export default function PaywallScreen() {
           return;
         }
         userStatus = 'approved';
+      }
+
+      const entitlement = await syncMyEntitlement();
+      if (!entitlement.hasDetourPlus) {
+        Alert.alert('Subscription sync failed', 'Please wait a moment and try again.');
+        return;
       }
 
       // Update local onboarding state

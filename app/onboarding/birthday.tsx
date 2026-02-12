@@ -54,7 +54,7 @@ export default function BirthdayScreen() {
     <OnboardingLayout
       title="when's your birthday?"
       subtitle="you must be 21+ to use detour"
-      currentStep={2}
+      currentStep={3}
     >
       <View className="flex-1 pt-8">
         {Platform.OS === 'android' && (

@@ -37,7 +37,7 @@ export default function LookingForScreen() {
     <OnboardingLayout
       title="what are you looking for?"
       subtitle="you can always change this later"
-      currentStep={4}
+      currentStep={5}
     >
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="pt-6">

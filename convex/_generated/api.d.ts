@@ -10,6 +10,7 @@
 
 import type * as activities from "../activities.js";
 import type * as admin from "../admin.js";
+import type * as auth from "../auth.js";
 import type * as blocks from "../blocks.js";
 import type * as files from "../files.js";
 import type * as helpMessages from "../helpMessages.js";
@@ -23,6 +24,8 @@ import type * as notifications from "../notifications.js";
 import type * as profileViews from "../profileViews.js";
 import type * as reports from "../reports.js";
 import type * as seed from "../seed.js";
+import type * as subscriptionMutations from "../subscriptionMutations.js";
+import type * as subscriptions from "../subscriptions.js";
 import type * as swipes from "../swipes.js";
 import type * as users from "../users.js";
 
@@ -35,6 +38,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   activities: typeof activities;
   admin: typeof admin;
+  auth: typeof auth;
   blocks: typeof blocks;
   files: typeof files;
   helpMessages: typeof helpMessages;
@@ -48,6 +52,8 @@ declare const fullApi: ApiFromModules<{
   profileViews: typeof profileViews;
   reports: typeof reports;
   seed: typeof seed;
+  subscriptionMutations: typeof subscriptionMutations;
+  subscriptions: typeof subscriptions;
   swipes: typeof swipes;
   users: typeof users;
 }>;

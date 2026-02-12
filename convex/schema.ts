@@ -25,6 +25,8 @@ export default defineSchema({
 
     // Nomad info
     lifestyle: v.array(v.string()),
+    rigType: v.optional(v.string()),
+    rigName: v.optional(v.string()),
     timeNomadic: v.string(),
     interests: v.array(v.string()),
 
@@ -58,6 +60,10 @@ export default defineSchema({
 
     // Push Notifications
     expoPushToken: v.optional(v.string()),
+
+    // Billing / entitlement
+    hasDetourPlus: v.optional(v.boolean()),
+    subscriptionUpdatedAt: v.optional(v.number()),
 
     // Timestamps
     createdAt: v.number(),
@@ -232,4 +238,13 @@ export default defineSchema({
     .index("by_blocker", ["blockerId"])
     .index("by_blocked", ["blockedId"])
     .index("by_pair", ["blockerId", "blockedId"]),
+
+  // Admin auth attempt tracking (rate limit / temporary lockout)
+  adminAuthAttempts: defineTable({
+    requestKey: v.string(),
+    attempts: v.number(),
+    firstAttemptAt: v.number(),
+    blockedUntil: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_key", ["requestKey"]),
 });

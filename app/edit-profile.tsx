@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -36,6 +37,18 @@ const lifestyleOptions = [
   { id: 'expat', label: 'expat', emoji: '🌍' },
   { id: 'hostel-hopper', label: 'hostel hopper', emoji: '🛏️' },
   { id: 'workaway', label: 'workaway/volunteer', emoji: '🤝' },
+];
+
+const setupOptions = [
+  { id: 'converted-van', label: 'converted van', emoji: '🚐' },
+  { id: 'suv-car', label: 'suv / car', emoji: '🚗' },
+  { id: 'truck-camper', label: 'truck camper', emoji: '🛻' },
+  { id: 'rv-motorhome', label: 'rv / motorhome', emoji: '🏕️' },
+  { id: 'trailer', label: 'trailer', emoji: '🏠' },
+  { id: 'bike-motorcycle', label: 'bike / motorcycle', emoji: '🏍️' },
+  { id: 'on-foot', label: 'on foot', emoji: '🥾' },
+  { id: 'boat-sailboat', label: 'boat / sailboat', emoji: '⛵' },
+  { id: 'no-vehicle', label: 'no vehicle', emoji: '✈️' },
 ];
 
 const interestCategories = [
@@ -150,6 +163,8 @@ export default function EditProfileScreen() {
   const [username, setUsername] = useState('');
   const [instagram, setInstagram] = useState('');
   const [lifestyle, setLifestyle] = useState<string[]>([]);
+  const [rigType, setRigType] = useState('');
+  const [rigName, setRigName] = useState('');
   const [interests, setInterests] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [pets, setPets] = useState<Pet[]>([]);
@@ -175,6 +190,8 @@ export default function EditProfileScreen() {
       setUsername(user.username || '');
       setInstagram(user.instagram || '');
       setLifestyle(user.lifestyle || []);
+      setRigType(user.rigType || '');
+      setRigName(user.rigName || '');
       setInterests(user.interests || []);
       setPhotos(user.photos || []);
       setPets(user.pets || []);
@@ -191,13 +208,15 @@ export default function EditProfileScreen() {
       username !== user.username ||
       instagram !== (user.instagram || '') ||
       JSON.stringify(lifestyle) !== JSON.stringify(user.lifestyle) ||
+      rigType !== (user.rigType || '') ||
+      rigName !== (user.rigName || '') ||
       JSON.stringify(interests) !== JSON.stringify(user.interests) ||
       JSON.stringify(photos) !== JSON.stringify(user.photos) ||
       JSON.stringify(pets) !== JSON.stringify(user.pets || []) ||
       builderBio !== (user.builderBio || '') ||
       JSON.stringify(builderSpecialties) !== JSON.stringify(user.builderSpecialties || []);
     setHasChanges(changed);
-  }, [name, username, instagram, lifestyle, interests, photos, pets, builderBio, builderSpecialties, user]);
+  }, [name, username, instagram, lifestyle, rigType, rigName, interests, photos, pets, builderBio, builderSpecialties, user]);
 
   // Username validation
   useEffect(() => {
@@ -314,6 +333,8 @@ export default function EditProfileScreen() {
         name: name.trim(),
         username: username.trim(),
         lifestyle,
+        ...(rigType ? { rigType } : {}),
+        ...(rigName.trim() ? { rigName: rigName.trim() } : {}),
         interests,
         photos: uploadedPhotos,
         ...(instagram.trim() ? { instagram: instagram.trim() } : {}),
@@ -500,6 +521,41 @@ export default function EditProfileScreen() {
                   />
                 ))}
               </View>
+
+              <Text
+                className="text-lg text-black mt-6 mb-2"
+                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+              >
+                setup
+              </Text>
+              <Text
+                className="text-gray-500 mb-4"
+                style={{ fontFamily: 'InstrumentSans_400Regular' }}
+              >
+                what do you travel in?
+              </Text>
+              <View className="flex-row flex-wrap">
+                {setupOptions.map((option) => (
+                  <SelectionChip
+                    key={option.id}
+                    label={option.label}
+                    emoji={option.emoji}
+                    selected={rigType === option.id}
+                    onPress={() => setRigType(rigType === option.id ? '' : option.id)}
+                  />
+                ))}
+              </View>
+              {rigType ? (
+                <TextInput
+                  className="border border-gray-300 rounded-xl px-4 py-3 text-base text-black mt-4"
+                  placeholder="rig name (optional)"
+                  placeholderTextColor="#9CA3AF"
+                  value={rigName}
+                  onChangeText={setRigName}
+                  maxLength={30}
+                  style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                />
+              ) : null}
             </View>
           )}
 

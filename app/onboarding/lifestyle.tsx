@@ -40,7 +40,7 @@ export default function LifestyleScreen() {
 
   const handleContinue = () => {
     updateData({ lifestyle: selected });
-    router.push('/onboarding/time-nomadic');
+    router.push('/onboarding/setup');
   };
 
   return (

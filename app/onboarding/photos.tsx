@@ -76,7 +76,7 @@ export default function PhotosScreen() {
       updateData({ photos });
     }
 
-    router.push('/onboarding/instagram');
+    router.push('/onboarding/location');
   };
 
   const renderPhotoSlot = (index: number, isLarge: boolean = false) => {
@@ -172,7 +172,7 @@ export default function PhotosScreen() {
     <OnboardingLayout
       title="add your photos"
       subtitle="add 1-6 photos. tap to add, hold to remove."
-      currentStep={9}
+      currentStep={11}
     >
       <View className="flex-1 pt-4">
         {/* Row 1: Large photo + 2 small stacked */}

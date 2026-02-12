@@ -32,14 +32,14 @@ export default function DatingGoalsScreen() {
 
   const handleContinue = () => {
     updateData({ datingGoals: selected });
-    router.push('/onboarding/interests');
+    router.push('/onboarding/lifestyle');
   };
 
   return (
     <OnboardingLayout
       title="who are you hoping to find?"
       subtitle="its your dating journey, so choose 1 or 2 options that feel right to you."
-      currentStep={5}
+      currentStep={6}
     >
       <View className="flex-1 pt-6">
         {datingGoalOptions.map((option) => (

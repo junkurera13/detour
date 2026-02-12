@@ -58,6 +58,18 @@ const lifestyleLabels: Record<string, string> = {
   'workaway': 'workaway',
 };
 
+const setupLabels: Record<string, { label: string; emoji: string }> = {
+  'converted-van': { label: 'converted van', emoji: '🚐' },
+  'suv-car': { label: 'suv / car', emoji: '🚗' },
+  'truck-camper': { label: 'truck camper', emoji: '🛻' },
+  'rv-motorhome': { label: 'rv / motorhome', emoji: '🏕️' },
+  'trailer': { label: 'trailer', emoji: '🏠' },
+  'bike-motorcycle': { label: 'bike / motorcycle', emoji: '🏍️' },
+  'on-foot': { label: 'on foot', emoji: '🥾' },
+  'boat-sailboat': { label: 'boat / sailboat', emoji: '⛵' },
+  'no-vehicle': { label: 'no vehicle', emoji: '✈️' },
+};
+
 const interestLabels: Record<string, { label: string; emoji: string }> = {
   'hiking': { label: 'hiking', emoji: '🥾' },
   'photography': { label: 'photography', emoji: '📸' },
@@ -142,6 +154,8 @@ export default function ProfileScreen() {
         currentLocation: user.currentLocation,
         instagram: user.instagram,
         lifestyle: user.lifestyle,
+        rigType: user.rigType,
+        rigName: user.rigName,
         interests: user.interests,
         futureTrips: user.futureTrips || [],
         pets: user.pets || [],
@@ -155,6 +169,8 @@ export default function ProfileScreen() {
       currentLocation: onboardingData.currentLocation,
       instagram: onboardingData.instagram,
       lifestyle: onboardingData.lifestyle,
+      rigType: onboardingData.rigType,
+      rigName: onboardingData.rigName,
       interests: onboardingData.interests,
       futureTrips: onboardingData.futureTrips || [],
       pets: [],
@@ -723,6 +739,34 @@ export default function ProfileScreen() {
                     </View>
                   ))}
                 </View>
+              </View>
+            )}
+
+            {profileData.rigType && (
+              <View className="px-6 mb-6">
+                <Text
+                  className="text-lg text-black mb-3"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  setup
+                </Text>
+                <View className="bg-gray-100 px-3 py-2 rounded-full flex-row items-center self-start">
+                  <Text className="mr-1">{setupLabels[profileData.rigType]?.emoji}</Text>
+                  <Text
+                    className="text-gray-700"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    {setupLabels[profileData.rigType]?.label || profileData.rigType}
+                  </Text>
+                </View>
+                {profileData.rigName ? (
+                  <Text
+                    className="text-gray-500 mt-2"
+                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                  >
+                    &ldquo;{profileData.rigName}&rdquo;
+                  </Text>
+                ) : null}
               </View>
             )}
 

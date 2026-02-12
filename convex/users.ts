@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query, internalQuery, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
-import { getAuthenticatedUser } from "./auth";
+import { getAuthenticatedSubscriber, getAuthenticatedUser } from "./auth";
 
 function toPublicUser(user: Doc<"users">) {
   return {
@@ -16,6 +16,8 @@ function toPublicUser(user: Doc<"users">) {
     friendsPreference: user.friendsPreference,
     datingGoals: user.datingGoals,
     lifestyle: user.lifestyle,
+    rigType: user.rigType,
+    rigName: user.rigName,
     timeNomadic: user.timeNomadic,
     interests: user.interests,
     photos: user.photos,
@@ -108,6 +110,8 @@ export const create = mutation({
     friendsPreference: v.optional(v.array(v.string())),
     datingGoals: v.optional(v.array(v.string())),
     lifestyle: v.array(v.string()),
+    rigType: v.optional(v.string()),
+    rigName: v.optional(v.string()),
     timeNomadic: v.string(),
     interests: v.array(v.string()),
     photos: v.array(v.string()),
@@ -148,6 +152,7 @@ export const create = mutation({
       tokenIdentifier,
       email: identity.email ?? args.email,
       userStatus: "pending",
+      hasDetourPlus: false,
       createdAt: now,
       updatedAt: now,
     });
@@ -166,6 +171,8 @@ export const update = mutation({
     friendsPreference: v.optional(v.array(v.string())),
     datingGoals: v.optional(v.array(v.string())),
     lifestyle: v.optional(v.array(v.string())),
+    rigType: v.optional(v.string()),
+    rigName: v.optional(v.string()),
     timeNomadic: v.optional(v.string()),
     interests: v.optional(v.array(v.string())),
     photos: v.optional(v.array(v.string())),
@@ -210,7 +217,7 @@ export const update = mutation({
 export const getById = query({
   args: { id: v.id("users") },
   handler: async (ctx, args) => {
-    const currentUser = await getAuthenticatedUser(ctx);
+    const currentUser = await getAuthenticatedSubscriber(ctx);
     const user = await ctx.db.get(args.id);
     if (!user) return null;
     if (user._id === currentUser._id) {
@@ -223,7 +230,7 @@ export const getById = query({
 export const getByUsername = query({
   args: { username: v.string() },
   handler: async (ctx, args) => {
-    await getAuthenticatedUser(ctx);
+    await getAuthenticatedSubscriber(ctx);
     const user = await ctx.db
       .query("users")
       .withIndex("by_username", (q) => q.eq("username", args.username))
@@ -259,7 +266,7 @@ export const getNearbyUsers = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const users = await ctx.db
       .query("users")
@@ -276,7 +283,7 @@ export const getDiscoverUsers = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     // Get users that the current user hasn't swiped on yet
     const swipes = await ctx.db
@@ -319,7 +326,7 @@ export const getAllApprovedUsers = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const currentUser = await getAuthenticatedUser(ctx);
+    const currentUser = await getAuthenticatedSubscriber(ctx);
     const users = await ctx.db
       .query("users")
       .withIndex("by_status", (q) => q.eq("userStatus", "approved"))
