@@ -90,6 +90,34 @@ export const create = mutation({
             matcherName: swiped.name,
             matchId,
           });
+
+          // Check for crossing paths (overlapping future trips)
+          const userTrips = (user.futureTrips || []).map((t) => t.location);
+          const swipedTrips = (swiped.futureTrips || []).map((t) => t.location);
+          const allSwipedLocs = [...swipedTrips, swiped.currentLocation];
+          const allUserLocs = [...userTrips, user.currentLocation];
+
+          for (const userLoc of userTrips) {
+            const userCity = userLoc.split(",")[0].trim().toLowerCase();
+            const matchedLoc = allSwipedLocs.find((loc) => {
+              const city = loc.split(",")[0].trim().toLowerCase();
+              return city.includes(userCity) || userCity.includes(city);
+            });
+            if (matchedLoc) {
+              const city = userLoc.split(",")[0].trim();
+              await ctx.scheduler.runAfter(0, internal.notifications.sendCrossingPathsNotification, {
+                recipientId: args.swipedId,
+                otherUserName: user.name,
+                city,
+              });
+              await ctx.scheduler.runAfter(0, internal.notifications.sendCrossingPathsNotification, {
+                recipientId: user._id,
+                otherUserName: swiped.name,
+                city,
+              });
+              break; // Only notify for first overlapping city
+            }
+          }
         }
 
         return { success: true, isMatch: true, matchId };

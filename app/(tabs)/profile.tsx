@@ -756,17 +756,9 @@ export default function ProfileScreen() {
                     className="text-gray-700"
                     style={{ fontFamily: 'InstrumentSans_500Medium' }}
                   >
-                    {setupLabels[profileData.rigType]?.label || profileData.rigType}
+                    {setupLabels[profileData.rigType]?.label || profileData.rigType}{profileData.rigName ? ` (${profileData.rigName})` : ''}
                   </Text>
                 </View>
-                {profileData.rigName ? (
-                  <Text
-                    className="text-gray-500 mt-2"
-                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
-                  >
-                    &ldquo;{profileData.rigName}&rdquo;
-                  </Text>
-                ) : null}
               </View>
             )}
 
@@ -834,6 +826,7 @@ export default function ProfileScreen() {
         ) : (
           <BuilderProfile
             user={user ? { builderBio: user.builderBio, builderSpecialties: user.builderSpecialties } : null}
+            userId={user?._id}
             builderStats={builderStats}
             editingBuilder={editingBuilder}
             setEditingBuilder={setEditingBuilder}

@@ -51,6 +51,16 @@ export default function HelpChatScreen() {
   const markAsRead = useMutation(api.helpMessages.markAsRead);
   const advanceProgress = useMutation(api.helpRequests.advanceProgress);
   const updateOffer = useMutation(api.helpOffers.update);
+  const submitReview = useMutation(api.helpReviews.create);
+
+  // Review state
+  const existingReview = useQuery(
+    api.helpReviews.getForRequest,
+    conversation?.request?._id ? { requestId: conversation.request._id } : "skip"
+  );
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [editingPrice, setEditingPrice] = useState(false);
@@ -417,6 +427,84 @@ export default function HelpChatScreen() {
               >
                 help completed
               </Text>
+
+              {/* Rating UI — only for requester, only if no review yet */}
+              {isRequester && existingReview === null && (
+                <View className="mt-4 w-full">
+                  <Text
+                    className="text-gray-600 text-sm text-center mb-2"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    how was your experience?
+                  </Text>
+                  <View className="flex-row justify-center mb-3">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <TouchableOpacity
+                        key={star}
+                        onPress={() => setReviewRating(star)}
+                        className="mx-1"
+                        accessibilityLabel={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                      >
+                        <Ionicons
+                          name={star <= reviewRating ? 'star' : 'star-outline'}
+                          size={32}
+                          color={star <= reviewRating ? '#F59E0B' : '#D1D5DB'}
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TextInput
+                    value={reviewComment}
+                    onChangeText={setReviewComment}
+                    placeholder="leave a comment (optional)"
+                    placeholderTextColor="#9CA3AF"
+                    maxLength={200}
+                    multiline
+                    className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-black mb-3 max-h-20"
+                    style={{ fontFamily: 'InstrumentSans_400Regular', fontSize: 14 }}
+                  />
+                  <TouchableOpacity
+                    onPress={async () => {
+                      if (reviewRating === 0 || !conversation?.request?._id) return;
+                      setIsSubmittingReview(true);
+                      try {
+                        await submitReview({
+                          requestId: conversation.request._id,
+                          rating: reviewRating,
+                          comment: reviewComment.trim() || undefined,
+                        });
+                      } catch (error: any) {
+                        Alert.alert('Error', error.message || 'Failed to submit review.');
+                      } finally {
+                        setIsSubmittingReview(false);
+                      }
+                    }}
+                    disabled={reviewRating === 0 || isSubmittingReview}
+                    className="py-3 rounded-xl items-center"
+                    style={{ backgroundColor: reviewRating > 0 ? '#fd6b03' : '#E5E7EB' }}
+                  >
+                    <Text
+                      className="text-white"
+                      style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                    >
+                      {isSubmittingReview ? 'submitting...' : 'submit review'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Review submitted confirmation */}
+              {isRequester && existingReview && (
+                <View className="mt-3 flex-row items-center">
+                  <Ionicons name="star" size={16} color="#F59E0B" />
+                  <Text
+                    className="text-gray-500 text-sm ml-1"
+                    style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                  >
+                    review submitted
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </View>

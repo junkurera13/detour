@@ -258,6 +258,33 @@ export const sendRequestCancelledNotification = internalAction({
   },
 });
 
+// Send notification when crossing paths detected (shared future trip)
+export const sendCrossingPathsNotification = internalAction({
+  args: {
+    recipientId: v.id("users"),
+    otherUserName: v.string(),
+    city: v.string(),
+  },
+  handler: async (ctx, args): Promise<PushResult> => {
+    const recipient = await ctx.runQuery(internal.users.getByIdInternal, {
+      id: args.recipientId,
+    });
+
+    if (!recipient?.expoPushToken) {
+      return { success: false, error: "No push token" };
+    }
+
+    return sendExpoPushNotification(
+      recipient.expoPushToken,
+      "Crossing paths!",
+      `You and ${args.otherUserName} will both be in ${args.city}!`,
+      {
+        type: "crossing_paths",
+      }
+    );
+  },
+});
+
 // Send notification when an offer is updated
 export const sendOfferUpdatedNotification = internalAction({
   args: {

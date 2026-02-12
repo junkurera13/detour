@@ -186,6 +186,18 @@ export default defineSchema({
     .index("by_conversation", ["conversationId"])
     .index("by_sender", ["senderId"]),
 
+  // Help reviews (reputation system)
+  helpReviews: defineTable({
+    reviewerId: v.id("users"),
+    reviewedId: v.id("users"),
+    requestId: v.id("helpRequests"),
+    rating: v.number(), // 1-5
+    comment: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_reviewed", ["reviewedId"])
+    .index("by_request", ["requestId"]),
+
   // Profile views
   profileViews: defineTable({
     viewerId: v.id("users"),

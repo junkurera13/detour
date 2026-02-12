@@ -1,5 +1,8 @@
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 const helpCategoryLabels: Record<string, { label: string; emoji: string }> = {
   'repairs': { label: 'repairs', emoji: '🔧' },
@@ -41,6 +44,7 @@ type UserData = {
 
 interface BuilderProfileProps {
   user: UserData | null;
+  userId?: string;
   builderStats: BuilderStats | null | undefined;
   editingBuilder: boolean;
   setEditingBuilder: (editing: boolean) => void;
@@ -52,8 +56,30 @@ interface BuilderProfileProps {
   onSave: () => void;
 }
 
+function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
+  return (
+    <View style={{ flexDirection: 'row' }}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Ionicons
+          key={star}
+          name={star <= Math.round(rating) ? 'star' : 'star-outline'}
+          size={size}
+          color={star <= Math.round(rating) ? '#F59E0B' : '#D1D5DB'}
+          style={{ marginRight: 1 }}
+        />
+      ))}
+    </View>
+  );
+}
+
+const formatReviewDate = (timestamp: number) => {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
 export function BuilderProfile({
   user,
+  userId,
   builderStats,
   editingBuilder,
   setEditingBuilder,
@@ -64,6 +90,15 @@ export function BuilderProfile({
   savingBuilder,
   onSave,
 }: BuilderProfileProps) {
+  const ratingData = useQuery(
+    api.helpReviews.getAverageRating,
+    userId ? { userId: userId as Id<"users"> } : "skip"
+  );
+  const reviews = useQuery(
+    api.helpReviews.getForUser,
+    userId ? { userId: userId as Id<"users"> } : "skip"
+  );
+
   return (
     <>
       {/* Builder Profile - Help Activity */}
@@ -243,7 +278,7 @@ export function BuilderProfile({
                   completed
                 </Text>
               </View>
-              <View className="flex-1 items-center py-3 bg-white rounded-2xl">
+              <View className="flex-1 items-center py-3 bg-white rounded-2xl mr-2">
                 <Text
                   className="text-2xl text-black"
                   style={{ fontFamily: 'InstrumentSans_700Bold' }}
@@ -257,6 +292,25 @@ export function BuilderProfile({
                   requests
                 </Text>
               </View>
+              {ratingData && ratingData.count > 0 && (
+                <View className="flex-1 items-center py-3 bg-white rounded-2xl">
+                  <View className="flex-row items-center">
+                    <Ionicons name="star" size={18} color="#F59E0B" />
+                    <Text
+                      className="text-2xl text-black ml-1"
+                      style={{ fontFamily: 'InstrumentSans_700Bold' }}
+                    >
+                      {ratingData.average}
+                    </Text>
+                  </View>
+                  <Text
+                    className="text-sm text-gray-500 mt-1"
+                    style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                  >
+                    {ratingData.count} review{ratingData.count !== 1 ? 's' : ''}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Current help requests */}
@@ -312,6 +366,60 @@ export function BuilderProfile({
                 >
                   no help activity yet
                 </Text>
+              </View>
+            )}
+
+            {/* Reviews */}
+            {reviews && reviews.length > 0 && (
+              <View className="mt-3">
+                <Text
+                  className="text-base text-gray-500 mb-2"
+                  style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                >
+                  reviews
+                </Text>
+                {reviews.slice(0, 3).map((review) => (
+                  <View
+                    key={review._id}
+                    className="bg-white rounded-2xl p-3 mb-2"
+                  >
+                    <View className="flex-row items-center mb-1.5">
+                      {review.reviewer?.photos?.[0] ? (
+                        <Image
+                          source={{ uri: review.reviewer.photos[0] }}
+                          className="w-7 h-7 rounded-full mr-2"
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View className="w-7 h-7 rounded-full bg-gray-200 items-center justify-center mr-2">
+                          <Ionicons name="person" size={14} color="#9CA3AF" />
+                        </View>
+                      )}
+                      <Text
+                        className="text-black text-sm flex-1"
+                        style={{ fontFamily: 'InstrumentSans_500Medium' }}
+                      >
+                        {review.reviewer?.name || 'Anonymous'}
+                      </Text>
+                      <StarRating rating={review.rating} size={12} />
+                    </View>
+                    {review.comment && (
+                      <Text
+                        className="text-gray-600 text-sm"
+                        style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                        numberOfLines={2}
+                      >
+                        {review.comment}
+                      </Text>
+                    )}
+                    <Text
+                      className="text-gray-400 text-xs mt-1"
+                      style={{ fontFamily: 'InstrumentSans_400Regular' }}
+                    >
+                      {formatReviewDate(review.createdAt)}
+                    </Text>
+                  </View>
+                ))}
               </View>
             )}
           </View>

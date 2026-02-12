@@ -120,26 +120,41 @@ function getUserFutureTripLocations(user: ExploreUser): string[] {
   return locations;
 }
 
-// Pseudo-random crossing times from user id
-const crossingTimes = ['just now', '2h ago', '5h ago', 'yesterday', '2 days ago', '3 days ago', 'last week'];
-function getCrossingTime(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = ((hash << 5) - hash) + userId.charCodeAt(i);
-    hash |= 0;
+// Get arrival label from a user's real futureTrips data for a target location
+function getArrivalLabel(user: ExploreUser, targetLocation: string): string {
+  const trips = user.futureTrips || [];
+  const matchingTrip = trips.find(trip => locationsOverlap(trip.location, targetLocation));
+  if (matchingTrip?.startDate) {
+    const date = new Date(matchingTrip.startDate);
+    return `arrives ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
   }
-  return crossingTimes[Math.abs(hash) % crossingTimes.length];
+  return 'dates TBD';
 }
 
-// Pseudo-random arrival dates
-const arrivalDates = ['Feb 10', 'Feb 12', 'Feb 15', 'Feb 18', 'Feb 20', 'Feb 22', 'Feb 25', 'Mar 1', 'Mar 5'];
-function getArrivalDate(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = ((hash << 3) - hash) + userId.charCodeAt(i);
-    hash |= 0;
+// Get the first shared trip city between two users' futureTrips
+function getSharedTripCity(userTrips: { location: string }[], otherUser: ExploreUser): string | null {
+  const otherTrips = getUserFutureTripLocations(otherUser);
+  for (const trip of userTrips) {
+    const city = trip.location.split(',')[0].trim().toLowerCase();
+    for (const otherLoc of otherTrips) {
+      const otherCity = otherLoc.split(',')[0].trim().toLowerCase();
+      if (city.includes(otherCity) || otherCity.includes(city)) {
+        return trip.location.split(',')[0].trim();
+      }
+    }
   }
-  return arrivalDates[Math.abs(hash) % arrivalDates.length];
+  return null;
+}
+
+// Get companion subtitle with real trip date if available
+function getCompanionSubtitle(user: ExploreUser, sharedCity: string): string {
+  const trips = user.futureTrips || [];
+  const matchingTrip = trips.find(trip => locationsOverlap(trip.location, sharedCity));
+  if (matchingTrip?.startDate) {
+    const date = new Date(matchingTrip.startDate);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  return user.currentLocation.split(',')[0];
 }
 
 // Check if two locations overlap (fuzzy match on city/country parts)
@@ -255,20 +270,41 @@ export default function ExplorePeopleScreen() {
     });
   }, [userLocation, users]);
 
-  // 2. Recent crossings — people in the same current location
+  // 2. Travel companions — people whose futureTrips overlap with YOUR futureTrips
+  const userFutureTrips = useMemo(() => futureTrips || [], [futureTrips]);
+  const headingYourWayIds = useMemo(() => new Set(headingYourWay.map(u => u._id)), [headingYourWay]);
+  const travelCompanions = useMemo(() => {
+    if (userFutureTrips.length === 0 || users.length === 0) return [];
+    const userTripCities = userFutureTrips.map(t => t.location.split(',')[0].trim().toLowerCase());
+    return users
+      .filter(u => !headingYourWayIds.has(u._id))
+      .map(u => {
+        const otherTrips = getUserFutureTripLocations(u);
+        const otherCities = otherTrips.map(loc => loc.split(',')[0].trim().toLowerCase());
+        const shared = userTripCities.filter(city =>
+          otherCities.some(oc => city.includes(oc) || oc.includes(city))
+        );
+        return { user: u, sharedCount: shared.length };
+      })
+      .filter(x => x.sharedCount > 0)
+      .sort((a, b) => b.sharedCount - a.sharedCount)
+      .map(x => x.user);
+  }, [userFutureTrips, users, headingYourWayIds]);
+
+  // 3. Recent crossings — people in the same current location (renamed from 2)
   const recentCrossings = useMemo(() => {
     if (!userLocation || users.length === 0) return [];
     return users.filter(u => locationsOverlap(u.currentLocation, userLocation));
   }, [userLocation, users]);
 
-  // 3. Other X — people with the same primary lifestyle type
+  // 4. Other X — people with the same primary lifestyle type
   const primaryLifestyle = userLifestyle[0] || '';
   const sameLifestyle = useMemo(() => {
     if (!primaryLifestyle || users.length === 0) return [];
     return users.filter(u => u.lifestyle.includes(primaryLifestyle));
   }, [primaryLifestyle, users]);
 
-  // 4. Same interests — people who share interests, sorted by overlap count
+  // 5. Same interests — people who share interests, sorted by overlap count
   const sameInterests = useMemo(() => {
     if (userInterests.length === 0 || users.length === 0) return [];
     return users
@@ -347,11 +383,10 @@ export default function ExplorePeopleScreen() {
                   <PersonCard
                     key={user._id}
                     user={user}
-                    subtitle={`arrives ${getArrivalDate(user._id)}`}
+                    subtitle={getArrivalLabel(user, userLocation)}
                     onPress={() => navigateToUser(user._id)}
                     badge={user.currentLocation.split(',')[0]}
                     badgeColor="#3B82F6"
-
                   />
                 ))}
               </ScrollView>
@@ -385,18 +420,51 @@ export default function ExplorePeopleScreen() {
                     <PersonCard
                       key={user._id}
                       user={user}
-                      subtitle={`arrives ${getArrivalDate(user._id)}`}
+                      subtitle={getArrivalLabel(user, firstTripLocation)}
                       onPress={() => navigateToUser(user._id)}
                       badge={user.currentLocation.split(',')[0]}
                       badgeColor="#3B82F6"
-  
                     />
                   ))}
               </ScrollView>
             </View>
           )}
 
-          {/* 2. Recent Crossings */}
+          {/* 2. Travel Companions */}
+          {travelCompanions.length > 0 && (
+            <View className="mb-8">
+              <View className="flex-row items-center px-6 mb-4">
+                <Ionicons name="compass" size={18} color="#fd6b03" />
+                <Text
+                  className="text-lg text-black ml-2"
+                  style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
+                >
+                  travel companions
+                </Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 24 }}
+              >
+                {travelCompanions.map(user => {
+                  const sharedCity = getSharedTripCity(userFutureTrips, user);
+                  return (
+                    <PersonCard
+                      key={user._id}
+                      user={user}
+                      subtitle={sharedCity ? getCompanionSubtitle(user, sharedCity) : user.currentLocation.split(',')[0]}
+                      onPress={() => navigateToUser(user._id)}
+                      badge={sharedCity ? `heading to ${sharedCity}` : undefined}
+                      badgeColor="#0D9488"
+                    />
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* 3. Recent Crossings */}
           {recentCrossings.length > 0 && (
             <View className="mb-8">
               <View className="flex-row items-center px-6 mb-4">
@@ -417,18 +485,17 @@ export default function ExplorePeopleScreen() {
                   <PersonCard
                     key={user._id}
                     user={user}
-                    subtitle={getCrossingTime(user._id)}
+                    subtitle={user.currentLocation.split(',')[0]}
                     onPress={() => navigateToUser(user._id)}
-                    badge={user.currentLocation.split(',')[0]}
+                    badge={lifestyleLabels[user.lifestyle[0]] || user.lifestyle[0]}
                     badgeColor="#8B5CF6"
-
                   />
                 ))}
               </ScrollView>
             </View>
           )}
 
-          {/* 3. Other X (same lifestyle type) */}
+          {/* 4. Other X (same lifestyle type) */}
           {sameLifestyle.length > 0 && primaryLifestyle && (
             <View className="mb-8">
               <View className="flex-row items-center px-6 mb-4">
@@ -460,7 +527,7 @@ export default function ExplorePeopleScreen() {
             </View>
           )}
 
-          {/* 4. Same Interests */}
+          {/* 5. Same Interests */}
           {sameInterests.length > 0 && (
             <View className="mb-8">
               <View className="flex-row items-center px-6 mb-4">

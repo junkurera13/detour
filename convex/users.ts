@@ -212,6 +212,15 @@ export const update = mutation({
       ...filteredUpdates,
       updatedAt: Date.now(),
     });
+
+    // Trigger crossing paths detection when future trips are updated
+    if (updates.futureTrips) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.crossingPaths.detectAndNotify,
+        { userId: user._id }
+      );
+    }
   },
 });
 
