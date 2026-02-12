@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { getAuthenticatedSubscriber } from "./auth";
 
 export const HELP_CATEGORIES = ["repairs", "electrical", "build", "plumbing", "other"] as const;
 
@@ -11,6 +12,7 @@ export const listOpen = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await getAuthenticatedSubscriber(ctx);
     const limit = args.limit ?? 50;
 
     // Fast path: no category filter uses status+created index with bounded reads.
@@ -66,6 +68,7 @@ export const listOpen = query({
 export const getById = query({
   args: { id: v.id("helpRequests") },
   handler: async (ctx, args) => {
+    await getAuthenticatedSubscriber(ctx);
     const request = await ctx.db.get(args.id);
     if (!request) return null;
 
@@ -110,15 +113,7 @@ export const getMyRequests = query({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) return [];
+    const user = await getAuthenticatedSubscriber(ctx);
 
     let requests = await ctx.db
       .query("helpRequests")
@@ -198,19 +193,7 @@ export const create = mutation({
     isUrgent: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     // Validate category
     if (!HELP_CATEGORIES.includes(args.category as typeof HELP_CATEGORIES[number])) {
@@ -248,19 +231,7 @@ export const update = mutation({
     isUrgent: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const request = await ctx.db.get(args.id);
     if (!request) {
@@ -301,19 +272,7 @@ export const acceptOffer = mutation({
     offerId: v.id("helpOffers"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) {
@@ -404,19 +363,7 @@ export const acceptOffer = mutation({
 export const cancel = mutation({
   args: { id: v.id("helpRequests") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const request = await ctx.db.get(args.id);
     if (!request) {
@@ -465,19 +412,7 @@ export const cancel = mutation({
 export const deleteRequest = mutation({
   args: { id: v.id("helpRequests") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const request = await ctx.db.get(args.id);
     if (!request) {
@@ -513,19 +448,7 @@ export const deleteRequest = mutation({
 export const complete = mutation({
   args: { id: v.id("helpRequests") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const request = await ctx.db.get(args.id);
     if (!request) {
@@ -555,19 +478,7 @@ export const advanceProgress = mutation({
     requestId: v.id("helpRequests"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) {
@@ -626,15 +537,7 @@ export const listForYou = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) return [];
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const specialties = user.builderSpecialties ?? [];
     const location = user.currentLocation?.toLowerCase().trim() ?? "";
@@ -705,15 +608,7 @@ export const listForYou = query({
 export const getBuilderStats = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) return null;
+    const user = await getAuthenticatedSubscriber(ctx);
 
     // Get all requests by this user
     const myRequests = await ctx.db

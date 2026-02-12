@@ -1,19 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
+import { getAuthenticatedSubscriber } from "./auth";
 
 // Get all conversations for current user (as requester or offerer)
 export const getMyConversations = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) return [];
+    const user = await getAuthenticatedSubscriber(ctx);
 
     // Get conversations where user is requester
     const asRequester = await ctx.db
@@ -115,15 +108,7 @@ export const getMyConversations = query({
 export const getConversation = query({
   args: { id: v.id("helpConversations") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) return null;
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const conversation = await ctx.db.get(args.id);
     if (!conversation) return null;
@@ -183,15 +168,7 @@ export const getMessages = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) return [];
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const conversation = await ctx.db.get(args.conversationId);
     if (!conversation) return [];
@@ -232,19 +209,7 @@ export const sendMessage = mutation({
     messageType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const conversation = await ctx.db.get(args.conversationId);
     if (!conversation) {
@@ -285,19 +250,7 @@ export const markAsRead = mutation({
     conversationId: v.id("helpConversations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const conversation = await ctx.db.get(args.conversationId);
     if (!conversation) {

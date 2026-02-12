@@ -1,8 +1,31 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 const http = httpRouter();
+
+function getRequestKey(request: Request) {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const first = forwardedFor.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  const cfConnectingIp = request.headers.get("cf-connecting-ip");
+  if (cfConnectingIp) return cfConnectingIp;
+  return "unknown";
+}
+
+function isAuthorizedRevenueCatWebhook(request: Request) {
+  const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
+  if (!secret) return false;
+  const authorization = request.headers.get("authorization") ?? "";
+  return (
+    authorization === secret ||
+    authorization === `Bearer ${secret}` ||
+    authorization === `bearer ${secret}`
+  );
+}
 
 // Admin page HTML
 const getAdminHTML = () => `
@@ -378,6 +401,24 @@ const getAdminHTML = () => `
     let usersData = [];
     let currentUserId = null;
 
+    function esc(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function safeImageUrl(value, fallback) {
+      const raw = String(value || '').trim();
+      if (!raw) return fallback;
+      if (raw.startsWith('https://') || raw.startsWith('http://') || raw.startsWith('data:image/')) {
+        return raw;
+      }
+      return fallback;
+    }
+
     async function login() {
       const password = document.getElementById('password').value;
       if (!password) return;
@@ -434,15 +475,15 @@ const getAdminHTML = () => `
 
         document.getElementById('users-list').innerHTML = usersData.map(user => \`
           <div class="user-card" id="user-\${user.id}" onclick="showProfile('\${user.id}')">
-            <img class="user-photo" src="\${user.photo || 'https://via.placeholder.com/64'}" alt="" />
+            <img class="user-photo" src="\${safeImageUrl(user.photo, 'https://via.placeholder.com/64')}" alt="" />
             <div class="user-info">
-              <div class="user-name">\${user.name}</div>
-              <div class="user-username">@\${user.username}</div>
-              <div class="user-meta">\${user.location} · \${formatDate(user.signupDate)}</div>
+              <div class="user-name">\${esc(user.name)}</div>
+              <div class="user-username">@\${esc(user.username)}</div>
+              <div class="user-meta">\${esc(user.location)} · \${esc(formatDate(user.signupDate))}</div>
             </div>
             <div class="user-actions" onclick="event.stopPropagation()">
-              <button class="btn btn-approve" onclick="approveUser('\${user.id}', '\${user.name}')">approve</button>
-              <button class="btn btn-reject" onclick="rejectUser('\${user.id}', '\${user.name}')">reject</button>
+              <button class="btn btn-approve" onclick="approveUser('\${user.id}')">approve</button>
+              <button class="btn btn-reject" onclick="rejectUser('\${user.id}')">reject</button>
             </div>
           </div>
         \`).join('');
@@ -460,7 +501,7 @@ const getAdminHTML = () => `
 
       // Photos
       const photosHtml = user.photos.length > 0
-        ? user.photos.map(p => \`<img class="modal-photo" src="\${p}" alt="" />\`).join('')
+        ? user.photos.map(p => \`<img class="modal-photo" src="\${safeImageUrl(p, 'https://via.placeholder.com/400')}" alt="" />\`).join('')
         : '<img class="modal-photo" src="https://via.placeholder.com/400" alt="" />';
       document.getElementById('modal-photos').innerHTML = photosHtml;
 
@@ -492,15 +533,15 @@ const getAdminHTML = () => `
 
       // Looking for
       document.getElementById('modal-looking-for').innerHTML = user.lookingFor
-        .map(l => \`<span class="modal-tag">\${l}</span>\`).join('');
+        .map(l => \`<span class="modal-tag">\${esc(l)}</span>\`).join('');
 
       // Lifestyle
       document.getElementById('modal-lifestyle').innerHTML = user.lifestyle
-        .map(l => \`<span class="modal-tag">\${l.replace('-', ' ')}</span>\`).join('');
+        .map(l => \`<span class="modal-tag">\${esc(l).replace('-', ' ')}</span>\`).join('');
 
       // Interests
       document.getElementById('modal-interests').innerHTML = user.interests
-        .map(i => \`<span class="modal-tag">\${i}</span>\`).join('');
+        .map(i => \`<span class="modal-tag">\${esc(i)}</span>\`).join('');
 
       // Time nomadic
       document.getElementById('modal-time-nomadic').textContent = user.timeNomadic.replace('-', ' ');
@@ -511,11 +552,11 @@ const getAdminHTML = () => `
       // Action buttons
       document.getElementById('modal-approve-btn').onclick = () => {
         closeModal();
-        approveUser(user.id, user.name);
+        approveUser(user.id);
       };
       document.getElementById('modal-reject-btn').onclick = () => {
         closeModal();
-        rejectUser(user.id, user.name);
+        rejectUser(user.id);
       };
 
       // Show modal
@@ -541,7 +582,8 @@ const getAdminHTML = () => `
       return date.toLocaleDateString();
     }
 
-    async function approveUser(userId, userName) {
+    async function approveUser(userId) {
+      const userName = usersData.find((u) => u.id === userId)?.name || 'user';
       if (!confirm('Approve ' + userName + '?')) return;
 
       try {
@@ -569,7 +611,8 @@ const getAdminHTML = () => `
       }
     }
 
-    async function rejectUser(userId, userName) {
+    async function rejectUser(userId) {
+      const userName = usersData.find((u) => u.id === userId)?.name || 'user';
       if (!confirm('Reject ' + userName + '? This cannot be undone.')) return;
 
       try {
@@ -619,7 +662,14 @@ http.route({
   method: "GET",
   handler: httpAction(async () => {
     return new Response(getAdminHTML(), {
-      headers: { "Content-Type": "text/html" },
+      headers: {
+        "Content-Type": "text/html",
+        "Content-Security-Policy":
+          "default-src 'self'; img-src 'self' https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+        "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+      },
     });
   }),
 });
@@ -631,8 +681,12 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     const body = await request.json();
     const password = body.password || "";
+    const requestKey = getRequestKey(request);
 
-    const result = await ctx.runMutation(api.admin.verifyPassword, { password });
+    const result = await ctx.runMutation(api.admin.verifyPassword, {
+      password,
+      requestKey,
+    });
 
     return new Response(JSON.stringify(result), {
       headers: { "Content-Type": "application/json" },
@@ -647,8 +701,12 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     const body = await request.json();
     const password = body.adminPassword || "";
+    const requestKey = getRequestKey(request);
 
-    const users = await ctx.runQuery(api.admin.listPendingUsers, { adminPassword: password });
+    const users = await ctx.runMutation(api.admin.listPendingUsers, {
+      adminPassword: password,
+      requestKey,
+    });
 
     return new Response(JSON.stringify(users), {
       headers: { "Content-Type": "application/json" },
@@ -664,10 +722,12 @@ http.route({
     try {
       const body = await request.json();
       const { userId, adminPassword } = body;
+      const requestKey = getRequestKey(request);
 
       const result = await ctx.runMutation(api.admin.approveUser, {
         userId,
         adminPassword,
+        requestKey,
       });
 
       return new Response(JSON.stringify(result), {
@@ -690,10 +750,12 @@ http.route({
     try {
       const body = await request.json();
       const { userId, adminPassword } = body;
+      const requestKey = getRequestKey(request);
 
       const result = await ctx.runMutation(api.admin.rejectUser, {
         userId,
         adminPassword,
+        requestKey,
       });
 
       return new Response(JSON.stringify(result), {
@@ -703,6 +765,47 @@ http.route({
       return new Response(
         JSON.stringify({ success: false, error: error.message }),
         { headers: { "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+  }),
+});
+
+// RevenueCat webhook endpoint (server-to-server)
+http.route({
+  path: "/webhooks/revenuecat",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    if (!isAuthorizedRevenueCatWebhook(request)) {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    try {
+      const payload = await request.json();
+      const event = payload?.event ?? payload;
+      const tokenIdentifier =
+        event?.app_user_id ?? event?.original_app_user_id ?? null;
+
+      if (!tokenIdentifier || typeof tokenIdentifier !== "string") {
+        return new Response(JSON.stringify({ success: false, error: "Missing app_user_id" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      await ctx.runAction(internal.subscriptions.syncEntitlementByToken, {
+        tokenIdentifier,
+      });
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error?.message ?? "Webhook failed" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
   }),

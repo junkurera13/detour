@@ -24,6 +24,24 @@ export async function getAuthenticatedUser(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
+ * Get an authenticated user with approved status and an active Detour+ entitlement.
+ * Use for app features that must remain subscription-gated on the server.
+ */
+export async function getAuthenticatedSubscriber(ctx: QueryCtx | MutationCtx) {
+  const user = await getAuthenticatedUser(ctx);
+
+  if (user.userStatus !== "approved") {
+    throw new Error("Account is not approved");
+  }
+
+  if (!user.hasDetourPlus) {
+    throw new Error("Active Detour+ subscription required");
+  }
+
+  return user;
+}
+
+/**
  * Try to get the currently authenticated user, returning null instead of throwing.
  * Useful for queries that should return empty results for unauthenticated users.
  */

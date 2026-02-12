@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
+import { getAuthenticatedSubscriber } from "./auth";
 
 export const create = mutation({
   args: {
@@ -7,15 +8,7 @@ export const create = mutation({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) throw new Error("User not found");
+    const user = await getAuthenticatedSubscriber(ctx);
 
     await ctx.db.insert("reports", {
       reporterId: user._id,

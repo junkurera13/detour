@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { getAuthenticatedUser } from "./auth";
+import { getAuthenticatedSubscriber } from "./auth";
 
 function getMatchPairKey(userAId: string, userBId: string) {
   return [userAId, userBId].sort().join(":");
@@ -13,7 +13,7 @@ export const create = mutation({
     action: v.union(v.literal("like"), v.literal("pass"), v.literal("superlike")),
   },
   handler: async (ctx, args) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     if (user._id === args.swipedId) {
       throw new Error("Cannot swipe on yourself");
@@ -103,7 +103,7 @@ export const create = mutation({
 export const getBySwiper = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
     return await ctx.db
       .query("swipes")
       .withIndex("by_swiper", (q) => q.eq("swiperId", user._id))
@@ -114,7 +114,7 @@ export const getBySwiper = query({
 export const getLikesForUser = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const likeSwipes = await ctx.db
       .query("swipes")

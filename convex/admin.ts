@@ -1,12 +1,104 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { MutationCtx, mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 
-function verifyAdminPassword(password: string): void {
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminPassword || password !== adminPassword) {
+const MAX_ATTEMPTS_PER_WINDOW = 10;
+const WINDOW_MS = 60_000;
+const BLOCK_MS = 10 * 60_000;
+
+function normalizeRequestKey(requestKey: string) {
+  return requestKey.trim().slice(0, 256) || "unknown";
+}
+
+function secureEquals(input: string, expected: string) {
+  const maxLen = Math.max(input.length, expected.length);
+  let mismatch = input.length ^ expected.length;
+  for (let i = 0; i < maxLen; i++) {
+    const a = input.charCodeAt(i) || 0;
+    const b = expected.charCodeAt(i) || 0;
+    mismatch |= a ^ b;
+  }
+  return mismatch === 0;
+}
+
+async function getAttemptByKey(
+  ctx: MutationCtx,
+  requestKey: string
+) {
+  return await ctx.db
+    .query("adminAuthAttempts")
+    .withIndex("by_key", (q) => q.eq("requestKey", requestKey))
+    .first();
+}
+
+async function ensureNotBlocked(
+  ctx: MutationCtx,
+  requestKey: string
+) {
+  const attempt = await getAttemptByKey(ctx, requestKey);
+  const now = Date.now();
+  if (attempt?.blockedUntil && attempt.blockedUntil > now) {
+    throw new Error("Too many admin auth attempts. Try again later.");
+  }
+}
+
+async function recordFailedAttempt(
+  ctx: MutationCtx,
+  requestKey: string
+) {
+  const now = Date.now();
+  const attempt = await getAttemptByKey(ctx, requestKey);
+
+  if (!attempt) {
+    await ctx.db.insert("adminAuthAttempts", {
+      requestKey,
+      attempts: 1,
+      firstAttemptAt: now,
+      updatedAt: now,
+    });
+    return;
+  }
+
+  const isWindowExpired = now - attempt.firstAttemptAt > WINDOW_MS;
+  const attempts = isWindowExpired ? 1 : attempt.attempts + 1;
+  const blockedUntil =
+    attempts >= MAX_ATTEMPTS_PER_WINDOW ? now + BLOCK_MS : undefined;
+
+  await ctx.db.patch(attempt._id, {
+    attempts,
+    firstAttemptAt: isWindowExpired ? now : attempt.firstAttemptAt,
+    blockedUntil,
+    updatedAt: now,
+  });
+}
+
+async function clearAttempts(
+  ctx: MutationCtx,
+  requestKey: string
+) {
+  const attempt = await getAttemptByKey(ctx, requestKey);
+  if (attempt) {
+    await ctx.db.delete(attempt._id);
+  }
+}
+
+async function assertAdminPassword(
+  ctx: MutationCtx,
+  password: string,
+  requestKeyRaw: string
+) {
+  const requestKey = normalizeRequestKey(requestKeyRaw);
+  await ensureNotBlocked(ctx, requestKey);
+
+  const adminPassword = process.env.ADMIN_PASSWORD ?? "";
+  const isValid = adminPassword.length > 0 && secureEquals(password, adminPassword);
+
+  if (!isValid) {
+    await recordFailedAttempt(ctx, requestKey);
     throw new Error("Unauthorized");
   }
+
+  await clearAttempts(ctx, requestKey);
 }
 
 // Delete a help request by ID (admin)
@@ -14,21 +106,23 @@ export const deleteHelpRequest = mutation({
   args: {
     id: v.id("helpRequests"),
     adminPassword: v.string(),
+    requestKey: v.string(),
   },
   handler: async (ctx, args) => {
-    verifyAdminPassword(args.adminPassword);
+    await assertAdminPassword(ctx, args.adminPassword, args.requestKey);
     await ctx.db.delete(args.id);
     return { success: true };
   },
 });
 
 // List all pending users for admin review
-export const listPendingUsers = query({
+export const listPendingUsers = mutation({
   args: {
     adminPassword: v.string(),
+    requestKey: v.string(),
   },
   handler: async (ctx, args) => {
-    verifyAdminPassword(args.adminPassword);
+    await assertAdminPassword(ctx, args.adminPassword, args.requestKey);
 
     const pendingUsers = await ctx.db
       .query("users")
@@ -64,9 +158,10 @@ export const approveUser = mutation({
   args: {
     userId: v.id("users"),
     adminPassword: v.string(),
+    requestKey: v.string(),
   },
   handler: async (ctx, args) => {
-    verifyAdminPassword(args.adminPassword);
+    await assertAdminPassword(ctx, args.adminPassword, args.requestKey);
 
     const user = await ctx.db.get(args.userId);
     if (!user) {
@@ -107,9 +202,10 @@ export const rejectUser = mutation({
   args: {
     userId: v.id("users"),
     adminPassword: v.string(),
+    requestKey: v.string(),
   },
   handler: async (ctx, args) => {
-    verifyAdminPassword(args.adminPassword);
+    await assertAdminPassword(ctx, args.adminPassword, args.requestKey);
 
     const user = await ctx.db.get(args.userId);
     if (!user) {
@@ -132,12 +228,27 @@ export const rejectUser = mutation({
 
 // Verify admin password
 export const verifyPassword = mutation({
-  args: { password: v.string() },
-  handler: async (_ctx, args) => {
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    if (!adminPassword) {
-      return { valid: false, error: "Admin password not configured" };
+  args: {
+    password: v.string(),
+    requestKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const requestKey = normalizeRequestKey(args.requestKey);
+    try {
+      await ensureNotBlocked(ctx, requestKey);
+    } catch {
+      return { valid: false };
     }
-    return { valid: args.password === adminPassword };
+
+    const adminPassword = process.env.ADMIN_PASSWORD ?? "";
+    const valid = adminPassword.length > 0 && secureEquals(args.password, adminPassword);
+
+    if (valid) {
+      await clearAttempts(ctx, requestKey);
+    } else {
+      await recordFailedAttempt(ctx, requestKey);
+    }
+
+    return { valid };
   },
 });

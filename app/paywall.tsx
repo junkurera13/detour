@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ComponentProps, useState } from 'react';
 import { useAuth } from '@clerk/clerk-expo';
-import { useMutation } from 'convex/react';
+import { useAction, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { DETOUR_PLUS_ENTITLEMENT, useRevenueCat } from '@/context/RevenueCatContext';
 import { useOnboarding } from '@/context/OnboardingContext';
@@ -41,6 +41,7 @@ export default function PaywallScreen() {
   const { convexUser } = useAuthenticatedUser();
 
   const consumeInviteCode = useMutation(api.inviteCodes.use);
+  const syncMyEntitlement = useAction(api.subscriptions.syncMyEntitlement);
 
   const {
     offerings,
@@ -80,6 +81,12 @@ export default function PaywallScreen() {
       }
 
       if (hasDetourPlus(info)) {
+        const entitlement = await syncMyEntitlement();
+        if (!entitlement.hasDetourPlus) {
+          Alert.alert('Subscription sync failed', 'Please wait a moment and try again.');
+          return;
+        }
+
         // If user has an invite code, consume it and update their status
         if (hasInviteCode && convexUser?._id) {
           try {
@@ -113,6 +120,12 @@ export default function PaywallScreen() {
     try {
       const info = await restorePurchases();
       if (info && hasDetourPlus(info)) {
+        const entitlement = await syncMyEntitlement();
+        if (!entitlement.hasDetourPlus) {
+          Alert.alert('Subscription sync failed', 'Please wait a moment and try again.');
+          return;
+        }
+
         // If user has an invite code, consume it and update their status
         if (hasInviteCode && convexUser?._id) {
           try {

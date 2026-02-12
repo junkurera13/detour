@@ -1,11 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthenticatedUser } from "./auth";
+import { getAuthenticatedSubscriber } from "./auth";
 
 export const getByUser = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const matchesAsUser1 = await ctx.db
       .query("matches")
@@ -41,7 +41,7 @@ export const getByUser = query({
 export const getById = query({
   args: { id: v.id("matches") },
   handler: async (ctx, args) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const match = await ctx.db.get(args.id);
     if (!match) return null;
@@ -65,7 +65,7 @@ export const getById = query({
 export const unmatch = mutation({
   args: { matchId: v.id("matches") },
   handler: async (ctx, args) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const match = await ctx.db.get(args.matchId);
     if (!match) {

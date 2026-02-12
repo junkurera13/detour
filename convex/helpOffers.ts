@@ -1,20 +1,13 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { getAuthenticatedSubscriber } from "./auth";
 
 // Get offers for a request (only visible to request author)
 export const getByRequest = query({
   args: { requestId: v.id("helpRequests") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) return [];
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) return [];
@@ -59,15 +52,7 @@ export const getMyOffers = query({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) return [];
+    const user = await getAuthenticatedSubscriber(ctx);
 
     let offers = await ctx.db
       .query("helpOffers")
@@ -137,15 +122,7 @@ export const getMyOffers = query({
 export const hasUserOffered = query({
   args: { requestId: v.id("helpRequests") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return false;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) return false;
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const offers = await ctx.db
       .query("helpOffers")
@@ -162,15 +139,7 @@ export const hasUserOffered = query({
 export const getUserOfferForRequest = query({
   args: { requestId: v.id("helpRequests") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) return null;
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const offer = await ctx.db
       .query("helpOffers")
@@ -191,19 +160,7 @@ export const create = mutation({
     message: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) {
@@ -267,19 +224,7 @@ export const update = mutation({
     message: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const offer = await ctx.db.get(args.id);
     if (!offer) {
@@ -336,19 +281,7 @@ export const update = mutation({
 export const withdraw = mutation({
   args: { id: v.id("helpOffers") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const offer = await ctx.db.get(args.id);
     if (!offer) {

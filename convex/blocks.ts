@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthenticatedUser } from "./auth";
+import { getAuthenticatedSubscriber } from "./auth";
 
 // Block a user
 export const blockUser = mutation({
@@ -8,7 +8,7 @@ export const blockUser = mutation({
     blockedId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     if (user._id === args.blockedId) {
       throw new Error("Cannot block yourself");
@@ -43,7 +43,7 @@ export const unblockUser = mutation({
     blockedId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const block = await ctx.db
       .query("blockedUsers")
@@ -65,6 +65,11 @@ export const isBlocked = query({
     userId2: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedSubscriber(ctx);
+    if (user._id !== args.userId1 && user._id !== args.userId2) {
+      throw new Error("Not authorized");
+    }
+
     // Check if user1 blocked user2
     const block1 = await ctx.db
       .query("blockedUsers")
@@ -97,7 +102,7 @@ export const isBlocked = query({
 export const getBlockedUsers = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const blocks = await ctx.db
       .query("blockedUsers")

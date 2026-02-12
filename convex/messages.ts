@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { getAuthenticatedUser } from "./auth";
+import { getAuthenticatedSubscriber } from "./auth";
 
 export const send = mutation({
   args: {
@@ -10,7 +10,7 @@ export const send = mutation({
     messageType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     // Validate content
     if (!args.content.trim()) {
@@ -55,7 +55,7 @@ export const send = mutation({
 export const getByMatch = query({
   args: { matchId: v.id("matches") },
   handler: async (ctx, args) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     // Verify user is part of this match
     const match = await ctx.db.get(args.matchId);
@@ -90,7 +90,7 @@ export const markAsRead = mutation({
     matchId: v.id("matches"),
   },
   handler: async (ctx, args) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     // Verify user is part of this match
     const match = await ctx.db.get(args.matchId);
@@ -117,7 +117,7 @@ export const markAsRead = mutation({
 export const getLastMessage = query({
   args: { matchId: v.id("matches") },
   handler: async (ctx, args) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     // Verify user is part of this match
     const match = await ctx.db.get(args.matchId);
@@ -136,7 +136,7 @@ export const getLastMessage = query({
 export const getConversationPreviews = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     // Get blocked users (both directions)
     const blockedByMe = await ctx.db
@@ -223,7 +223,7 @@ export const getConversationPreviews = query({
 export const getUnreadCount = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getAuthenticatedUser(ctx);
+    const user = await getAuthenticatedSubscriber(ctx);
 
     // Get all matches for this user
     const matchesAsUser1 = await ctx.db

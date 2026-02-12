@@ -1,9 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthenticatedSubscriber } from "./auth";
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
+    await getAuthenticatedSubscriber(ctx);
     const activities = await ctx.db
       .query("activities")
       .withIndex("by_status", (q) => q.eq("status", "active"))
@@ -27,6 +29,7 @@ export const list = query({
 export const getById = query({
   args: { id: v.id("activities") },
   handler: async (ctx, args) => {
+    await getAuthenticatedSubscriber(ctx);
     const activity = await ctx.db.get(args.id);
     if (!activity) return null;
 
@@ -57,6 +60,7 @@ export const getById = query({
 export const getByUserId = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
+    await getAuthenticatedSubscriber(ctx);
     // Events hosted by this user
     const hosted = await ctx.db
       .query("activities")
@@ -105,15 +109,7 @@ export const create = mutation({
     maxAttendees: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) throw new Error("User not found");
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const now = Date.now();
     const activityId = await ctx.db.insert("activities", {
@@ -142,15 +138,7 @@ export const create = mutation({
 export const join = mutation({
   args: { activityId: v.id("activities") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) throw new Error("User not found");
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const activity = await ctx.db.get(args.activityId);
     if (!activity) throw new Error("Activity not found");
@@ -178,15 +166,7 @@ export const join = mutation({
 export const leave = mutation({
   args: { activityId: v.id("activities") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) throw new Error("User not found");
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const activity = await ctx.db.get(args.activityId);
     if (!activity) throw new Error("Activity not found");

@@ -1,22 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthenticatedSubscriber } from "./auth";
 
 export const record = mutation({
   args: { viewedId: v.id("users") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const viewer = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!viewer) {
-      throw new Error("User not found");
-    }
+    const viewer = await getAuthenticatedSubscriber(ctx);
 
     // Skip if viewing own profile
     if (viewer._id === args.viewedId) {
@@ -46,19 +35,7 @@ export const record = mutation({
 export const getRecentViewers = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
-      .first();
-
-    if (!user) {
-      return [];
-    }
+    const user = await getAuthenticatedSubscriber(ctx);
 
     const views = await ctx.db
       .query("profileViews")
