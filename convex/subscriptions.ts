@@ -4,17 +4,6 @@ import { internal } from "./_generated/api";
 
 const DETOUR_PLUS_ENTITLEMENT = "detour_plus";
 
-type RevenueCatSubscriberResponse = {
-  subscriber?: {
-    entitlements?: Record<
-      string,
-      {
-        expires_date?: string | null;
-      }
-    >;
-  };
-};
-
 function getRevenueCatSecretKey() {
   const key = process.env.REVENUECAT_SECRET_API_KEY;
   if (!key) {
@@ -23,22 +12,29 @@ function getRevenueCatSecretKey() {
   return key;
 }
 
-function isEntitlementActive(
-  entitlements: Record<string, { expires_date?: string | null }> | undefined
-) {
-  const entitlement = entitlements?.[DETOUR_PLUS_ENTITLEMENT];
-  if (!entitlement) return false;
-
-  if (!entitlement.expires_date) return true;
-  const expiresAt = Date.parse(entitlement.expires_date);
-  if (Number.isNaN(expiresAt)) return false;
-  return expiresAt > Date.now();
+function getRevenueCatProjectId() {
+  const id = process.env.REVENUECAT_PROJECT_ID;
+  if (!id) {
+    throw new Error("REVENUECAT_PROJECT_ID is not configured");
+  }
+  return id;
 }
+
+// V2 API response types
+type RevenueCatV2EntitlementItem = {
+  entitlement_identifier: string;
+  expires_date?: string | null;
+};
+
+type RevenueCatV2EntitlementsResponse = {
+  items: RevenueCatV2EntitlementItem[];
+};
 
 async function fetchDetourPlusStatus(appUserId: string) {
   const secretKey = getRevenueCatSecretKey();
+  const projectId = getRevenueCatProjectId();
   const response = await fetch(
-    `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`,
+    `https://api.revenuecat.com/v2/projects/${projectId}/customers/${encodeURIComponent(appUserId)}/active_entitlements`,
     {
       headers: {
         Authorization: `Bearer ${secretKey}`,
@@ -52,8 +48,10 @@ async function fetchDetourPlusStatus(appUserId: string) {
     throw new Error(`RevenueCat lookup failed (${response.status}): ${body}`);
   }
 
-  const json = (await response.json()) as RevenueCatSubscriberResponse;
-  const hasDetourPlus = isEntitlementActive(json.subscriber?.entitlements);
+  const json = (await response.json()) as RevenueCatV2EntitlementsResponse;
+  const hasDetourPlus = json.items.some(
+    (item) => item.entitlement_identifier === DETOUR_PLUS_ENTITLEMENT
+  );
   return { hasDetourPlus };
 }
 

@@ -64,11 +64,24 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               fontSize: 14,
               color: '#6B7280',
               textAlign: 'center',
-              marginBottom: 20,
+              marginBottom: 12,
             }}
           >
             We hit an unexpected issue. Try again or restart the app.
           </Text>
+          {this.state.error?.message ? (
+            <Text
+              style={{
+                fontFamily: 'InstrumentSans_400Regular',
+                fontSize: 12,
+                color: '#9CA3AF',
+                textAlign: 'center',
+                marginBottom: 20,
+              }}
+            >
+              {this.state.error.message}
+            </Text>
+          ) : null}
           <TouchableOpacity
             onPress={this.handleReset}
             activeOpacity={0.8}

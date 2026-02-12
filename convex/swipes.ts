@@ -150,13 +150,18 @@ export const getLikesForUser = query({
 
     const unmatched = likeSwipes.filter((s) => !matchedUserIds.has(s.swiperId));
 
-    const likersWithData = await Promise.all(
-      unmatched.map(async (swipe) => {
-        const likerUser = await ctx.db.get(swipe.swiperId);
-        return likerUser ? { swipe, user: likerUser } : null;
-      })
+    // Batch-fetch all liker users to avoid N+1
+    const likerIds = [...new Set(unmatched.map((s) => s.swiperId))];
+    const likerUsers = await Promise.all(likerIds.map((id) => ctx.db.get(id)));
+    const likerMap = new Map(
+      likerUsers.filter(Boolean).map((u) => [u!._id, u])
     );
 
-    return likersWithData.filter((l): l is NonNullable<typeof l> => l !== null);
+    return unmatched
+      .map((swipe) => {
+        const likerUser = likerMap.get(swipe.swiperId);
+        return likerUser ? { swipe, user: likerUser } : null;
+      })
+      .filter((l): l is NonNullable<typeof l> => l !== null);
   },
 });

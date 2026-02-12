@@ -148,7 +148,8 @@ export default function NearbyScreen() {
   // Save preferences when they change
   useEffect(() => {
     if (!prefsLoaded.current) return;
-    AsyncStorage.setItem('nearby_prefs', JSON.stringify({ ageMin, ageMax, distance: prefDistance })).catch((e) => console.warn('Failed to save preferences:', e));
+    AsyncStorage.setItem('nearby_prefs', JSON.stringify({ ageMin, ageMax, distance: prefDistance }))
+      .catch((e) => console.warn('Failed to save nearby preferences:', e));
   }, [ageMin, ageMax, prefDistance]);
 
   const profiles = useMemo(() => {

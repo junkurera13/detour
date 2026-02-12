@@ -70,18 +70,17 @@ export const getByMatch = query({
       .order("asc")
       .collect();
 
-    // Get sender info for each message
-    const messagesWithSenders = await Promise.all(
-      messages.map(async (message) => {
-        const sender = await ctx.db.get(message.senderId);
-        return {
-          ...message,
-          sender,
-        };
-      })
+    // Batch-fetch all unique senders
+    const senderIds = [...new Set(messages.map((m) => m.senderId))];
+    const senders = await Promise.all(senderIds.map((id) => ctx.db.get(id)));
+    const senderMap = new Map(
+      senders.filter(Boolean).map((s) => [s!._id, s])
     );
 
-    return messagesWithSenders;
+    return messages.map((message) => ({
+      ...message,
+      sender: senderMap.get(message.senderId) ?? null,
+    }));
   },
 });
 
@@ -178,12 +177,26 @@ export const getConversationPreviews = query({
       .sort((a, b) => (b.matchedAt ?? b.createdAt) - (a.matchedAt ?? a.createdAt))
       .slice(0, 100);
 
-    // Get conversation preview for each match
+    // Batch-fetch all other users upfront to avoid N+1
+    const otherUserIds = [
+      ...new Set(
+        filteredMatches.map((match) =>
+          match.user1Id === user._id ? match.user2Id : match.user1Id
+        )
+      ),
+    ];
+    const otherUsers = await Promise.all(
+      otherUserIds.map((id) => ctx.db.get(id))
+    );
+    const otherUserMap = new Map(
+      otherUsers.filter(Boolean).map((u) => [u!._id, u])
+    );
+
+    // Get conversation preview for each match (messages still need per-match queries for index)
     const previews = await Promise.all(
       filteredMatches.map(async (match) => {
         const otherUserId =
           match.user1Id === user._id ? match.user2Id : match.user1Id;
-        const otherUser = await ctx.db.get(otherUserId);
 
         // Get last message
         const lastMessage = await ctx.db
@@ -203,7 +216,7 @@ export const getConversationPreviews = query({
 
         return {
           matchId: match._id,
-          otherUser,
+          otherUser: otherUserMap.get(otherUserId) ?? null,
           lastMessage,
           unreadCount: unreadMessages.length,
           matchedAt: match.matchedAt,

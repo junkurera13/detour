@@ -43,9 +43,16 @@ export const getRecentViewers = query({
       .order("desc")
       .take(10);
 
-    const viewers = await Promise.all(
-      views.map(async (view) => {
-        const viewer = await ctx.db.get(view.viewerId);
+    // Batch-fetch all viewers to avoid N+1
+    const viewerIds = [...new Set(views.map((v) => v.viewerId))];
+    const viewerUsers = await Promise.all(viewerIds.map((id) => ctx.db.get(id)));
+    const viewerMap = new Map(
+      viewerUsers.filter(Boolean).map((u) => [u!._id, u])
+    );
+
+    return views
+      .map((view) => {
+        const viewer = viewerMap.get(view.viewerId);
         if (!viewer) return null;
         return {
           _id: viewer._id,
@@ -54,8 +61,6 @@ export const getRecentViewers = query({
           viewedAt: view.createdAt,
         };
       })
-    );
-
-    return viewers.filter(Boolean);
+      .filter(Boolean);
   },
 });

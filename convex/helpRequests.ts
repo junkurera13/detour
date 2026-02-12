@@ -35,10 +35,17 @@ export const listOpen = query({
         .slice(0, limit);
     }
 
+    // Batch-fetch all authors to avoid N+1
+    const authorIds = [...new Set(limited.map((r) => r.authorId))];
+    const authors = await Promise.all(authorIds.map((id) => ctx.db.get(id)));
+    const authorMap = new Map(
+      authors.filter(Boolean).map((a) => [a!._id, a])
+    );
+
     // Enrich with author info and offer count
     const enriched = await Promise.all(
       limited.map(async (request) => {
-        const author = await ctx.db.get(request.authorId);
+        const author = authorMap.get(request.authorId);
         const offers = await ctx.db
           .query("helpOffers")
           .withIndex("by_request", (q) => q.eq("requestId", request._id))
@@ -544,11 +551,14 @@ export const listForYou = query({
 
     if (specialties.length === 0 && !location) return [];
 
-    // Get all open requests
+    // Use bounded reads with status+created index instead of full table scan.
+    // Filter matching criteria in memory over a capped set.
+    const MAX_SCAN = 200;
     const openRequests = await ctx.db
       .query("helpRequests")
-      .withIndex("by_status", (q) => q.eq("status", "open"))
-      .collect();
+      .withIndex("by_status_created", (q) => q.eq("status", "open"))
+      .order("desc")
+      .take(MAX_SCAN);
 
     // Filter: match location AND matching category, exclude own requests
     const matched = openRequests.filter((r) => {
@@ -575,10 +585,17 @@ export const listForYou = query({
 
     const limited = args.limit ? matched.slice(0, args.limit) : matched;
 
+    // Batch-fetch all authors to avoid N+1
+    const authorIds = [...new Set(limited.map((r) => r.authorId))];
+    const authors = await Promise.all(authorIds.map((id) => ctx.db.get(id)));
+    const authorMap = new Map(
+      authors.filter(Boolean).map((a) => [a!._id, a])
+    );
+
     // Enrich with author info and offer count
     const enriched = await Promise.all(
       limited.map(async (request) => {
-        const author = await ctx.db.get(request.authorId);
+        const author = authorMap.get(request.authorId);
         const offers = await ctx.db
           .query("helpOffers")
           .withIndex("by_request", (q) => q.eq("requestId", request._id))

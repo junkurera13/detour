@@ -9,6 +9,7 @@ import { api } from '@/convex/_generated/api';
 import { DETOUR_PLUS_ENTITLEMENT, useRevenueCat } from '@/context/RevenueCatContext';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { withRetry } from '@/lib/retry';
 
 const features: { icon: ComponentProps<typeof Ionicons>['name']; title: string; description: string }[] = [
   {
@@ -61,8 +62,16 @@ export default function PaywallScreen() {
   const yearlyPackage = currentOffering?.annual ?? packageById('$rc_annual') ?? packageById('yearly') ?? packageById('detour_plus_yearly') ?? currentOffering?.availablePackages?.[0];
   const yearlyPrice = yearlyPackage?.product?.pricePerYearString ?? yearlyPackage?.product?.priceString ?? '$99.99/year';
 
-  const hasDetourPlus = (info: any) =>
+  const hasDetourPlus = (info: { entitlements?: { active?: Record<string, unknown> } } | null) =>
     Boolean(info?.entitlements?.active?.[DETOUR_PLUS_ENTITLEMENT]);
+
+  const trySyncEntitlement = async () => {
+    try {
+      await withRetry(() => syncMyEntitlement(), 3, 1500);
+    } catch (err) {
+      console.warn('Server entitlement sync failed (best-effort):', err);
+    }
+  };
 
   const handleSubscribe = async () => {
     if (isProcessing) return;
@@ -81,11 +90,7 @@ export default function PaywallScreen() {
       }
 
       if (hasDetourPlus(info)) {
-        const entitlement = await syncMyEntitlement();
-        if (!entitlement.hasDetourPlus) {
-          Alert.alert('Subscription sync failed', 'Please wait a moment and try again.');
-          return;
-        }
+        await trySyncEntitlement();
 
         // If user has an invite code, consume it and update their status
         if (hasInviteCode && convexUser?._id) {
@@ -98,7 +103,7 @@ export default function PaywallScreen() {
               return;
             }
           } catch (err) {
-            console.error('Failed to process invite code:', err);
+            console.warn('Failed to process invite code:', err);
             // Continue anyway - they have a subscription
           }
         }
@@ -120,11 +125,7 @@ export default function PaywallScreen() {
     try {
       const info = await restorePurchases();
       if (info && hasDetourPlus(info)) {
-        const entitlement = await syncMyEntitlement();
-        if (!entitlement.hasDetourPlus) {
-          Alert.alert('Subscription sync failed', 'Please wait a moment and try again.');
-          return;
-        }
+        await trySyncEntitlement();
 
         // If user has an invite code, consume it and update their status
         if (hasInviteCode && convexUser?._id) {
@@ -137,7 +138,7 @@ export default function PaywallScreen() {
               return;
             }
           } catch (err) {
-            console.error('Failed to process invite code:', err);
+            console.warn('Failed to process invite code:', err);
           }
         }
         router.replace('/(tabs)');

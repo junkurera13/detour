@@ -189,9 +189,15 @@ export const use = mutation({
       return { success: false, error: "this code is no longer valid" };
     }
 
+    // Atomically increment and deactivate if at max capacity.
+    // Convex mutations are serialized per-document, so read-then-write
+    // within a single mutation is safe from concurrent races.
+    const newUses = inviteCode.currentUses + 1;
     await ctx.db.patch(inviteCode._id, {
-      currentUses: inviteCode.currentUses + 1,
+      currentUses: newUses,
       usedBy: user._id,
+      // Deactivate once max uses reached to prevent any further attempts
+      ...(newUses >= inviteCode.maxUses ? { isActive: false } : {}),
     });
 
     // Auto-approve user who used valid invite code

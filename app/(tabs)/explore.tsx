@@ -164,19 +164,26 @@ export default function ExploreScreen() {
 
   // Load saved preferences on mount
   useEffect(() => {
-    AsyncStorage.getItem('activityPrefs').then((val) => {
-      if (val) {
-        try {
-          const prefs = JSON.parse(val);
-          if (prefs.showNearbyOnly !== undefined) setShowNearbyOnly(prefs.showNearbyOnly);
-          if (prefs.showOnlyInterests !== undefined) setShowOnlyInterests(prefs.showOnlyInterests);
-          if (prefs.activityDistance !== undefined) setActivityDistance(prefs.activityDistance);
-          if (prefs.dayFilter !== undefined) setDayFilter(prefs.dayFilter);
-          if (prefs.prefLocation !== undefined) setPrefLocation(prefs.prefLocation);
-        } catch {}
-      }
-      setPrefsLoaded(true);
-    });
+    AsyncStorage.getItem('activityPrefs')
+      .then((val) => {
+        if (val) {
+          try {
+            const prefs = JSON.parse(val);
+            if (prefs.showNearbyOnly !== undefined) setShowNearbyOnly(prefs.showNearbyOnly);
+            if (prefs.showOnlyInterests !== undefined) setShowOnlyInterests(prefs.showOnlyInterests);
+            if (prefs.activityDistance !== undefined) setActivityDistance(prefs.activityDistance);
+            if (prefs.dayFilter !== undefined) setDayFilter(prefs.dayFilter);
+            if (prefs.prefLocation !== undefined) setPrefLocation(prefs.prefLocation);
+          } catch (e) {
+            console.warn('Failed to parse activity preferences:', e);
+          }
+        }
+        setPrefsLoaded(true);
+      })
+      .catch((e) => {
+        console.warn('Failed to load activity preferences:', e);
+        setPrefsLoaded(true);
+      });
   }, []);
 
   // Save preferences when they change
@@ -184,7 +191,7 @@ export default function ExploreScreen() {
     if (!prefsLoaded) return;
     AsyncStorage.setItem('activityPrefs', JSON.stringify({
       showNearbyOnly, showOnlyInterests, activityDistance, dayFilter, prefLocation,
-    }));
+    })).catch((e) => console.warn('Failed to save activity preferences:', e));
   }, [showNearbyOnly, showOnlyInterests, activityDistance, dayFilter, prefLocation, prefsLoaded]);
 
   // Real Convex data

@@ -1,18 +1,45 @@
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { View, Image } from 'react-native';
+import { View, Image, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { useRevenueCat } from '@/context/RevenueCatContext';
 import { useLocationSync } from '@/hooks/useLocationSync';
 import * as Haptics from 'expo-haptics';
 
 export default function TabLayout() {
   const { data } = useOnboarding();
-  const { convexUser } = useAuthenticatedUser();
-  useLocationSync();
-  const profilePhoto = convexUser?.photos?.[0] || data.photos[0];
+  const { convexUser, isSignedIn, isLoading: isAuthLoading } = useAuthenticatedUser();
+  const { hasDetourPlus, isLoading: isRevenueCatLoading, isConfigured } = useRevenueCat();
   const insets = useSafeAreaInsets();
+  useLocationSync();
+
+  // Guard: redirect away if user shouldn't be on tabs
+  if (isAuthLoading || (isConfigured && isRevenueCatLoading)) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <ActivityIndicator size="large" color="#fd6b03" />
+      </View>
+    );
+  }
+
+  if (!isSignedIn) {
+    return <Redirect href="/onboarding" />;
+  }
+
+  if (!convexUser) {
+    return <Redirect href="/onboarding/join-path" />;
+  }
+
+  if (convexUser.userStatus === 'pending') {
+    return <Redirect href="/pending" />;
+  }
+
+  if (!hasDetourPlus) {
+    return <Redirect href="/paywall" />;
+  }
+  const profilePhoto = convexUser?.photos?.[0] || data.photos[0];
   const tabBarHeight = 62 + insets.bottom;
   const tabBarPaddingBottom = Math.max(insets.bottom, 12);
   return (

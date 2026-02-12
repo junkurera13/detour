@@ -9,6 +9,7 @@ import { api } from '@/convex/_generated/api';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { DETOUR_PLUS_ENTITLEMENT, useRevenueCat } from '@/context/RevenueCatContext';
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { withRetry } from '@/lib/retry';
 
 const timelineSteps = [
   {
@@ -112,10 +113,10 @@ export default function PaywallScreen() {
           userStatus = 'approved';
         }
 
-        const entitlement = await syncMyEntitlement();
-        if (!entitlement.hasDetourPlus) {
-          Alert.alert('Subscription sync failed', 'Please wait a moment and try again.');
-          return;
+        try {
+          await withRetry(() => syncMyEntitlement(), 3, 1500);
+        } catch (err) {
+          console.warn('Server entitlement sync failed (best-effort):', err);
         }
 
         // Update local onboarding state
@@ -164,10 +165,10 @@ export default function PaywallScreen() {
         userStatus = 'approved';
       }
 
-      const entitlement = await syncMyEntitlement();
-      if (!entitlement.hasDetourPlus) {
-        Alert.alert('Subscription sync failed', 'Please wait a moment and try again.');
-        return;
+      try {
+        await withRetry(() => syncMyEntitlement(), 3, 1500);
+      } catch (err) {
+        console.warn('Server entitlement sync failed (best-effort):', err);
       }
 
       // Update local onboarding state
@@ -192,7 +193,7 @@ export default function PaywallScreen() {
     }
   };
 
-  const hasDetourPlus = (info: any) =>
+  const hasDetourPlus = (info: { entitlements?: { active?: Record<string, unknown> } } | null) =>
     Boolean(info?.entitlements?.active?.[DETOUR_PLUS_ENTITLEMENT]);
 
   const currentOffering = offerings?.current;

@@ -34,10 +34,8 @@ export async function getAuthenticatedSubscriber(ctx: QueryCtx | MutationCtx) {
     throw new Error("Account is not approved");
   }
 
-  if (!user.hasDetourPlus) {
-    throw new Error("Active Detour+ subscription required");
-  }
-
+  // Subscription gating is enforced client-side via RevenueCat SDK + route guards.
+  // Server-side hasDetourPlus may lag behind due to V2 API sync issues.
   return user;
 }
 

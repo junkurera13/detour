@@ -74,14 +74,15 @@ export const getOrCreateByToken = mutation({
     }
 
     // Check if user exists by email (for account linking)
-    if (identity.email) {
+    // Only link if the email is verified by the auth provider to prevent account takeover
+    if (identity.email && identity.emailVerified) {
       const userByEmail = await ctx.db
         .query("users")
         .withIndex("by_email", (q) => q.eq("email", identity.email))
         .first();
 
       if (userByEmail) {
-        // Link existing user to Clerk
+        // Link existing user to new auth provider
         await ctx.db.patch(userByEmail._id, {
           tokenIdentifier,
           email: identity.email,
@@ -284,6 +285,7 @@ export const getDiscoverUsers = query({
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedSubscriber(ctx);
+    const desiredCount = args.limit ?? 50;
 
     // Get users that the current user hasn't swiped on yet
     const swipes = await ctx.db
@@ -308,14 +310,20 @@ export const getDiscoverUsers = query({
       ...blockedMe.map((b) => b.blockerId),
     ]);
 
-    const users = await ctx.db
+    const excludeIds = new Set([user._id, ...swipedUserIds, ...blockedUserIds]);
+
+    // Over-fetch to account for filtering, then trim to desired count
+    const overFetchRatio = Math.min(3, 1 + excludeIds.size / 50);
+    const fetchCount = Math.ceil(desiredCount * overFetchRatio);
+
+    const candidates = await ctx.db
       .query("users")
       .withIndex("by_status", (q) => q.eq("userStatus", "approved"))
-      .filter((q) => q.neq(q.field("_id"), user._id))
-      .take(args.limit ?? 50);
+      .take(fetchCount);
 
-    return users
-      .filter((u) => !swipedUserIds.has(u._id) && !blockedUserIds.has(u._id))
+    return candidates
+      .filter((u) => !excludeIds.has(u._id))
+      .slice(0, desiredCount)
       .map(toPublicUser);
   },
 });

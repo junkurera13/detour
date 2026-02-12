@@ -128,9 +128,10 @@ export default function ChatScreen() {
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     if (messages && messages.length > 0) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
+      return () => clearTimeout(timer);
     }
   }, [messages]);
 
@@ -152,8 +153,9 @@ export default function ChatScreen() {
         messageType: 'text',
       });
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.warn('Failed to send message:', error);
       setMessageText(text);
+      Alert.alert('Error', 'Message failed to send. Please try again.');
     } finally {
       setIsSending(false);
     }

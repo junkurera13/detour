@@ -12,17 +12,22 @@ export const list = query({
       .order("desc")
       .collect();
 
-    const result = [];
-    for (const activity of activities) {
-      const host = await ctx.db.get(activity.hostId);
-      result.push({
+    // Batch-fetch all unique hosts to avoid N+1
+    const hostIds = [...new Set(activities.map((a) => a.hostId))];
+    const hosts = await Promise.all(hostIds.map((id) => ctx.db.get(id)));
+    const hostMap = new Map(
+      hosts.filter(Boolean).map((h) => [h!._id, h])
+    );
+
+    return activities.map((activity) => {
+      const host = hostMap.get(activity.hostId);
+      return {
         ...activity,
         host: host
           ? { _id: host._id, name: host.name, photo: host.photos[0] || "" }
           : { _id: activity.hostId, name: "Unknown", photo: "" },
-      });
-    }
-    return result;
+      };
+    });
   },
 });
 
@@ -35,17 +40,17 @@ export const getById = query({
 
     const host = await ctx.db.get(activity.hostId);
 
-    const attendees = [];
-    for (const attendeeId of activity.attendeeIds) {
-      const user = await ctx.db.get(attendeeId);
-      if (user) {
-        attendees.push({
-          _id: user._id,
-          name: user.name,
-          photo: user.photos[0] || "",
-        });
-      }
-    }
+    // Batch-fetch all attendees
+    const attendeeUsers = await Promise.all(
+      activity.attendeeIds.map((id) => ctx.db.get(id))
+    );
+    const attendees = attendeeUsers
+      .filter(Boolean)
+      .map((user) => ({
+        _id: user!._id,
+        name: user!.name,
+        photo: user!.photos[0] || "",
+      }));
 
     return {
       ...activity,
@@ -80,17 +85,22 @@ export const getByUserId = query({
 
     const combined = [...hosted, ...attending];
 
-    const result = [];
-    for (const activity of combined) {
-      const host = await ctx.db.get(activity.hostId);
-      result.push({
+    // Batch-fetch all unique hosts to avoid N+1
+    const hostIds = [...new Set(combined.map((a) => a.hostId))];
+    const hosts = await Promise.all(hostIds.map((id) => ctx.db.get(id)));
+    const hostMap = new Map(
+      hosts.filter(Boolean).map((h) => [h!._id, h])
+    );
+
+    return combined.map((activity) => {
+      const host = hostMap.get(activity.hostId);
+      return {
         ...activity,
         host: host
           ? { _id: host._id, name: host.name, photo: host.photos[0] || "" }
           : { _id: activity.hostId, name: "Unknown", photo: "" },
-      });
-    }
-    return result;
+      };
+    });
   },
 });
 
