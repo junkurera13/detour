@@ -238,28 +238,30 @@ export function StopMap({
               coordinate={[stop.longitude, stop.latitude]}
               {...(Platform.OS !== 'android' ? { onSelected: () => onStopPress?.(stop.id) } : {})}
             >
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={Platform.OS === 'android' ? () => onStopPress?.(stop.id) : undefined}
-              >
-                <View style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: categoryColors[stop.category] || '#6B7280',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  borderWidth: 2,
-                  borderColor: '#fff',
-                  ...Platform.select({
-                    ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
-                    android: { elevation: 4 },
-                  }),
-                }}>
-                  <Text style={{ fontSize: 14 }}>{categoryLabels[stop.category] || '📍'}</Text>
-                </View>
-              </TouchableOpacity>
-              {Platform.OS !== 'android' && <Mapbox.Callout title={stop.name} />}
+              <>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={Platform.OS === 'android' ? () => onStopPress?.(stop.id) : undefined}
+                >
+                  <View style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: categoryColors[stop.category] || '#6B7280',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                    ...Platform.select({
+                      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
+                      android: { elevation: 4 },
+                    }),
+                  }}>
+                    <Text style={{ fontSize: 14 }}>{categoryLabels[stop.category] || '📍'}</Text>
+                  </View>
+                </TouchableOpacity>
+                {Platform.OS !== 'android' && <Mapbox.Callout title={stop.name} />}
+              </>
             </MarkerComponent>
           );
         })}
