@@ -1,16 +1,14 @@
-import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-expo';
 import { useFinalizeAuth } from '@/hooks/useFinalizeAuth';
-import { EmailAuth } from '@/components/auth/EmailAuth';
 import { OAuthButtons } from '@/components/auth/OAuthButtons';
 
 export default function AuthLandingScreen() {
   const { isSignedIn, isLoaded: isClerkLoaded } = useAuth();
   const finalizeAuth = useFinalizeAuth();
-  const [showEmailAuth, setShowEmailAuth] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [authResolutionFailed, setAuthResolutionFailed] = useState(false);
   const authInFlightRef = useRef(false);
@@ -33,18 +31,9 @@ export default function AuthLandingScreen() {
   }, [finalizeAuth]);
 
   useEffect(() => {
-    if (!isClerkLoaded || !isSignedIn || showEmailAuth || authResolutionFailed) return;
+    if (!isClerkLoaded || !isSignedIn || authResolutionFailed) return;
     void handleAuthSuccess();
-  }, [authResolutionFailed, handleAuthSuccess, isClerkLoaded, isSignedIn, showEmailAuth]);
-
-  if (showEmailAuth) {
-    return (
-      <EmailAuth
-        onSuccess={handleAuthSuccess}
-        onBack={() => setShowEmailAuth(false)}
-      />
-    );
-  }
+  }, [authResolutionFailed, handleAuthSuccess, isClerkLoaded, isSignedIn]);
 
   if (isLoading || (isClerkLoaded && isSignedIn && !authResolutionFailed)) {
     return (
@@ -86,19 +75,6 @@ export default function AuthLandingScreen() {
           </View>
 
           <View className="pb-6 gap-3">
-            <TouchableOpacity
-              onPress={() => setShowEmailAuth(true)}
-              className="w-full items-center justify-center bg-white py-4 px-8 rounded-full"
-              activeOpacity={0.8}
-            >
-              <Text
-                className="text-black text-lg"
-                style={{ fontFamily: 'InstrumentSans_600SemiBold' }}
-              >
-                continue with email
-              </Text>
-            </TouchableOpacity>
-
             <OAuthButtons
               onError={(error) => Alert.alert('Error', error)}
             />
