@@ -77,6 +77,14 @@ export default function RouteMeshScreen() {
       ? [myTrips[0].longitude, myTrips[0].latitude]
       : [0, 20];
 
+  const cameraRef = useRef<any>(null);
+  const zoomRef = useRef(4);
+
+  const handleZoom = useCallback((delta: number) => {
+    zoomRef.current = Math.max(1, Math.min(18, zoomRef.current + delta));
+    cameraRef.current?.zoomTo(zoomRef.current, 300);
+  }, []);
+
   if (!mapboxAvailable || !Mapbox) {
     return (
       <SafeAreaView className="flex-1 bg-white" edges={['top']}>
@@ -99,13 +107,6 @@ export default function RouteMeshScreen() {
   }
 
   const MarkerComponent = Platform.OS === 'android' ? Mapbox.MarkerView : Mapbox.PointAnnotation;
-  const cameraRef = useRef<any>(null);
-  const zoomRef = useRef(4);
-
-  const handleZoom = useCallback((delta: number) => {
-    zoomRef.current = Math.max(1, Math.min(18, zoomRef.current + delta));
-    cameraRef.current?.zoomTo(zoomRef.current, 300);
-  }, []);
 
   return (
     <View style={{ flex: 1 }}>
@@ -466,7 +467,6 @@ function BottomSheet({
         },
         onPanResponderRelease: (_, g) => {
           translateY.flattenOffset();
-          const currentY = offsetY.current + g.dy;
           const shouldExpand = g.dy < -SNAP_THRESHOLD || (expanded && g.dy < SNAP_THRESHOLD);
           const target = shouldExpand ? -(EXPANDED_HEIGHT - COLLAPSED_HEIGHT) : 0;
 
